@@ -1,0 +1,51 @@
+{
+  "name": "dexa",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run contracts:check",
+    "contracts:check": "npm run contracts:generate && git diff --exit-code -- packages/contracts/src/generated",
+    "contracts:generate": "npm run generate -w @dexa/contracts",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "start:attendance": "npm run start -w @dexa/attendance",
+    "start:gateway": "npm run start -w @dexa/gateway",
+    "start:identity": "npm run start -w @dexa/identity",
+    "test": "turbo run test",
+    "test:integration": "./scripts/test-integration.sh",
+    "typecheck": "turbo run typecheck",
+    "compose:up": "docker compose up --build --wait",
+    "compose:down": "docker compose down --volumes --remove-orphans"
+  },
+  "devDependencies": {
+    "@swc/cli": "0.8.1",
+    "@swc/core": "1.16.2",
+    "@types/node": "24.13.3",
+    "grpc-tools": "1.13.1",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "ts-proto": "2.12.2",
+    "turbo": "2.10.12",
+    "typescript": "6.0.3",
+    "vite": "8.0.0",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
+  "packageManager": "npm@11.19.0",
+  "allowScripts": {
+    "@swc/core@1.16.2": true,
+    "grpc-tools@1.13.1": true,
+    "protobufjs@7.6.6": true,
+    "protobufjs@8.8.0": true
+  }
+}

@@ -1,0 +1,152 @@
+name: dexa
+
+x-app: &app
+  restart: unless-stopped
+  init: true
+  volumes:
+    - pki:/app/.local/pki:ro
+
+services:
+  pki-init:
+    image: alpine/openssl:latest
+    entrypoint: ["/bin/sh", "/init.sh"]
+    restart: "no"
+    volumes:
+      - ./infra/pki/init.sh:/init.sh:ro
+      - pki:/pki
+
+  oracle:
+    image: gvenzl/oracle-free:slim
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis-data:/data
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
+    volumes:
+      - minio-data:/data
+
+  identity:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/identity/Dockerfile
+    depends_on:
+      oracle:
+        condition: service_healthy
+      pki-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      GRPC_PORT: 50051
+      HOST: 0.0.0.0
+      HTTP_PORT: 3001
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      PKI_DIR: /app/.local/pki
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  attendance:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/attendance/Dockerfile
+    depends_on:
+      minio:
+        condition: service_started
+      oracle:
+        condition: service_healthy
+      pki-init:
+        condition: service_completed_successfully
+    environment:
+      GRPC_PORT: 50052
+      HOST: 0.0.0.0
+      HTTP_PORT: 3002
+      MINIO_ENDPOINT: http://minio:9000
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      PKI_DIR: /app/.local/pki
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  gateway:
+    <<: *app
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    depends_on:
+      attendance:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+    environment:
+      ATTENDANCE_GRPC_URL: attendance:50052
+      HOST: 0.0.0.0
+      HTTP_PORT: 3000
+      IDENTITY_GRPC_URL: identity:50051
+      PKI_DIR: /app/.local/pki
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
+
+volumes:
+  minio-data:
+  oracle-data:
+  pki:
+  redis-data:

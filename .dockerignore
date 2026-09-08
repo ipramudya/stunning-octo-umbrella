@@ -1,0 +1,7 @@
+.git
+.local
+.turbo
+**/dist
+**/node_modules
+coverage
+.env
