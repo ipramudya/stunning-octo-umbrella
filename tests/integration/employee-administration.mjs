@@ -1,7 +1,7 @@
+// The HTTP helper mirrors fetch arguments used throughout this executable check.
+// oxlint-disable max-params
 import assert from "node:assert/strict";
-import { cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
-
-const base = "http://127.0.0.1:3000";
+import { baseUrl, cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
 const password = "EmployeeInitial1!";
 const nextPassword = "EmployeeChanged1!";
 
@@ -15,7 +15,7 @@ function request(path, method, jar, body) {
     },
   };
   if (body !== undefined) options.body = JSON.stringify(body);
-  return fetch(`${base}${path}`, options);
+  return fetch(`${baseUrl}${path}`, options);
 }
 
 async function expectProblem(response, status, code) {

@@ -21,12 +21,12 @@ function fail(code: string, grpcStatus = status.INVALID_ARGUMENT): never {
 
 function required(value: string, maximum: number) {
   const normalized = value.trim();
-  if (!normalized || [...normalized].length > maximum) fail("VALIDATION_ERROR");
+  if (!normalized || Array.from(normalized).length > maximum) fail("VALIDATION_ERROR");
   return normalized;
 }
 
 function password(value: string) {
-  const length = [...value].length;
+  const length = Array.from(value).length;
   if (length < 12 || length > 128) fail("VALIDATION_ERROR");
   return value;
 }
@@ -88,6 +88,8 @@ function encodeCursor(value: Employee) {
 
 @Injectable()
 export class EmployeeAdminService {
+  // Dependency injection determines this constructor signature.
+  // oxlint-disable-next-line max-params
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly employees: EmployeeRepository,
@@ -106,17 +108,22 @@ export class EmployeeAdminService {
     }
   }
 
-  async list(
-    token: string,
-    query: string | undefined,
-    cursor: string | undefined,
-    requestedLimit: number,
-  ) {
+  async list({
+    token,
+    query,
+    cursor,
+    requestedLimit,
+  }: {
+    token: string;
+    query: string | undefined;
+    cursor: string | undefined;
+    requestedLimit: number;
+  }) {
     await this.authorize(token);
     const limit = requestedLimit || 20;
     if (limit < 1 || limit > 100) fail("VALIDATION_ERROR");
     const q = query?.trim();
-    if (q && [...q].length > 120) fail("VALIDATION_ERROR");
+    if (q && Array.from(q).length > 120) fail("VALIDATION_ERROR");
     const rows = await this.employees.list(q || undefined, decodeCursor(cursor), limit);
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
@@ -165,7 +172,14 @@ export class EmployeeAdminService {
     const fullName = changes.fullName === undefined ? undefined : required(changes.fullName, 120);
     const normalizedEmail = changes.email === null ? null : email(changes.email);
     try {
-      if (!(await this.employees.updateProfile(employeeId, fullName, normalizedEmail, actor.id)))
+      if (
+        !(await this.employees.updateProfile({
+          id: employeeId,
+          fullName,
+          email: normalizedEmail,
+          actorId: actor.id,
+        }))
+      )
         fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
     } catch (error) {
       await this.mapUnique(error, normalizedEmail ? { email: normalizedEmail } : {}, employeeId);

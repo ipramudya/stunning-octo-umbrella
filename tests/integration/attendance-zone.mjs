@@ -1,3 +1,5 @@
+// The HTTP helper mirrors fetch arguments used throughout this executable check.
+// oxlint-disable max-params
 import assert from "node:assert/strict";
 import { baseUrl, composeExec, cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
 

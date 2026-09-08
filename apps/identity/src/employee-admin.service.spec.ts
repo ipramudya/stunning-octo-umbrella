@@ -46,19 +46,34 @@ describe("EmployeeAdminService", () => {
     const second = employee("DEX-002", "00000000-0000-4000-8000-000000000002");
     const { value, employees } = service({ list: vi.fn().mockResolvedValue([first, second]) });
 
-    const page = await value.list("token", undefined, undefined, 1);
+    const page = await value.list({
+      token: "token",
+      query: undefined,
+      cursor: undefined,
+      requestedLimit: 1,
+    });
 
     expect(page.items).toHaveLength(1);
     expect(page.hasNextPage).toBe(true);
     expect(employees.list).toHaveBeenCalledWith(undefined, undefined, 1);
-    await value.list("token", undefined, page.nextCursor, 1);
+    await value.list({
+      token: "token",
+      query: undefined,
+      cursor: page.nextCursor,
+      requestedLimit: 1,
+    });
     expect(employees.list).toHaveBeenLastCalledWith(
       undefined,
       { employeeNumber: first.employeeNumber, id: first.id },
       1,
     );
     await expect(
-      value.list("token", undefined, Buffer.from("{}").toString("base64url"), 1),
+      value.list({
+        token: "token",
+        query: undefined,
+        cursor: Buffer.from("{}").toString("base64url"),
+        requestedLimit: 1,
+      }),
     ).rejects.toMatchObject({
       code: "INVALID_CURSOR",
     });

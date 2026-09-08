@@ -78,12 +78,12 @@ export class IdentityController {
     metadata: Metadata = new Metadata(),
   ): Promise<ListEmployeesResponse> {
     try {
-      return await this.employees.list(
-        authorization(metadata),
-        request.query,
-        request.cursor,
-        request.limit,
-      );
+      return await this.employees.list({
+        token: authorization(metadata),
+        query: request.query,
+        cursor: request.cursor,
+        requestedLimit: request.limit,
+      });
     } catch (error) {
       failure(error);
     }

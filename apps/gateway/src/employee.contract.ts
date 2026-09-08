@@ -6,9 +6,15 @@ const phoneNumber = z
   .trim()
   .max(16)
   .regex(/^\+62[0-9]+$/);
-const password = z.string().refine((value) => [...value].length >= 12 && [...value].length <= 128, {
-  message: "Password must contain 12 to 128 Unicode characters",
-});
+const password = z.string().refine(
+  (value) => {
+    const length = Array.from(value).length;
+    return length >= 12 && length <= 128;
+  },
+  {
+    message: "Password must contain 12 to 128 Unicode characters",
+  },
+);
 const email = z.union([z.literal(""), z.email().max(254)]);
 
 export const employeeIdSchema = z.uuid();

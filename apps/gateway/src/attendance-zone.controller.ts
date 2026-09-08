@@ -1,3 +1,5 @@
+// Error mapping keeps the HTTP request context explicit.
+// oxlint-disable max-params
 import {
   type AttendanceZone,
   type Authorization,

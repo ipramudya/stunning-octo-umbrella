@@ -1,3 +1,5 @@
+// Nest route handlers keep decorated request parameters explicit.
+// oxlint-disable max-params
 import {
   type Authorization,
   type CreateEmployeeRequest,
@@ -235,7 +237,12 @@ export class EmployeeController implements OnModuleInit {
           )
           .pipe(takeUntil(context.cancelled)),
       );
-      await this.rateLimiter.consume("authenticated", authorization.sessionId, 120, 60);
+      await this.rateLimiter.consume({
+        scope: "authenticated",
+        subject: authorization.sessionId,
+        maximum: 120,
+        windowSeconds: 60,
+      });
       const delegated = authorization.tokens.find(
         (value) => value.audience === TokenAudience.TOKEN_AUDIENCE_IDENTITY,
       )?.token;

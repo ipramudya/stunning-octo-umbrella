@@ -65,7 +65,12 @@ export class AttendanceController {
 
   private async authorize(metadata: Metadata, roles: ("EMPLOYEE" | "HRD")[] = []) {
     try {
-      return await verifyInternalAccess(bearer(metadata), this.publicKey, this.issuer, roles);
+      return await verifyInternalAccess({
+        token: bearer(metadata),
+        publicKeyPem: this.publicKey,
+        issuer: this.issuer,
+        requiredRoles: roles,
+      });
     } catch (error) {
       failure(
         error instanceof Error && error.message === "forbidden"

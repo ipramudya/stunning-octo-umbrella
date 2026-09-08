@@ -105,12 +105,17 @@ export class EmployeeRepository {
     });
   }
 
-  async updateProfile(
-    id: string,
-    fullName: string | undefined,
-    email: string | null | undefined,
-    actorId: string,
-  ) {
+  async updateProfile({
+    id,
+    fullName,
+    email,
+    actorId,
+  }: {
+    id: string;
+    fullName: string | undefined;
+    email: string | null | undefined;
+    actorId: string;
+  }) {
     return this.transaction(async (connection) => {
       const result = await connection.execute(
         `UPDATE employees SET
@@ -131,21 +136,21 @@ export class EmployeeRepository {
   }
 
   async updatePhone(id: string, phoneNumber: string, actorId: string) {
-    return this.updateCredential(
-      `phone_number = :value, credential_version = credential_version + 1`,
+    return this.updateCredential({
+      sql: `phone_number = :value, credential_version = credential_version + 1`,
       id,
-      phoneNumber,
+      value: phoneNumber,
       actorId,
-    );
+    });
   }
 
   async updatePassword(id: string, passwordHash: string, actorId: string) {
-    return this.updateCredential(
-      `password_hash = :value, credential_version = credential_version + 1`,
+    return this.updateCredential({
+      sql: `password_hash = :value, credential_version = credential_version + 1`,
       id,
-      passwordHash,
+      value: passwordHash,
       actorId,
-    );
+    });
   }
 
   async conflict(
@@ -180,7 +185,17 @@ export class EmployeeRepository {
     });
   }
 
-  private async updateCredential(sql: string, id: string, value: string, actorId: string) {
+  private async updateCredential({
+    sql,
+    id,
+    value,
+    actorId,
+  }: {
+    sql: string;
+    id: string;
+    value: string;
+    actorId: string;
+  }) {
     return this.transaction(async (connection) => {
       const result = await connection.execute(
         `UPDATE employees SET ${sql}, updated_at = SYSTIMESTAMP, updated_by = :actor WHERE id = :id`,
