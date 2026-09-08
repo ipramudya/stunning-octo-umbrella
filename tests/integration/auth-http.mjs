@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 
-export const origin = "http://localhost:3000";
+export const origin = process.env.APP_ORIGIN ?? "http://localhost:3000";
+const baseUrl = origin.replace("localhost", "127.0.0.1");
 
 export function composeExec(args, options) {
   return execFileSync("docker", ["compose", "exec", "-T", ...args], options);
@@ -23,7 +24,7 @@ export function cookieHeader(jar) {
 }
 
 export function post(path, body, jar) {
-  return fetch(`http://127.0.0.1:3000${path}`, {
+  return fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: {
       ...(body === undefined ? {} : { "content-type": "application/json" }),
@@ -35,7 +36,7 @@ export function post(path, body, jar) {
 }
 
 export function me(jar) {
-  return fetch("http://127.0.0.1:3000/api/v1/auth/me", {
+  return fetch(`${baseUrl}/api/v1/auth/me`, {
     headers: { cookie: cookieHeader(jar) },
   });
 }

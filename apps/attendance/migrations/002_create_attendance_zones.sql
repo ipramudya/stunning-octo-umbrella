@@ -1,0 +1,12 @@
+CREATE TABLE attendance_zones (
+  id NUMBER(1) PRIMARY KEY CHECK (id = 1),
+  name VARCHAR2(120 CHAR) NOT NULL,
+  address VARCHAR2(500 CHAR) NOT NULL,
+  latitude NUMBER(10,7) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+  longitude NUMBER(10,7) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+  center MDSYS.SDO_GEOMETRY NOT NULL,
+  radius_meters NUMBER(10,2) NOT NULL CHECK (radius_meters BETWEEN 50 AND 5000),
+  active NUMBER(1) DEFAULT 1 NOT NULL CHECK (active IN (0, 1)),
+  updated_at TIMESTAMP(3) WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+  updated_by_employee_id VARCHAR2(36 CHAR)
+)

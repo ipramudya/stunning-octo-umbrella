@@ -4,6 +4,13 @@ x-app: &app
   restart: unless-stopped
   init: true
 
+x-attendance-environment: &attendance-environment
+  JWT_ISSUER: ${JWT_ISSUER:-dexa-identity}
+  ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
+  ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:-DexaAttendance1!}
+  ORACLE_USER: DEXA_ATTENDANCE
+  PKI_DIR: /app/.local/pki
+
 x-identity-environment: &identity-environment
   ARGON2_MEMORY_COST: ${ARGON2_MEMORY_COST:-19456}
   ARGON2_PARALLELISM: ${ARGON2_PARALLELISM:-1}
@@ -28,7 +35,7 @@ services:
       - identity-pki:/pki/identity
 
   oracle:
-    image: gvenzl/oracle-free:slim
+    image: gvenzl/oracle-free:latest
     restart: unless-stopped
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
@@ -42,7 +49,7 @@ services:
       - oracle-data:/opt/oracle/oradata
 
   identity-schema:
-    image: gvenzl/oracle-free:slim
+    image: gvenzl/oracle-free:latest
     restart: "no"
     depends_on:
       oracle:
@@ -59,6 +66,47 @@ services:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
     volumes:
       - ./infra/oracle/create-identity-schema.sql:/schema.sql:ro
+
+  attendance-schema:
+    image: gvenzl/oracle-free:latest
+    restart: "no"
+    depends_on:
+      oracle:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        [[ "$$ATTENDANCE_ORACLE_PASSWORD" =~ ^[A-Za-z0-9_#!_-]+$$ ]] ||
+        { echo 'ATTENDANCE_ORACLE_PASSWORD contains unsupported characters' >&2; exit 1; };
+        sqlplus -s system/"$$ORACLE_PASSWORD"@//oracle:1521/FREEPDB1
+        @/schema.sql "$$ATTENDANCE_ORACLE_PASSWORD"
+    environment:
+      ATTENDANCE_ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:-DexaAttendance1!}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+    volumes:
+      - ./infra/oracle/create-attendance-schema.sql:/schema.sql:ro
+
+  attendance-migrate:
+    build:
+      context: .
+      dockerfile: apps/attendance/Dockerfile
+    restart: "no"
+    command: ["node", "apps/attendance/dist/scripts/migrate.js"]
+    depends_on:
+      attendance-schema:
+        condition: service_completed_successfully
+    environment: *attendance-environment
+
+  attendance-seed:
+    build:
+      context: .
+      dockerfile: apps/attendance/Dockerfile
+    restart: "no"
+    command: ["node", "apps/attendance/dist/scripts/seed.js"]
+    depends_on:
+      attendance-migrate:
+        condition: service_completed_successfully
+    environment: *attendance-environment
 
   identity-migrate:
     build:
@@ -158,20 +206,18 @@ services:
       context: .
       dockerfile: apps/attendance/Dockerfile
     depends_on:
+      attendance-seed:
+        condition: service_completed_successfully
       minio:
         condition: service_started
-      oracle:
-        condition: service_healthy
       pki-init:
         condition: service_completed_successfully
     environment:
+      <<: *attendance-environment
       GRPC_PORT: 50052
       HOST: 0.0.0.0
       HTTP_PORT: 3002
       MINIO_ENDPOINT: http://minio:9000
-      ORACLE_HOST: oracle
-      ORACLE_PORT: 1521
-      PKI_DIR: /app/.local/pki
     volumes:
       - attendance-pki:/app/.local/pki:ro
     healthcheck:

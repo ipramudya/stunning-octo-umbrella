@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 
-const response = await fetch("http://127.0.0.1:3000/health/ready");
+const response = await fetch(
+  `${(process.env.APP_ORIGIN ?? "http://localhost:3000").replace("localhost", "127.0.0.1")}/health/ready`,
+);
 assert.equal(response.status, 200, "Gateway must reach both services over mutual TLS");
 
 const redis = execFileSync(

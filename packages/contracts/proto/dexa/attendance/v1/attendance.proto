@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dexa.attendance.v1;
+
+import "google/protobuf/empty.proto";
+
+service AttendanceService {
+  rpc GetAttendanceZone(google.protobuf.Empty) returns (AttendanceZone);
+  rpc UpdateAttendanceZone(UpdateAttendanceZoneRequest) returns (AttendanceZone);
+}
+
+message AttendanceZone {
+  string name = 1;
+  string address = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double radius_meters = 5;
+  bool active = 6;
+}
+
+message UpdateAttendanceZoneRequest {
+  string name = 1;
+  string address = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double radius_meters = 5;
+  bool active = 6;
+}

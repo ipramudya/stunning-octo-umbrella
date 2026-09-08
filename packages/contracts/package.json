@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "generate": "grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=../../node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=src/generated --ts_proto_opt=env=node,esModuleInterop=true,outputServices=grpc-js,useExactTypes=false,importSuffix=.js --proto_path=proto proto/grpc/health/v1/health.proto proto/dexa/identity/v1/identity.proto",
+    "generate": "grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=../../node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=src/generated --ts_proto_opt=env=node,esModuleInterop=true,outputServices=grpc-js,useExactTypes=false,importSuffix=.js --proto_path=proto proto/grpc/health/v1/health.proto proto/dexa/identity/v1/identity.proto proto/dexa/attendance/v1/attendance.proto",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

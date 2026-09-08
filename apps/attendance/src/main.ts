@@ -1,4 +1,4 @@
-import { HEALTH_PROTO_PATH } from "@project/contracts";
+import { ATTENDANCE_PROTO_PATH, HEALTH_PROTO_PATH } from "@project/contracts";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { Transport, type MicroserviceOptions } from "@nestjs/microservices";
@@ -28,8 +28,8 @@ async function bootstrap() {
         ],
         true,
       ),
-      package: "grpc.health.v1",
-      protoPath: HEALTH_PROTO_PATH,
+      package: ["grpc.health.v1", "dexa.attendance.v1"],
+      protoPath: [HEALTH_PROTO_PATH, ATTENDANCE_PROTO_PATH],
       url: `${config.get("HOST", { infer: true })}:${config.get("GRPC_PORT", { infer: true })}`,
     },
   });

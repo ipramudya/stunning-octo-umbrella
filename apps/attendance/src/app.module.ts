@@ -1,8 +1,11 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { AttendanceController } from "./attendance.controller.js";
+import { AttendanceZoneRepository } from "./attendance-zone.js";
 import { environmentSchema } from "./config.schema.js";
 import { GrpcHealthController } from "./grpc-health.controller.js";
 import { HealthController } from "./health.controller.js";
+import { OracleDatabase } from "./oracle.js";
 import { ReadinessService } from "./readiness.js";
 
 @Module({
@@ -14,7 +17,7 @@ import { ReadinessService } from "./readiness.js";
       validate: (config) => environmentSchema.parse(config),
     }),
   ],
-  controllers: [GrpcHealthController, HealthController],
-  providers: [ReadinessService],
+  controllers: [AttendanceController, GrpcHealthController, HealthController],
+  providers: [AttendanceZoneRepository, OracleDatabase, ReadinessService],
 })
 export class AppModule {}
