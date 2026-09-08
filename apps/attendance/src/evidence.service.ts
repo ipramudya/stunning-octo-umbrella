@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { OnApplicationBootstrap } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
+import type { Connection } from 'oracledb';
 
 import { EvidenceStore } from './evidence-store.js';
 import {
@@ -47,7 +48,8 @@ export class EvidenceService implements OnApplicationBootstrap {
     await this.repository.removeExpiredUploads();
     for (const upload of await this.repository.finalizingUploads()) {
       try {
-        await this.finish(upload);
+        await this.removePermanent(upload);
+        await this.repository.recover(upload);
       } catch (error) {
         this.logger.warn(
           `evidence recovery deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
@@ -122,6 +124,65 @@ export class EvidenceService implements OnApplicationBootstrap {
     };
   }
 
+  async prepare(connection: Connection, employeeId: string, uploadId: string) {
+    const upload = await this.repository.getForUpdate(connection, uploadId);
+    if (!upload || upload.employeeId !== employeeId)
+      throw new EvidenceError('EVIDENCE_NOT_FOUND');
+    return this.prepareUpload(connection, upload);
+  }
+
+  async promote(upload: EvidenceUpload) {
+    if (!upload.stagingVersion || !upload.permanentKey)
+      throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
+    try {
+      let stat;
+      try {
+        stat = await this.store.stat(upload.permanentKey);
+      } catch {
+        await this.store.copy(
+          upload.stagingKey,
+          upload.stagingVersion,
+          upload.permanentKey,
+        );
+        stat = await this.store.stat(upload.permanentKey);
+      }
+      const permanentVersion = objectVersion(stat);
+      if (
+        stat.size !== upload.declaredSizeBytes ||
+        stat.metaData['content-type'] !== upload.declaredContentType ||
+        !expectedMagic(
+          upload.declaredContentType,
+          await this.store.magic(upload.permanentKey, permanentVersion),
+        )
+      ) {
+        await this.store.remove(upload.permanentKey, permanentVersion);
+        throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
+      }
+      return permanentVersion;
+    } catch (error) {
+      if (
+        error instanceof EvidenceError &&
+        error.code === 'EVIDENCE_FINALIZATION_FAILED'
+      )
+        throw error;
+      throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
+    }
+  }
+
+  attach(connection: Connection, uploadId: string, permanentVersion: string) {
+    return this.repository.attached(connection, uploadId, permanentVersion);
+  }
+
+  async abort(upload: EvidenceUpload) {
+    await this.removePermanent(upload);
+    await this.repository.reset(upload.id);
+  }
+
+  async cleanup(upload: EvidenceUpload) {
+    if (upload.stagingVersion)
+      await this.store.remove(upload.stagingKey, upload.stagingVersion);
+  }
+
   async finalize(employeeId: string, uploadId: string) {
     let current: EvidenceUpload | undefined;
     const found = await this.repository.lock(
@@ -129,75 +190,58 @@ export class EvidenceService implements OnApplicationBootstrap {
       async (connection, upload) => {
         if (upload.employeeId !== employeeId)
           throw new EvidenceError('EVIDENCE_NOT_FOUND');
-        if (upload.status === 'ATTACHED')
-          throw new EvidenceError('EVIDENCE_ALREADY_ATTACHED');
-        if (upload.expiresAt.getTime() <= Date.now())
-          throw new EvidenceError('EVIDENCE_EXPIRED');
-        if (upload.status === 'FINALIZING') {
-          current = upload;
-          return;
-        }
-        let stat;
-        try {
-          stat = await this.store.stat(upload.stagingKey);
-        } catch {
-          throw new EvidenceError('EVIDENCE_NOT_UPLOADED');
-        }
-        const version = objectVersion(stat);
-        if (
-          stat.size !== upload.declaredSizeBytes ||
-          stat.size > maximumEvidenceBytes ||
-          stat.metaData['content-type'] !== upload.declaredContentType ||
-          !expectedMagic(
-            upload.declaredContentType,
-            await this.store.magic(upload.stagingKey, version),
-          )
-        )
-          throw new EvidenceError('EVIDENCE_INVALID');
-        await this.repository.finalizing(connection, upload, version);
-        current = {
-          ...upload,
-          status: 'FINALIZING',
-          stagingVersion: version,
-          permanentKey: `evidence/${upload.id}`,
-        };
+        current = await this.prepareUpload(connection, upload);
       },
     );
     if (!found || !current) throw new EvidenceError('EVIDENCE_NOT_FOUND');
-    await this.finish(current);
+    const permanentVersion = await this.promote(current);
+    await this.repository.lock(uploadId, async (connection, upload) => {
+      if (upload.status === 'FINALIZING')
+        await this.repository.attached(connection, upload.id, permanentVersion);
+    });
+    await this.cleanup(current);
     return uploadId;
   }
 
-  private async finish(upload: EvidenceUpload) {
-    if (!upload.stagingVersion || !upload.permanentKey)
-      throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
+  private async prepareUpload(connection: Connection, upload: EvidenceUpload) {
+    if (upload.status === 'ATTACHED' || upload.status === 'FINALIZING')
+      throw new EvidenceError('EVIDENCE_ALREADY_ATTACHED');
+    if (upload.expiresAt.getTime() <= Date.now())
+      throw new EvidenceError('EVIDENCE_EXPIRED');
     let stat;
     try {
-      stat = await this.store.stat(upload.permanentKey);
+      stat = await this.store.stat(upload.stagingKey);
     } catch {
-      await this.store.copy(
-        upload.stagingKey,
-        upload.stagingVersion,
-        upload.permanentKey,
-      );
-      stat = await this.store.stat(upload.permanentKey);
+      throw new EvidenceError('EVIDENCE_NOT_UPLOADED');
     }
-    const permanentVersion = objectVersion(stat);
+    const version = objectVersion(stat);
     if (
       stat.size !== upload.declaredSizeBytes ||
+      stat.size > maximumEvidenceBytes ||
       stat.metaData['content-type'] !== upload.declaredContentType ||
       !expectedMagic(
         upload.declaredContentType,
-        await this.store.magic(upload.permanentKey, permanentVersion),
+        await this.store.magic(upload.stagingKey, version),
       )
-    ) {
-      await this.store.remove(upload.permanentKey, permanentVersion);
-      throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
+    )
+      throw new EvidenceError('EVIDENCE_INVALID');
+    await this.repository.finalizing(connection, upload, version);
+    return {
+      ...upload,
+      status: 'FINALIZING' as const,
+      stagingVersion: version,
+      permanentKey: `evidence/${upload.id}`,
+    };
+  }
+
+  private async removePermanent(upload: EvidenceUpload) {
+    if (!upload.permanentKey) return;
+    try {
+      const stat = await this.store.stat(upload.permanentKey);
+      if (stat.versionId)
+        await this.store.remove(upload.permanentKey, stat.versionId);
+    } catch {
+      // The copy may not have started before the request stopped.
     }
-    await this.repository.lock(upload.id, async (connection, current) => {
-      if (current.status === 'FINALIZING')
-        await this.repository.attached(connection, upload.id, permanentVersion);
-    });
-    await this.store.remove(upload.stagingKey, upload.stagingVersion);
   }
 }

@@ -23,6 +23,45 @@ import { Timestamp } from "../../../google/protobuf/timestamp.js";
 
 export const protobufPackage = "dexa.attendance.v1";
 
+export enum ClockType {
+  CLOCK_TYPE_UNSPECIFIED = 0,
+  CLOCK_IN = 1,
+  CLOCK_OUT = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function clockTypeFromJSON(object: any): ClockType {
+  switch (object) {
+    case 0:
+    case "CLOCK_TYPE_UNSPECIFIED":
+      return ClockType.CLOCK_TYPE_UNSPECIFIED;
+    case 1:
+    case "CLOCK_IN":
+      return ClockType.CLOCK_IN;
+    case 2:
+    case "CLOCK_OUT":
+      return ClockType.CLOCK_OUT;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ClockType.UNRECOGNIZED;
+  }
+}
+
+export function clockTypeToJSON(object: ClockType): string {
+  switch (object) {
+    case ClockType.CLOCK_TYPE_UNSPECIFIED:
+      return "CLOCK_TYPE_UNSPECIFIED";
+    case ClockType.CLOCK_IN:
+      return "CLOCK_IN";
+    case ClockType.CLOCK_OUT:
+      return "CLOCK_OUT";
+    case ClockType.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface AuthorizeEvidenceUploadRequest {
   contentType: string;
   sizeBytes: number;
@@ -48,6 +87,36 @@ export interface AuthorizeEvidenceAccessRequest {
 export interface EvidenceAccessAuthorization {
   url: string;
   expiresAt: Date | undefined;
+}
+
+export interface CreateRegularAttendanceRequest {
+  clockType: ClockType;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+  evidenceUploadId: string;
+}
+
+export interface AttendanceLocation {
+  address?: string | undefined;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+  distanceMeters: number;
+}
+
+export interface AttendanceEntry {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  clockType: ClockType;
+  source: string;
+  status: string;
+  occurredAt: Date | undefined;
+  submittedAt: Date | undefined;
+  location: AttendanceLocation | undefined;
+  evidenceId: string;
+  replayed: boolean;
 }
 
 export interface AttendanceZone {
@@ -579,6 +648,559 @@ export const EvidenceAccessAuthorization: MessageFns<EvidenceAccessAuthorization
   },
 };
 
+function createBaseCreateRegularAttendanceRequest(): CreateRegularAttendanceRequest {
+  return { clockType: 0, latitude: 0, longitude: 0, accuracyMeters: 0, evidenceUploadId: "" };
+}
+
+export const CreateRegularAttendanceRequest: MessageFns<CreateRegularAttendanceRequest> = {
+  encode(message: CreateRegularAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.clockType !== 0) {
+      writer.uint32(8).int32(message.clockType);
+    }
+    if (message.latitude !== 0) {
+      writer.uint32(17).double(message.latitude);
+    }
+    if (message.longitude !== 0) {
+      writer.uint32(25).double(message.longitude);
+    }
+    if (message.accuracyMeters !== 0) {
+      writer.uint32(33).double(message.accuracyMeters);
+    }
+    if (message.evidenceUploadId !== "") {
+      writer.uint32(42).string(message.evidenceUploadId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateRegularAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCreateRegularAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.clockType = reader.int32() as any;
+            continue;
+          }
+          case 2: {
+            if (tag !== 17) {
+              break;
+            }
+
+            message.latitude = reader.double();
+            continue;
+          }
+          case 3: {
+            if (tag !== 25) {
+              break;
+            }
+
+            message.longitude = reader.double();
+            continue;
+          }
+          case 4: {
+            if (tag !== 33) {
+              break;
+            }
+
+            message.accuracyMeters = reader.double();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.evidenceUploadId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): CreateRegularAttendanceRequest {
+    return {
+      clockType: isSet(object.clockType)
+        ? clockTypeFromJSON(object.clockType)
+        : isSet(object.clock_type)
+        ? clockTypeFromJSON(object.clock_type)
+        : 0,
+      latitude: isSet(object.latitude) ? globalThis.Number(object.latitude) : 0,
+      longitude: isSet(object.longitude) ? globalThis.Number(object.longitude) : 0,
+      accuracyMeters: isSet(object.accuracyMeters)
+        ? globalThis.Number(object.accuracyMeters)
+        : isSet(object.accuracy_meters)
+        ? globalThis.Number(object.accuracy_meters)
+        : 0,
+      evidenceUploadId: isSet(object.evidenceUploadId)
+        ? globalThis.String(object.evidenceUploadId)
+        : isSet(object.evidence_upload_id)
+        ? globalThis.String(object.evidence_upload_id)
+        : "",
+    };
+  },
+
+  toJSON(message: CreateRegularAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.clockType !== 0) {
+      obj.clockType = clockTypeToJSON(message.clockType);
+    }
+    if (message.latitude !== 0) {
+      obj.latitude = message.latitude;
+    }
+    if (message.longitude !== 0) {
+      obj.longitude = message.longitude;
+    }
+    if (message.accuracyMeters !== 0) {
+      obj.accuracyMeters = message.accuracyMeters;
+    }
+    if (message.evidenceUploadId !== "") {
+      obj.evidenceUploadId = message.evidenceUploadId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreateRegularAttendanceRequest>): CreateRegularAttendanceRequest {
+    return CreateRegularAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreateRegularAttendanceRequest>): CreateRegularAttendanceRequest {
+    const message = createBaseCreateRegularAttendanceRequest();
+    message.clockType = object.clockType ?? 0;
+    message.latitude = object.latitude ?? 0;
+    message.longitude = object.longitude ?? 0;
+    message.accuracyMeters = object.accuracyMeters ?? 0;
+    message.evidenceUploadId = object.evidenceUploadId ?? "";
+    return message;
+  },
+};
+
+function createBaseAttendanceLocation(): AttendanceLocation {
+  return { address: undefined, latitude: 0, longitude: 0, accuracyMeters: 0, distanceMeters: 0 };
+}
+
+export const AttendanceLocation: MessageFns<AttendanceLocation> = {
+  encode(message: AttendanceLocation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.address !== undefined) {
+      writer.uint32(10).string(message.address);
+    }
+    if (message.latitude !== 0) {
+      writer.uint32(17).double(message.latitude);
+    }
+    if (message.longitude !== 0) {
+      writer.uint32(25).double(message.longitude);
+    }
+    if (message.accuracyMeters !== 0) {
+      writer.uint32(33).double(message.accuracyMeters);
+    }
+    if (message.distanceMeters !== 0) {
+      writer.uint32(41).double(message.distanceMeters);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AttendanceLocation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAttendanceLocation();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.address = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 17) {
+              break;
+            }
+
+            message.latitude = reader.double();
+            continue;
+          }
+          case 3: {
+            if (tag !== 25) {
+              break;
+            }
+
+            message.longitude = reader.double();
+            continue;
+          }
+          case 4: {
+            if (tag !== 33) {
+              break;
+            }
+
+            message.accuracyMeters = reader.double();
+            continue;
+          }
+          case 5: {
+            if (tag !== 41) {
+              break;
+            }
+
+            message.distanceMeters = reader.double();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AttendanceLocation {
+    return {
+      address: isSet(object.address) ? globalThis.String(object.address) : undefined,
+      latitude: isSet(object.latitude) ? globalThis.Number(object.latitude) : 0,
+      longitude: isSet(object.longitude) ? globalThis.Number(object.longitude) : 0,
+      accuracyMeters: isSet(object.accuracyMeters)
+        ? globalThis.Number(object.accuracyMeters)
+        : isSet(object.accuracy_meters)
+        ? globalThis.Number(object.accuracy_meters)
+        : 0,
+      distanceMeters: isSet(object.distanceMeters)
+        ? globalThis.Number(object.distanceMeters)
+        : isSet(object.distance_meters)
+        ? globalThis.Number(object.distance_meters)
+        : 0,
+    };
+  },
+
+  toJSON(message: AttendanceLocation): unknown {
+    const obj: any = {};
+    if (message.address !== undefined) {
+      obj.address = message.address;
+    }
+    if (message.latitude !== 0) {
+      obj.latitude = message.latitude;
+    }
+    if (message.longitude !== 0) {
+      obj.longitude = message.longitude;
+    }
+    if (message.accuracyMeters !== 0) {
+      obj.accuracyMeters = message.accuracyMeters;
+    }
+    if (message.distanceMeters !== 0) {
+      obj.distanceMeters = message.distanceMeters;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AttendanceLocation>): AttendanceLocation {
+    return AttendanceLocation.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AttendanceLocation>): AttendanceLocation {
+    const message = createBaseAttendanceLocation();
+    message.address = object.address ?? undefined;
+    message.latitude = object.latitude ?? 0;
+    message.longitude = object.longitude ?? 0;
+    message.accuracyMeters = object.accuracyMeters ?? 0;
+    message.distanceMeters = object.distanceMeters ?? 0;
+    return message;
+  },
+};
+
+function createBaseAttendanceEntry(): AttendanceEntry {
+  return {
+    id: "",
+    employeeId: "",
+    workDate: "",
+    clockType: 0,
+    source: "",
+    status: "",
+    occurredAt: undefined,
+    submittedAt: undefined,
+    location: undefined,
+    evidenceId: "",
+    replayed: false,
+  };
+}
+
+export const AttendanceEntry: MessageFns<AttendanceEntry> = {
+  encode(message: AttendanceEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    if (message.employeeId !== "") {
+      writer.uint32(18).string(message.employeeId);
+    }
+    if (message.workDate !== "") {
+      writer.uint32(26).string(message.workDate);
+    }
+    if (message.clockType !== 0) {
+      writer.uint32(32).int32(message.clockType);
+    }
+    if (message.source !== "") {
+      writer.uint32(42).string(message.source);
+    }
+    if (message.status !== "") {
+      writer.uint32(50).string(message.status);
+    }
+    if (message.occurredAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.occurredAt), writer.uint32(58).fork()).join();
+    }
+    if (message.submittedAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.submittedAt), writer.uint32(66).fork()).join();
+    }
+    if (message.location !== undefined) {
+      AttendanceLocation.encode(message.location, writer.uint32(74).fork()).join();
+    }
+    if (message.evidenceId !== "") {
+      writer.uint32(82).string(message.evidenceId);
+    }
+    if (message.replayed !== false) {
+      writer.uint32(88).bool(message.replayed);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AttendanceEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAttendanceEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.id = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.workDate = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.clockType = reader.int32() as any;
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.source = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.status = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.occurredAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.submittedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.location = AttendanceLocation.decode(reader, reader.uint32());
+            continue;
+          }
+          case 10: {
+            if (tag !== 82) {
+              break;
+            }
+
+            message.evidenceId = reader.string();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.replayed = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AttendanceEntry {
+    return {
+      id: isSet(object.id) ? globalThis.String(object.id) : "",
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : "",
+      workDate: isSet(object.workDate)
+        ? globalThis.String(object.workDate)
+        : isSet(object.work_date)
+        ? globalThis.String(object.work_date)
+        : "",
+      clockType: isSet(object.clockType)
+        ? clockTypeFromJSON(object.clockType)
+        : isSet(object.clock_type)
+        ? clockTypeFromJSON(object.clock_type)
+        : 0,
+      source: isSet(object.source) ? globalThis.String(object.source) : "",
+      status: isSet(object.status) ? globalThis.String(object.status) : "",
+      occurredAt: isSet(object.occurredAt)
+        ? fromJsonTimestamp(object.occurredAt)
+        : isSet(object.occurred_at)
+        ? fromJsonTimestamp(object.occurred_at)
+        : undefined,
+      submittedAt: isSet(object.submittedAt)
+        ? fromJsonTimestamp(object.submittedAt)
+        : isSet(object.submitted_at)
+        ? fromJsonTimestamp(object.submitted_at)
+        : undefined,
+      location: isSet(object.location) ? AttendanceLocation.fromJSON(object.location) : undefined,
+      evidenceId: isSet(object.evidenceId)
+        ? globalThis.String(object.evidenceId)
+        : isSet(object.evidence_id)
+        ? globalThis.String(object.evidence_id)
+        : "",
+      replayed: isSet(object.replayed) ? globalThis.Boolean(object.replayed) : false,
+    };
+  },
+
+  toJSON(message: AttendanceEntry): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    if (message.employeeId !== "") {
+      obj.employeeId = message.employeeId;
+    }
+    if (message.workDate !== "") {
+      obj.workDate = message.workDate;
+    }
+    if (message.clockType !== 0) {
+      obj.clockType = clockTypeToJSON(message.clockType);
+    }
+    if (message.source !== "") {
+      obj.source = message.source;
+    }
+    if (message.status !== "") {
+      obj.status = message.status;
+    }
+    if (message.occurredAt !== undefined) {
+      obj.occurredAt = message.occurredAt.toISOString();
+    }
+    if (message.submittedAt !== undefined) {
+      obj.submittedAt = message.submittedAt.toISOString();
+    }
+    if (message.location !== undefined) {
+      obj.location = AttendanceLocation.toJSON(message.location);
+    }
+    if (message.evidenceId !== "") {
+      obj.evidenceId = message.evidenceId;
+    }
+    if (message.replayed !== false) {
+      obj.replayed = message.replayed;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AttendanceEntry>): AttendanceEntry {
+    return AttendanceEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AttendanceEntry>): AttendanceEntry {
+    const message = createBaseAttendanceEntry();
+    message.id = object.id ?? "";
+    message.employeeId = object.employeeId ?? "";
+    message.workDate = object.workDate ?? "";
+    message.clockType = object.clockType ?? 0;
+    message.source = object.source ?? "";
+    message.status = object.status ?? "";
+    message.occurredAt = object.occurredAt ?? undefined;
+    message.submittedAt = object.submittedAt ?? undefined;
+    message.location = (object.location !== undefined && object.location !== null)
+      ? AttendanceLocation.fromPartial(object.location)
+      : undefined;
+    message.evidenceId = object.evidenceId ?? "";
+    message.replayed = object.replayed ?? false;
+    return message;
+  },
+};
+
 function createBaseAttendanceZone(): AttendanceZone {
   return { name: "", address: "", latitude: 0, longitude: 0, radiusMeters: 0, active: false };
 }
@@ -928,6 +1550,16 @@ export const AttendanceServiceService = {
       Buffer.from(EvidenceAccessAuthorization.encode(value).finish()),
     responseDeserialize: (value: Buffer): EvidenceAccessAuthorization => EvidenceAccessAuthorization.decode(value),
   },
+  createRegularAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/CreateRegularAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: CreateRegularAttendanceRequest): Buffer =>
+      Buffer.from(CreateRegularAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CreateRegularAttendanceRequest => CreateRegularAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
 } as const;
 
 export interface AttendanceServiceServer extends UntypedServiceImplementation {
@@ -935,6 +1567,7 @@ export interface AttendanceServiceServer extends UntypedServiceImplementation {
   updateAttendanceZone: handleUnaryCall<UpdateAttendanceZoneRequest, AttendanceZone>;
   authorizeEvidenceUpload: handleUnaryCall<AuthorizeEvidenceUploadRequest, EvidenceUploadAuthorization>;
   authorizeEvidenceAccess: handleUnaryCall<AuthorizeEvidenceAccessRequest, EvidenceAccessAuthorization>;
+  createRegularAttendance: handleUnaryCall<CreateRegularAttendanceRequest, AttendanceEntry>;
 }
 
 export interface AttendanceServiceClient extends Client {
@@ -997,6 +1630,21 @@ export interface AttendanceServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: EvidenceAccessAuthorization) => void,
+  ): ClientUnaryCall;
+  createRegularAttendance(
+    request: CreateRegularAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  createRegularAttendance(
+    request: CreateRegularAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  createRegularAttendance(
+    request: CreateRegularAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
   ): ClientUnaryCall;
 }
 

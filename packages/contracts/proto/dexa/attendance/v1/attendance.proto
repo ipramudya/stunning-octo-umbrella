@@ -10,6 +10,7 @@ service AttendanceService {
   rpc UpdateAttendanceZone(UpdateAttendanceZoneRequest) returns (AttendanceZone);
   rpc AuthorizeEvidenceUpload(AuthorizeEvidenceUploadRequest) returns (EvidenceUploadAuthorization);
   rpc AuthorizeEvidenceAccess(AuthorizeEvidenceAccessRequest) returns (EvidenceAccessAuthorization);
+  rpc CreateRegularAttendance(CreateRegularAttendanceRequest) returns (AttendanceEntry);
 }
 
 message AuthorizeEvidenceUploadRequest {
@@ -32,6 +33,42 @@ message AuthorizeEvidenceAccessRequest {
 message EvidenceAccessAuthorization {
   string url = 1;
   google.protobuf.Timestamp expires_at = 2;
+}
+
+enum ClockType {
+  CLOCK_TYPE_UNSPECIFIED = 0;
+  CLOCK_IN = 1;
+  CLOCK_OUT = 2;
+}
+
+message CreateRegularAttendanceRequest {
+  ClockType clock_type = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double accuracy_meters = 4;
+  string evidence_upload_id = 5;
+}
+
+message AttendanceLocation {
+  optional string address = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double accuracy_meters = 4;
+  double distance_meters = 5;
+}
+
+message AttendanceEntry {
+  string id = 1;
+  string employee_id = 2;
+  string work_date = 3;
+  ClockType clock_type = 4;
+  string source = 5;
+  string status = 6;
+  google.protobuf.Timestamp occurred_at = 7;
+  google.protobuf.Timestamp submitted_at = 8;
+  AttendanceLocation location = 9;
+  string evidence_id = 10;
+  bool replayed = 11;
 }
 
 message AttendanceZone {

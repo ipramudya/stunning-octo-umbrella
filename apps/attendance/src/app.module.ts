@@ -11,6 +11,8 @@ import { GrpcHealthController } from './grpc-health.controller.js';
 import { HealthController } from './health.controller.js';
 import { OracleDatabase } from './oracle.js';
 import { ReadinessService } from './readiness.js';
+import { RegularAttendanceRepository } from './regular-attendance.repository.js';
+import { RegularAttendanceService } from './regular-attendance.service.js';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { ReadinessService } from './readiness.js';
     EvidenceStore,
     OracleDatabase,
     ReadinessService,
+    RegularAttendanceRepository,
+    RegularAttendanceService,
   ],
 })
 export class AppModule {}

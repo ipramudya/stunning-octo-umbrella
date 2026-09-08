@@ -106,16 +106,20 @@ export class EvidenceRepository {
     work: (connection: Connection, upload: EvidenceUpload) => Promise<void>,
   ) {
     return this.database.withTransaction(async (connection) => {
-      const result = await connection.execute<EvidenceRow>(
-        `${select} WHERE id = :id FOR UPDATE`,
-        { id },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-      const row = result.rows?.[0];
-      if (!row) return false;
-      await work(connection, value(row));
+      const upload = await this.getForUpdate(connection, id);
+      if (!upload) return false;
+      await work(connection, upload);
       return true;
     });
+  }
+
+  async getForUpdate(connection: Connection, id: string) {
+    const result = await connection.execute<EvidenceRow>(
+      `${select} WHERE id = :id FOR UPDATE`,
+      { id },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    );
+    return result.rows?.[0] ? value(result.rows[0]) : undefined;
   }
 
   async finalizing(
@@ -136,6 +140,35 @@ export class EvidenceRepository {
        attached_at = SYSTIMESTAMP, updated_at = SYSTIMESTAMP WHERE id = :id`,
       { id, permanentVersion },
     );
+  }
+
+  async reset(id: string) {
+    await this.database.withTransaction((connection) =>
+      this.resetWith(connection, id),
+    );
+  }
+
+  async resetWith(connection: Connection, id: string) {
+    await connection.execute(
+      `UPDATE evidence_uploads
+       SET state = 'AUTHORIZED', staging_version = NULL, permanent_key = NULL,
+           permanent_version = NULL, updated_at = SYSTIMESTAMP
+       WHERE id = :id AND state = 'FINALIZING'`,
+      { id },
+    );
+  }
+
+  async recover(upload: EvidenceUpload) {
+    await this.database.withTransaction(async (connection) => {
+      if (upload.expiresAt.getTime() <= Date.now()) {
+        await connection.execute(
+          `DELETE FROM evidence_uploads WHERE id = :id AND state = 'FINALIZING'`,
+          { id: upload.id },
+        );
+      } else {
+        await this.resetWith(connection, upload.id);
+      }
+    });
   }
 
   async removeExpiredUploads() {

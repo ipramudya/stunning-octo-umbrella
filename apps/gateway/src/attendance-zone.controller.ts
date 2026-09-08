@@ -20,10 +20,13 @@ import { ConfigService } from '@nestjs/config';
 import type { ClientGrpc } from '@nestjs/microservices';
 // oxlint-disable max-params
 import {
+  type AttendanceEntry,
   type AttendanceZone,
   type Authorization,
   type AuthorizeEvidenceAccessRequest,
   type AuthorizeEvidenceUploadRequest,
+  ClockType,
+  type CreateRegularAttendanceRequest,
   type EvidenceAccessAuthorization,
   type EvidenceUploadAuthorization,
   TokenAudience,
@@ -47,6 +50,8 @@ import {
   ATTENDANCE_HEALTH_CLIENT,
   IDENTITY_HEALTH_CLIENT,
 } from './grpc-health.client.js';
+import { RateLimiter, RateLimitError } from './rate-limiter.js';
+import { regularAttendanceSchema } from './regular-attendance.contract.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
 type IdentityClient = {
@@ -58,6 +63,11 @@ type IdentityClient = {
 };
 
 type AttendanceClient = {
+  createRegularAttendance(
+    request: CreateRegularAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+  ): Observable<AttendanceEntry>;
   authorizeEvidenceUpload(
     request: AuthorizeEvidenceUploadRequest,
     metadata: Metadata,
@@ -121,6 +131,7 @@ export class AttendanceZoneController implements OnModuleInit {
     @Inject(ATTENDANCE_HEALTH_CLIENT)
     private readonly attendanceGrpc: ClientGrpc,
     private readonly config: ConfigService<Environment, true>,
+    private readonly rateLimiter: RateLimiter,
   ) {}
 
   onModuleInit() {
@@ -146,6 +157,136 @@ export class AttendanceZoneController implements OnModuleInit {
   ) {
     reply.status(201);
     return this.evidenceCall('upload', body, request, reply);
+  }
+
+  @Post('me/attendance/regular')
+  async createRegularAttendance(
+    @Body() untrustedBody: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const traceId = randomUUID();
+    reply.header('x-correlation-id', traceId);
+    if (
+      request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
+    )
+      this.fail(
+        403,
+        'FORBIDDEN',
+        'Request origin is not allowed',
+        request,
+        traceId,
+      );
+    const metadata = new Metadata();
+    metadata.set(
+      'authorization',
+      `Bearer ${cookies(request).dexa_access ?? ''}`,
+    );
+    metadata.set('x-correlation-id', traceId);
+    const options = { deadline: Date.now() + 3_000 };
+    const cancelled = fromEvent(request.raw, 'aborted');
+    try {
+      const authorization = await firstValueFrom(
+        this.identity
+          .authorizeAccess(
+            { audiences: [TokenAudience.TOKEN_AUDIENCE_ATTENDANCE] },
+            metadata,
+            options,
+          )
+          .pipe(takeUntil(cancelled)),
+      );
+      await this.rateLimiter.consume({
+        scope: 'authenticated',
+        subject: authorization.sessionId,
+        maximum: 120,
+        windowSeconds: 60,
+      });
+      const token = authorization.tokens.find(
+        (candidate) =>
+          candidate.audience === TokenAudience.TOKEN_AUDIENCE_ATTENDANCE,
+      )?.token;
+      if (!token) throw new Error('missing attendance token');
+      const idempotencyKey = request.headers['idempotency-key'];
+      if (
+        typeof idempotencyKey !== 'string' ||
+        idempotencyKey.length < 1 ||
+        idempotencyKey.length > 128
+      )
+        this.fail(
+          400,
+          'IDEMPOTENCY_KEY_REQUIRED',
+          'A valid Idempotency-Key header is required',
+          request,
+          traceId,
+        );
+      const parsed = regularAttendanceSchema.safeParse(untrustedBody);
+      if (!parsed.success)
+        throw new HttpException(
+          {
+            type: 'about:blank',
+            title: 'Bad Request',
+            status: 400,
+            detail: 'Request validation failed',
+            instance: request.url,
+            code: 'VALIDATION_ERROR',
+            traceId,
+            errors: parsed.error.issues.map((issue) => ({
+              field: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          400,
+        );
+      const body = parsed.data;
+      metadata.set('authorization', `Bearer ${token}`);
+      metadata.set('idempotency-key', idempotencyKey);
+      const result = await firstValueFrom(
+        this.attendance
+          .createRegularAttendance(
+            {
+              ...body,
+              clockType:
+                body.clockType === 'CLOCK_IN'
+                  ? ClockType.CLOCK_IN
+                  : ClockType.CLOCK_OUT,
+            },
+            metadata,
+            options,
+          )
+          .pipe(takeUntil(cancelled)),
+      );
+      if (!result.occurredAt || !result.submittedAt || !result.location)
+        throw new Error('invalid regular attendance response');
+      reply.status(result.replayed ? 200 : 201);
+      return {
+        id: result.id,
+        employeeId: result.employeeId,
+        workDate: result.workDate,
+        clockType:
+          result.clockType === ClockType.CLOCK_IN ? 'CLOCK_IN' : 'CLOCK_OUT',
+        source: result.source,
+        status: result.status,
+        occurredAt: timestampIso(result.occurredAt),
+        claimedAt: null,
+        submittedAt: timestampIso(result.submittedAt),
+        location: { ...result.location, address: null },
+        reason: null,
+        evidenceId: result.evidenceId,
+        decision: null,
+      };
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        reply.header('retry-after', error.retryAfter);
+        this.fail(
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'Too many requests',
+          request,
+          traceId,
+        );
+      }
+      this.grpcFailure(error, request, traceId, true, reply);
+    }
   }
 
   @Post('evidence/:evidenceId/access')
@@ -292,6 +433,8 @@ export class AttendanceZoneController implements OnModuleInit {
     error: unknown,
     request: FastifyRequest,
     traceId: string,
+    regular = false,
+    reply?: FastifyReply,
   ): never {
     if (error instanceof HttpException) throw error;
     const code = grpcCode(error);
@@ -304,11 +447,17 @@ export class AttendanceZoneController implements OnModuleInit {
         traceId,
       );
     if (code === status.PERMISSION_DENIED)
-      this.fail(403, 'FORBIDDEN', 'HRD access is required', request, traceId);
+      this.fail(
+        403,
+        'FORBIDDEN',
+        regular ? 'Employee access is required' : 'HRD access is required',
+        request,
+        traceId,
+      );
     if (code === status.INVALID_ARGUMENT)
       this.fail(
         400,
-        'VALIDATION_ERROR',
+        grpcErrorCode(error) ?? 'VALIDATION_ERROR',
         'Request validation failed',
         request,
         traceId,
@@ -321,9 +470,26 @@ export class AttendanceZoneController implements OnModuleInit {
         request,
         traceId,
       );
+    if (code === status.ALREADY_EXISTS) {
+      const errorCode = grpcErrorCode(error) ?? 'ATTENDANCE_ALREADY_EXISTS';
+      if (errorCode === 'REQUEST_IN_PROGRESS') reply?.header('retry-after', 1);
+      this.fail(
+        409,
+        errorCode,
+        'Attendance could not be recorded',
+        request,
+        traceId,
+      );
+    }
     if (code === status.FAILED_PRECONDITION) {
       const errorCode = grpcErrorCode(error) ?? 'EVIDENCE_INVALID';
-      this.fail(409, errorCode, 'Evidence is not available', request, traceId);
+      this.fail(
+        regular ? 422 : 409,
+        errorCode,
+        regular ? 'Attendance is not eligible' : 'Evidence is not available',
+        request,
+        traceId,
+      );
     }
     if (code === status.DEADLINE_EXCEEDED)
       this.fail(
@@ -335,7 +501,7 @@ export class AttendanceZoneController implements OnModuleInit {
       );
     this.fail(
       503,
-      'DEPENDENCY_UNAVAILABLE',
+      grpcErrorCode(error) ?? 'DEPENDENCY_UNAVAILABLE',
       'The service is temporarily unavailable',
       request,
       traceId,

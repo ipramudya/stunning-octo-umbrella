@@ -6,6 +6,7 @@ const port = z.coerce.number().int().min(1).max(65_535);
 const positiveInteger = z.coerce.number().int().positive();
 
 export const environmentSchema = z.object({
+  ATTENDANCE_MAX_GPS_ACCURACY_METERS: positiveInteger.default(100),
   GRPC_PORT: port.default(50052),
   HOST: z.string().default('0.0.0.0'),
   HTTP_PORT: port.default(3002),

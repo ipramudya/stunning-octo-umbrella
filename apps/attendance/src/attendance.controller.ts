@@ -5,11 +5,13 @@ import { status, Metadata } from '@grpc/grpc-js';
 import { Controller } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GrpcMethod, RpcException } from '@nestjs/microservices';
-import type {
-  AttendanceZone,
-  AuthorizeEvidenceAccessRequest,
-  AuthorizeEvidenceUploadRequest,
-  UpdateAttendanceZoneRequest,
+import {
+  ClockType,
+  type AttendanceZone,
+  type AuthorizeEvidenceAccessRequest,
+  type AuthorizeEvidenceUploadRequest,
+  type CreateRegularAttendanceRequest,
+  type UpdateAttendanceZoneRequest,
 } from '@project/contracts';
 import { z } from 'zod';
 
@@ -18,6 +20,21 @@ import type { Environment } from './config.schema.js';
 import { EvidenceService } from './evidence.service.js';
 import { EvidenceError } from './evidence.service.js';
 import { verifyInternalAccess } from './internal-token.js';
+import {
+  RegularAttendanceError,
+  RegularAttendanceService,
+} from './regular-attendance.service.js';
+
+const regularSchema = z.object({
+  clockType: z.union([
+    z.literal(ClockType.CLOCK_IN),
+    z.literal(ClockType.CLOCK_OUT),
+  ]),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracyMeters: z.number().finite(),
+  evidenceUploadId: z.uuid(),
+});
 
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -58,14 +75,38 @@ function evidenceFailure(error: unknown): never {
   failure(code, error.code);
 }
 
+function regularFailure(error: unknown): never {
+  const code = error instanceof Error ? error.message : '';
+  if (code === 'EVIDENCE_NOT_FOUND') failure(status.NOT_FOUND, code);
+  if (
+    [
+      'ATTENDANCE_ALREADY_EXISTS',
+      'IDEMPOTENCY_KEY_REUSED',
+      'REQUEST_IN_PROGRESS',
+    ].includes(code)
+  )
+    failure(status.ALREADY_EXISTS, code);
+  if (
+    code === 'DEPENDENCY_UNAVAILABLE' ||
+    code === 'EVIDENCE_FINALIZATION_FAILED'
+  )
+    failure(status.UNAVAILABLE, code);
+  if (error instanceof RegularAttendanceError || error instanceof EvidenceError)
+    failure(status.FAILED_PRECONDITION, code);
+  throw error;
+}
+
 @Controller()
 export class AttendanceController {
   private readonly issuer: string;
   private readonly publicKey: string;
 
+  // Nest supplies these application dependencies.
+  // oxlint-disable-next-line max-params
   constructor(
     private readonly zones: AttendanceZoneRepository,
     private readonly evidence: EvidenceService,
+    private readonly regularAttendance: RegularAttendanceService,
     config: ConfigService<Environment, true>,
   ) {
     this.issuer = config.get('JWT_ISSUER', { infer: true });
@@ -122,6 +163,40 @@ export class AttendanceController {
       };
     } catch (error) {
       evidenceFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'CreateRegularAttendance')
+  async createRegularAttendance(
+    request: CreateRegularAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    try {
+      const claims = await this.authorize(metadata, ['EMPLOYEE']);
+      const parsed = regularSchema.safeParse(request);
+      if (!parsed.success) failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
+      const key = metadata.get('idempotency-key')[0];
+      if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+        failure(status.INVALID_ARGUMENT, 'IDEMPOTENCY_KEY_REQUIRED');
+      const result = await this.regularAttendance.create(claims.sub, key, {
+        ...parsed.data,
+        clockType:
+          parsed.data.clockType === ClockType.CLOCK_IN
+            ? 'CLOCK_IN'
+            : 'CLOCK_OUT',
+      });
+      return {
+        ...result.entry,
+        clockType:
+          result.entry.clockType === 'CLOCK_IN'
+            ? ClockType.CLOCK_IN
+            : ClockType.CLOCK_OUT,
+        occurredAt: grpcTimestamp(new Date(result.entry.occurredAt)),
+        submittedAt: grpcTimestamp(new Date(result.entry.submittedAt)),
+        replayed: result.replayed,
+      };
+    } catch (error) {
+      regularFailure(error);
     }
   }
 

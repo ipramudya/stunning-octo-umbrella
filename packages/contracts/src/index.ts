@@ -4,9 +4,12 @@ export * from './generated/grpc/health/v1/health.js';
 export {
   type AttendanceServiceClient,
   AttendanceServiceService,
+  type AttendanceEntry,
   type AttendanceZone,
   type AuthorizeEvidenceAccessRequest,
   type AuthorizeEvidenceUploadRequest,
+  ClockType,
+  type CreateRegularAttendanceRequest,
   type EvidenceAccessAuthorization,
   type EvidenceUploadAuthorization,
   type UpdateAttendanceZoneRequest,
