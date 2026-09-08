@@ -17,6 +17,7 @@ async function bootstrap() {
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
+      gracefulShutdown: true,
       credentials: ServerCredentials.createSsl(
         readFileSync(join(pkiDir, "ca.crt")),
         [
