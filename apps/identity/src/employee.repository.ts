@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import oracledb, { type Connection } from "oracledb";
-import type { Employee, RoleName } from "./auth.js";
-import { OracleDatabase } from "./oracle.js";
+import { Injectable } from '@nestjs/common';
+import oracledb, { type Connection } from 'oracledb';
+
+import type { Employee, RoleName } from './auth.js';
+import { OracleDatabase } from './oracle.js';
 
 export type EmployeeInput = {
   employeeNumber: string;
@@ -27,7 +28,13 @@ const employeeColumns = `e.id, e.employee_number, e.full_name, e.phone_number, e
   (SELECT LISTAGG(r.role, ',') WITHIN GROUP (ORDER BY r.role)
      FROM employee_roles r WHERE r.employee_id = e.id) AS roles`;
 
+function role(value: string): value is RoleName {
+  return value === 'EMPLOYEE' || value === 'HRD';
+}
+
 function employee(row: EmployeeRow): Employee {
+  const roles = row.ROLES.split(',');
+  if (!roles.every(role)) throw new Error('employee has an invalid role');
   return {
     id: row.ID,
     employeeNumber: row.EMPLOYEE_NUMBER,
@@ -36,7 +43,7 @@ function employee(row: EmployeeRow): Employee {
     ...(row.EMAIL ? { email: row.EMAIL } : {}),
     passwordHash: row.PASSWORD_HASH,
     credentialVersion: row.CREDENTIAL_VERSION,
-    roles: row.ROLES.split(",") as RoleName[],
+    roles,
   };
 }
 
@@ -45,11 +52,11 @@ export class EmployeeRepository {
   constructor(private readonly database: OracleDatabase) {}
 
   findByPhone(phoneNumber: string) {
-    return this.find("e.phone_number = :value", phoneNumber);
+    return this.find('e.phone_number = :value', phoneNumber);
   }
 
   findById(id: string) {
-    return this.find("e.id = :value", id);
+    return this.find('e.id = :value', id);
   }
 
   async list(
@@ -58,7 +65,7 @@ export class EmployeeRepository {
     limit: number,
   ) {
     return this.database.withConnection(async (connection) => {
-      const escaped = query?.replace(/[\\%_]/g, "\\$&");
+      const escaped = query?.replace(/[\\%_]/g, '\\$&');
       const result = await connection.execute<EmployeeRow>(
         `SELECT ${employeeColumns}
            FROM employees e
@@ -179,9 +186,11 @@ export class EmployeeRepository {
       );
       const row = result.rows?.[0];
       if (!row) return undefined;
-      if (input.employeeNumber === row.EMPLOYEE_NUMBER) return "EMPLOYEE_NUMBER_ALREADY_EXISTS";
-      if (input.phoneNumber === row.PHONE_NUMBER) return "PHONE_NUMBER_ALREADY_EXISTS";
-      return "EMAIL_ALREADY_EXISTS";
+      if (input.employeeNumber === row.EMPLOYEE_NUMBER)
+        return 'EMPLOYEE_NUMBER_ALREADY_EXISTS';
+      if (input.phoneNumber === row.PHONE_NUMBER)
+        return 'PHONE_NUMBER_ALREADY_EXISTS';
+      return 'EMAIL_ALREADY_EXISTS';
     });
   }
 
@@ -205,7 +214,10 @@ export class EmployeeRepository {
     });
   }
 
-  private async find(where: string, value: string): Promise<Employee | undefined> {
+  private async find(
+    where: string,
+    value: string,
+  ): Promise<Employee | undefined> {
     return this.database.withConnection(async (connection) => {
       const result = await connection.execute<EmployeeRow>(
         `SELECT ${employeeColumns} FROM employees e WHERE ${where}`,

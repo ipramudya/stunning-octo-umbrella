@@ -1,19 +1,27 @@
-import { randomUUID } from "node:crypto";
-import { status } from "@grpc/grpc-js";
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { argon2id, hash } from "argon2";
-import { Role, type EmployeeProfile } from "@project/contracts";
-import { AuthError, type Employee } from "./auth.js";
-import type { Environment } from "./config.schema.js";
-import { EmployeeRepository, type EmployeeInput } from "./employee.repository.js";
-import { SessionStore } from "./session.store.js";
-import { TokenService } from "./tokens.js";
+import { randomUUID } from 'node:crypto';
+
+import { status } from '@grpc/grpc-js';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Role, type EmployeeProfile } from '@project/contracts';
+import { argon2id, hash } from 'argon2';
+
+import { AuthError, type Employee } from './auth.js';
+import type { Environment } from './config.schema.js';
+import {
+  EmployeeRepository,
+  type EmployeeInput,
+} from './employee.repository.js';
+import { SessionStore } from './session.store.js';
+import { TokenService } from './tokens.js';
 
 const phonePattern = /^\+62[0-9]+$/;
 
 type Actor = { id: string };
-type Cursor = { v: 1; endpoint: "employees"; employeeNumber: string; id: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 function fail(code: string, grpcStatus = status.INVALID_ARGUMENT): never {
   throw new AuthError(code, grpcStatus);
@@ -21,19 +29,21 @@ function fail(code: string, grpcStatus = status.INVALID_ARGUMENT): never {
 
 function required(value: string, maximum: number) {
   const normalized = value.trim();
-  if (!normalized || Array.from(normalized).length > maximum) fail("VALIDATION_ERROR");
+  if (!normalized || Array.from(normalized).length > maximum)
+    fail('VALIDATION_ERROR');
   return normalized;
 }
 
 function password(value: string) {
   const length = Array.from(value).length;
-  if (length < 12 || length > 128) fail("VALIDATION_ERROR");
+  if (length < 12 || length > 128) fail('VALIDATION_ERROR');
   return value;
 }
 
 function phone(value: string) {
   const normalized = value.trim();
-  if (normalized.length > 16 || !phonePattern.test(normalized)) fail("VALIDATION_ERROR");
+  if (normalized.length > 16 || !phonePattern.test(normalized))
+    fail('VALIDATION_ERROR');
   return normalized;
 }
 
@@ -41,7 +51,7 @@ function email(value: string | undefined) {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return undefined;
   if (normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
-    fail("VALIDATION_ERROR");
+    fail('VALIDATION_ERROR');
   return normalized;
 }
 
@@ -52,26 +62,32 @@ function profile(value: Employee): EmployeeProfile {
     fullName: value.fullName,
     phoneNumber: value.phoneNumber,
     ...(value.email ? { email: value.email } : {}),
-    roles: value.roles.map((role) => (role === "HRD" ? Role.ROLE_HRD : Role.ROLE_EMPLOYEE)),
+    roles: value.roles.map((role) =>
+      role === 'HRD' ? Role.ROLE_HRD : Role.ROLE_EMPLOYEE,
+    ),
   };
 }
 
 function decodeCursor(value: string | undefined) {
   if (!value) return undefined;
   try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<Cursor>;
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (!isRecord(parsed)) fail('INVALID_CURSOR');
+    const { v, endpoint, employeeNumber, id } = parsed;
     if (
-      parsed.v !== 1 ||
-      parsed.endpoint !== "employees" ||
-      typeof parsed.employeeNumber !== "string" ||
-      typeof parsed.id !== "string" ||
-      Object.keys(parsed).sort().join(",") !== "employeeNumber,endpoint,id,v"
+      v !== 1 ||
+      endpoint !== 'employees' ||
+      typeof employeeNumber !== 'string' ||
+      typeof id !== 'string' ||
+      Object.keys(parsed).sort().join(',') !== 'employeeNumber,endpoint,id,v'
     )
-      fail("INVALID_CURSOR");
-    return { employeeNumber: parsed.employeeNumber, id: parsed.id };
+      fail('INVALID_CURSOR');
+    return { employeeNumber, id };
   } catch (error) {
     if (error instanceof AuthError) throw error;
-    fail("INVALID_CURSOR");
+    fail('INVALID_CURSOR');
   }
 }
 
@@ -79,11 +95,11 @@ function encodeCursor(value: Employee) {
   return Buffer.from(
     JSON.stringify({
       v: 1,
-      endpoint: "employees",
+      endpoint: 'employees',
       employeeNumber: value.employeeNumber,
       id: value.id,
     }),
-  ).toString("base64url");
+  ).toString('base64url');
 }
 
 @Injectable()
@@ -91,20 +107,22 @@ export class EmployeeAdminService {
   // Dependency injection determines this constructor signature.
   // oxlint-disable-next-line max-params
   constructor(
+    @Inject(ConfigService)
     private readonly config: ConfigService<Environment, true>,
-    private readonly employees: EmployeeRepository,
-    private readonly sessions: SessionStore,
-    private readonly tokens: TokenService,
+    @Inject(EmployeeRepository) private readonly employees: EmployeeRepository,
+    @Inject(SessionStore) private readonly sessions: SessionStore,
+    @Inject(TokenService) private readonly tokens: TokenService,
   ) {}
 
   async authorize(token: string): Promise<Actor> {
     try {
-      const claims = await this.tokens.verify(token, "dexa-identity");
-      if (!claims.roles.includes("HRD")) fail("FORBIDDEN", status.PERMISSION_DENIED);
+      const claims = await this.tokens.verify(token, 'dexa-identity');
+      if (!claims.roles.includes('HRD'))
+        fail('FORBIDDEN', status.PERMISSION_DENIED);
       return { id: claims.sub };
     } catch (error) {
       if (error instanceof AuthError) throw error;
-      fail("AUTHENTICATION_REQUIRED", status.UNAUTHENTICATED);
+      fail('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
   }
 
@@ -121,10 +139,14 @@ export class EmployeeAdminService {
   }) {
     await this.authorize(token);
     const limit = requestedLimit || 20;
-    if (limit < 1 || limit > 100) fail("VALIDATION_ERROR");
+    if (limit < 1 || limit > 100) fail('VALIDATION_ERROR');
     const q = query?.trim();
-    if (q && Array.from(q).length > 120) fail("VALIDATION_ERROR");
-    const rows = await this.employees.list(q || undefined, decodeCursor(cursor), limit);
+    if (q && Array.from(q).length > 120) fail('VALIDATION_ERROR');
+    const rows = await this.employees.list(
+      q || undefined,
+      decodeCursor(cursor),
+      limit,
+    );
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items.at(-1);
@@ -140,7 +162,10 @@ export class EmployeeAdminService {
     return profile(await this.existing(employeeId));
   }
 
-  async create(token: string, raw: Omit<EmployeeInput, "passwordHash"> & { password: string }) {
+  async create(
+    token: string,
+    raw: Omit<EmployeeInput, 'passwordHash'> & { password: string },
+  ) {
     const actor = await this.authorize(token);
     const input = {
       employeeNumber: required(raw.employeeNumber, 32).toUpperCase(),
@@ -168,9 +193,14 @@ export class EmployeeAdminService {
     changes: { fullName?: string; email?: string | null },
   ) {
     const actor = await this.authorize(token);
-    if (changes.fullName === undefined && changes.email === undefined) fail("VALIDATION_ERROR");
-    const fullName = changes.fullName === undefined ? undefined : required(changes.fullName, 120);
-    const normalizedEmail = changes.email === null ? null : email(changes.email);
+    if (changes.fullName === undefined && changes.email === undefined)
+      fail('VALIDATION_ERROR');
+    const fullName =
+      changes.fullName === undefined
+        ? undefined
+        : required(changes.fullName, 120);
+    const normalizedEmail =
+      changes.email === null ? null : email(changes.email);
     try {
       if (
         !(await this.employees.updateProfile({
@@ -180,9 +210,13 @@ export class EmployeeAdminService {
           actorId: actor.id,
         }))
       )
-        fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+        fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     } catch (error) {
-      await this.mapUnique(error, normalizedEmail ? { email: normalizedEmail } : {}, employeeId);
+      await this.mapUnique(
+        error,
+        normalizedEmail ? { email: normalizedEmail } : {},
+        employeeId,
+      );
     }
     return profile(await this.existing(employeeId));
   }
@@ -191,8 +225,10 @@ export class EmployeeAdminService {
     const actor = await this.authorize(token);
     const phoneNumber = phone(rawPhone);
     try {
-      if (!(await this.employees.updatePhone(employeeId, phoneNumber, actor.id)))
-        fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+      if (
+        !(await this.employees.updatePhone(employeeId, phoneNumber, actor.id))
+      )
+        fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     } catch (error) {
       await this.mapUnique(error, { phoneNumber }, employeeId);
     }
@@ -203,23 +239,25 @@ export class EmployeeAdminService {
   async resetPassword(token: string, employeeId: string, rawPassword: string) {
     const actor = await this.authorize(token);
     const passwordHash = await this.passwordHash(password(rawPassword));
-    if (!(await this.employees.updatePassword(employeeId, passwordHash, actor.id)))
-      fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    if (
+      !(await this.employees.updatePassword(employeeId, passwordHash, actor.id))
+    )
+      fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     await this.cleanup(employeeId);
   }
 
   private async existing(id: string) {
     const value = await this.employees.findById(id);
-    if (!value) fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    if (!value) fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     return value;
   }
 
   private passwordHash(value: string) {
     return hash(value, {
       type: argon2id,
-      memoryCost: this.config.get("ARGON2_MEMORY_COST", { infer: true }),
-      timeCost: this.config.get("ARGON2_TIME_COST", { infer: true }),
-      parallelism: this.config.get("ARGON2_PARALLELISM", { infer: true }),
+      memoryCost: this.config.get('ARGON2_MEMORY_COST', { infer: true }),
+      timeCost: this.config.get('ARGON2_TIME_COST', { infer: true }),
+      parallelism: this.config.get('ARGON2_PARALLELISM', { infer: true }),
     });
   }
 
@@ -236,10 +274,10 @@ export class EmployeeAdminService {
     input: { employeeNumber?: string; phoneNumber?: string; email?: string },
     excludeId?: string,
   ): Promise<never> {
-    if (!String(error).includes("ORA-00001")) throw error;
+    if (!String(error).includes('ORA-00001')) throw error;
     const conflict = await this.employees.conflict(input, excludeId);
     fail(
-      conflict ?? "VALIDATION_ERROR",
+      conflict ?? 'VALIDATION_ERROR',
       conflict ? status.ALREADY_EXISTS : status.INVALID_ARGUMENT,
     );
   }

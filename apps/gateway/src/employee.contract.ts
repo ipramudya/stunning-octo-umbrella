@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const text = (maximum: number) => z.string().trim().min(1).max(maximum);
 const phoneNumber = z
@@ -12,10 +12,10 @@ const password = z.string().refine(
     return length >= 12 && length <= 128;
   },
   {
-    message: "Password must contain 12 to 128 Unicode characters",
+    message: 'Password must contain 12 to 128 Unicode characters',
   },
 );
-const email = z.union([z.literal(""), z.email().max(254)]);
+const email = z.union([z.literal(''), z.email().max(254)]);
 
 export const employeeIdSchema = z.uuid();
 export const employeeListSchema = z
@@ -35,7 +35,10 @@ export const createEmployeeSchema = z
   })
   .strict();
 export const updateEmployeeSchema = z
-  .object({ fullName: text(120).optional(), email: email.nullable().optional() })
+  .object({
+    fullName: text(120).optional(),
+    email: email.nullable().optional(),
+  })
   .strict()
   .refine((value) => value.fullName !== undefined || value.email !== undefined);
 export const updatePhoneSchema = z.object({ phoneNumber }).strict();

@@ -1,4 +1,26 @@
-// Nest route handlers keep decorated request parameters explicit.
+import { randomUUID } from 'node:crypto';
+import { STATUS_CODES } from 'node:http';
+
+import { status, Metadata, type CallOptions } from '@grpc/grpc-js';
+import type { OnModuleInit } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { ClientGrpc } from '@nestjs/microservices';
 // oxlint-disable max-params
 import {
   type Authorization,
@@ -9,33 +31,12 @@ import {
   TokenAudience,
   type UpdateEmployeePhoneNumberRequest,
   type UpdateEmployeeProfileRequest,
-} from "@project/contracts";
-import { status, Metadata, type CallOptions, type ServiceError } from "@grpc/grpc-js";
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpException,
-  HttpStatus,
-  Inject,
-  OnModuleInit,
-  Param,
-  Patch,
-  Post,
-  Put,
-  Query,
-  Req,
-  Res,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { ClientGrpc } from "@nestjs/microservices";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { randomUUID } from "node:crypto";
-import { STATUS_CODES } from "node:http";
-import { firstValueFrom, fromEvent, type Observable, takeUntil } from "rxjs";
-import { cookies, publicProfile } from "./auth.controller.js";
-import type { Environment } from "./config.schema.js";
+} from '@project/contracts';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { firstValueFrom, fromEvent, type Observable, takeUntil } from 'rxjs';
+
+import { cookies, publicProfile } from './auth.controller.js';
+import type { Environment } from './config.schema.js';
 import {
   createEmployeeSchema,
   type CreateEmployeeDto,
@@ -48,12 +49,14 @@ import {
   type UpdateEmployeeDto,
   updatePhoneSchema,
   type UpdatePhoneDto,
-} from "./employee.contract.js";
-import { IDENTITY_HEALTH_CLIENT } from "./grpc-health.client.js";
-import { RateLimiter, RateLimitError } from "./rate-limiter.js";
-import { ZodValidationPipe } from "./zod-validation.pipe.js";
+} from './employee.contract.js';
+import { grpcCode, grpcErrorCode } from './grpc-error.js';
+import { IDENTITY_HEALTH_CLIENT } from './grpc-health.client.js';
+import { RateLimiter } from './rate-limiter.js';
+import { RateLimitError } from './rate-limiter.js';
+import { ZodValidationPipe } from './zod-validation.pipe.js';
 
-interface IdentityClient {
+type IdentityClient = {
   authorizeAccess(
     request: { audiences: TokenAudience[] },
     metadata: Metadata,
@@ -89,11 +92,11 @@ interface IdentityClient {
     metadata: Metadata,
     options: Partial<CallOptions>,
   ): Observable<object>;
-}
+};
 
-type Context = ReturnType<EmployeeController["context"]>;
+type Context = ReturnType<EmployeeController['context']>;
 
-@Controller({ path: "hrd/employees", version: "1" })
+@Controller({ path: 'hrd/employees', version: '1' })
 export class EmployeeController implements OnModuleInit {
   private identity!: IdentityClient;
 
@@ -104,7 +107,7 @@ export class EmployeeController implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.identity = this.grpc.getService<IdentityClient>("IdentityService");
+    this.identity = this.grpc.getService<IdentityClient>('IdentityService');
   }
 
   @Get()
@@ -146,9 +149,10 @@ export class EmployeeController implements OnModuleInit {
     );
   }
 
-  @Get(":employeeId")
+  @Get(':employeeId')
   async get(
-    @Param("employeeId", new ZodValidationPipe(employeeIdSchema)) employeeId: string,
+    @Param('employeeId', new ZodValidationPipe(employeeIdSchema))
+    employeeId: string,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
@@ -159,9 +163,10 @@ export class EmployeeController implements OnModuleInit {
     );
   }
 
-  @Patch(":employeeId")
+  @Patch(':employeeId')
   async update(
-    @Param("employeeId", new ZodValidationPipe(employeeIdSchema)) employeeId: string,
+    @Param('employeeId', new ZodValidationPipe(employeeIdSchema))
+    employeeId: string,
     @Body(new ZodValidationPipe(updateEmployeeSchema)) body: UpdateEmployeeDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -173,7 +178,7 @@ export class EmployeeController implements OnModuleInit {
             employeeId,
             fullName: body.fullName,
             email: body.email || undefined,
-            clearEmail: body.email === null || body.email === "",
+            clearEmail: body.email === null || body.email === '',
           },
           metadata,
           context.options,
@@ -182,9 +187,10 @@ export class EmployeeController implements OnModuleInit {
     );
   }
 
-  @Put(":employeeId/phone-number")
+  @Put(':employeeId/phone-number')
   async updatePhone(
-    @Param("employeeId", new ZodValidationPipe(employeeIdSchema)) employeeId: string,
+    @Param('employeeId', new ZodValidationPipe(employeeIdSchema))
+    employeeId: string,
     @Body(new ZodValidationPipe(updatePhoneSchema)) body: UpdatePhoneDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -200,10 +206,11 @@ export class EmployeeController implements OnModuleInit {
     );
   }
 
-  @Put(":employeeId/password")
+  @Put(':employeeId/password')
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(
-    @Param("employeeId", new ZodValidationPipe(employeeIdSchema)) employeeId: string,
+    @Param('employeeId', new ZodValidationPipe(employeeIdSchema))
+    employeeId: string,
     @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -225,8 +232,8 @@ export class EmployeeController implements OnModuleInit {
   ) {
     const context = this.context(request, reply, unsafe);
     const access = new Metadata();
-    access.set("authorization", `Bearer ${cookies(request).dexa_access ?? ""}`);
-    access.set("x-correlation-id", context.traceId);
+    access.set('authorization', `Bearer ${cookies(request).dexa_access ?? ''}`);
+    access.set('x-correlation-id', context.traceId);
     try {
       const authorization = await firstValueFrom(
         this.identity
@@ -238,7 +245,7 @@ export class EmployeeController implements OnModuleInit {
           .pipe(takeUntil(context.cancelled)),
       );
       await this.rateLimiter.consume({
-        scope: "authenticated",
+        scope: 'authenticated',
         subject: authorization.sessionId,
         maximum: 120,
         windowSeconds: 60,
@@ -246,25 +253,40 @@ export class EmployeeController implements OnModuleInit {
       const delegated = authorization.tokens.find(
         (value) => value.audience === TokenAudience.TOKEN_AUDIENCE_IDENTITY,
       )?.token;
-      if (!delegated) throw new Error("missing delegated token");
+      if (!delegated) throw new Error('missing delegated token');
       const metadata = new Metadata();
-      metadata.set("authorization", `Bearer ${delegated}`);
-      metadata.set("x-correlation-id", context.traceId);
-      return await firstValueFrom(operation(metadata, context).pipe(takeUntil(context.cancelled)));
+      metadata.set('authorization', `Bearer ${delegated}`);
+      metadata.set('x-correlation-id', context.traceId);
+      return await firstValueFrom(
+        operation(metadata, context).pipe(takeUntil(context.cancelled)),
+      );
     } catch (error) {
       this.failure(error, request, reply, context.traceId);
     }
   }
 
-  private context(request: FastifyRequest, reply: FastifyReply, unsafe: boolean) {
+  private context(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    unsafe: boolean,
+  ) {
     const traceId = randomUUID();
-    reply.header("x-correlation-id", traceId);
-    if (unsafe && request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true }))
-      this.fail(403, "FORBIDDEN", "Request origin is not allowed", request, traceId);
+    reply.header('x-correlation-id', traceId);
+    if (
+      unsafe &&
+      request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
+    )
+      this.fail(
+        403,
+        'FORBIDDEN',
+        'Request origin is not allowed',
+        request,
+        traceId,
+      );
     return {
       traceId,
       options: { deadline: Date.now() + 3_000 },
-      cancelled: fromEvent(request.raw, "aborted"),
+      cancelled: fromEvent(request.raw, 'aborted'),
     };
   }
 
@@ -276,32 +298,58 @@ export class EmployeeController implements OnModuleInit {
   ): never {
     if (error instanceof HttpException) throw error;
     if (error instanceof RateLimitError) {
-      reply.header("retry-after", error.retryAfter);
-      this.fail(429, "RATE_LIMIT_EXCEEDED", "Too many requests", request, traceId);
+      reply.header('retry-after', error.retryAfter);
+      this.fail(
+        429,
+        'RATE_LIMIT_EXCEEDED',
+        'Too many requests',
+        request,
+        traceId,
+      );
     }
-    const serviceError = error as Partial<ServiceError>;
-    const supplied = serviceError.metadata?.get("x-error-code")[0];
-    const code = typeof supplied === "string" ? supplied : undefined;
+    const code = grpcErrorCode(error);
     const mappings: Partial<Record<status, [number, string, string]>> = {
       [status.INVALID_ARGUMENT]: [
         400,
-        code === "INVALID_CURSOR" ? code : "VALIDATION_ERROR",
-        code === "INVALID_CURSOR" ? "The cursor is invalid" : "Request validation failed",
+        code === 'INVALID_CURSOR' ? code : 'VALIDATION_ERROR',
+        code === 'INVALID_CURSOR'
+          ? 'The cursor is invalid'
+          : 'Request validation failed',
       ],
-      [status.UNAUTHENTICATED]: [401, "AUTHENTICATION_REQUIRED", "Authentication is required"],
-      [status.PERMISSION_DENIED]: [403, "FORBIDDEN", "HRD access is required"],
-      [status.NOT_FOUND]: [404, "EMPLOYEE_NOT_FOUND", "Employee was not found"],
-      [status.ALREADY_EXISTS]: [409, code ?? "VALIDATION_ERROR", "Employee data already exists"],
+      [status.UNAUTHENTICATED]: [
+        401,
+        'AUTHENTICATION_REQUIRED',
+        'Authentication is required',
+      ],
+      [status.PERMISSION_DENIED]: [403, 'FORBIDDEN', 'HRD access is required'],
+      [status.NOT_FOUND]: [404, 'EMPLOYEE_NOT_FOUND', 'Employee was not found'],
+      [status.ALREADY_EXISTS]: [
+        409,
+        code ?? 'VALIDATION_ERROR',
+        'Employee data already exists',
+      ],
       [status.UNAVAILABLE]: [
         503,
-        "DEPENDENCY_UNAVAILABLE",
-        "The service is temporarily unavailable",
+        'DEPENDENCY_UNAVAILABLE',
+        'The service is temporarily unavailable',
       ],
-      [status.DEADLINE_EXCEEDED]: [504, "DOWNSTREAM_TIMEOUT", "The request timed out"],
+      [status.DEADLINE_EXCEEDED]: [
+        504,
+        'DOWNSTREAM_TIMEOUT',
+        'The request timed out',
+      ],
     };
-    const mapped = serviceError.code === undefined ? undefined : mappings[serviceError.code];
+    const codeFromGrpc = grpcCode(error);
+    const mapped =
+      codeFromGrpc === undefined ? undefined : mappings[codeFromGrpc];
     if (mapped) this.fail(...mapped, request, traceId);
-    this.fail(500, "INTERNAL_ERROR", "An unexpected error occurred", request, traceId);
+    this.fail(
+      500,
+      'INTERNAL_ERROR',
+      'An unexpected error occurred',
+      request,
+      traceId,
+    );
   }
 
   private fail(
@@ -313,8 +361,8 @@ export class EmployeeController implements OnModuleInit {
   ): never {
     throw new HttpException(
       {
-        type: "about:blank",
-        title: STATUS_CODES[statusCode] ?? "Internal Server Error",
+        type: 'about:blank',
+        title: STATUS_CODES[statusCode] ?? 'Internal Server Error',
         status: statusCode,
         detail,
         instance: request.url,

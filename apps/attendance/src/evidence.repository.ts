@@ -1,11 +1,12 @@
-import { Injectable } from "@nestjs/common";
-import oracledb, { type Connection } from "oracledb";
-import { OracleDatabase } from "./oracle.js";
+import { Injectable } from '@nestjs/common';
+import oracledb, { type Connection } from 'oracledb';
+
+import { OracleDatabase } from './oracle.js';
 
 export type EvidenceUpload = {
   id: string;
   employeeId: string;
-  status: "AUTHORIZED" | "FINALIZING" | "ATTACHED";
+  status: 'AUTHORIZED' | 'FINALIZING' | 'ATTACHED';
   declaredContentType: string;
   declaredSizeBytes: number;
   stagingKey: string;
@@ -18,7 +19,7 @@ export type EvidenceUpload = {
 type EvidenceRow = {
   ID: string;
   EMPLOYEE_ID: string;
-  STATUS: EvidenceUpload["status"];
+  STATUS: EvidenceUpload['status'];
   DECLARED_CONTENT_TYPE: string;
   DECLARED_SIZE_BYTES: number;
   STAGING_KEY: string;
@@ -64,11 +65,26 @@ export class EvidenceRepository {
         )`,
         {
           id: { val: upload.id, type: oracledb.STRING, maxSize: 36 },
-          employeeId: { val: upload.employeeId, type: oracledb.STRING, maxSize: 36 },
-          contentType: { val: upload.declaredContentType, type: oracledb.STRING, maxSize: 20 },
+          employeeId: {
+            val: upload.employeeId,
+            type: oracledb.STRING,
+            maxSize: 36,
+          },
+          contentType: {
+            val: upload.declaredContentType,
+            type: oracledb.STRING,
+            maxSize: 20,
+          },
           sizeBytes: { val: upload.declaredSizeBytes, type: oracledb.NUMBER },
-          stagingKey: { val: upload.stagingKey, type: oracledb.STRING, maxSize: 500 },
-          expiresAt: { val: upload.expiresAt, type: oracledb.DB_TYPE_TIMESTAMP_TZ },
+          stagingKey: {
+            val: upload.stagingKey,
+            type: oracledb.STRING,
+            maxSize: 500,
+          },
+          expiresAt: {
+            val: upload.expiresAt,
+            type: oracledb.DB_TYPE_TIMESTAMP_TZ,
+          },
         },
       ),
     );
@@ -85,7 +101,10 @@ export class EvidenceRepository {
     });
   }
 
-  lock(id: string, work: (connection: Connection, upload: EvidenceUpload) => Promise<void>) {
+  lock(
+    id: string,
+    work: (connection: Connection, upload: EvidenceUpload) => Promise<void>,
+  ) {
     return this.database.withTransaction(async (connection) => {
       const result = await connection.execute<EvidenceRow>(
         `${select} WHERE id = :id FOR UPDATE`,
@@ -99,7 +118,11 @@ export class EvidenceRepository {
     });
   }
 
-  async finalizing(connection: Connection, upload: EvidenceUpload, version: string) {
+  async finalizing(
+    connection: Connection,
+    upload: EvidenceUpload,
+    version: string,
+  ) {
     await connection.execute(
       `UPDATE evidence_uploads SET state = 'FINALIZING', staging_version = :version,
        permanent_key = :permanentKey, updated_at = SYSTIMESTAMP WHERE id = :id`,

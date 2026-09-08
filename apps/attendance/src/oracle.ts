@@ -1,7 +1,8 @@
-import { Injectable, type OnModuleDestroy } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import oracledb, { type Pool } from "oracledb";
-import type { Environment } from "./config.schema.js";
+import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import oracledb, { type Pool } from 'oracledb';
+
+import type { Environment } from './config.schema.js';
 
 @Injectable()
 export class OracleDatabase implements OnModuleDestroy {
@@ -11,15 +12,19 @@ export class OracleDatabase implements OnModuleDestroy {
 
   getPool() {
     this.pool ??= oracledb.createPool({
-      user: this.config.get("ORACLE_USER", { infer: true }),
-      password: this.config.get("ORACLE_PASSWORD", { infer: true }),
-      connectString: this.config.get("ORACLE_CONNECT_STRING", { infer: true }),
-      poolMin: this.config.get("ORACLE_POOL_MIN", { infer: true }),
-      poolMax: this.config.get("ORACLE_POOL_MAX", { infer: true }),
+      user: this.config.get('ORACLE_USER', { infer: true }),
+      password: this.config.get('ORACLE_PASSWORD', { infer: true }),
+      connectString: this.config.get('ORACLE_CONNECT_STRING', { infer: true }),
+      poolMin: this.config.get('ORACLE_POOL_MIN', { infer: true }),
+      poolMax: this.config.get('ORACLE_POOL_MAX', { infer: true }),
       poolIncrement: 1,
-      queueTimeout: this.config.get("ORACLE_POOL_QUEUE_TIMEOUT_MS", { infer: true }),
+      queueTimeout: this.config.get('ORACLE_POOL_QUEUE_TIMEOUT_MS', {
+        infer: true,
+      }),
       sessionCallback: (connection, _requestedTag, callback) => {
-        connection.callTimeout = this.config.get("ORACLE_CALL_TIMEOUT_MS", { infer: true });
+        connection.callTimeout = this.config.get('ORACLE_CALL_TIMEOUT_MS', {
+          infer: true,
+        });
         connection
           .execute(`ALTER SESSION SET TIME_ZONE = '+00:00'`)
           .then(() => callback())
@@ -29,7 +34,9 @@ export class OracleDatabase implements OnModuleDestroy {
     return this.pool;
   }
 
-  async withConnection<T>(work: (connection: oracledb.Connection) => Promise<T>) {
+  async withConnection<T>(
+    work: (connection: oracledb.Connection) => Promise<T>,
+  ) {
     const connection = await (await this.getPool()).getConnection();
     try {
       return await work(connection);
@@ -38,7 +45,9 @@ export class OracleDatabase implements OnModuleDestroy {
     }
   }
 
-  async withTransaction<T>(work: (connection: oracledb.Connection) => Promise<T>) {
+  async withTransaction<T>(
+    work: (connection: oracledb.Connection) => Promise<T>,
+  ) {
     return this.withConnection(async (connection) => {
       try {
         const result = await work(connection);

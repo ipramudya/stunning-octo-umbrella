@@ -1,4 +1,23 @@
-// Error mapping keeps the HTTP request context explicit.
+import { randomUUID } from 'node:crypto';
+import { STATUS_CODES } from 'node:http';
+
+import { status, Metadata, type CallOptions } from '@grpc/grpc-js';
+import type { OnModuleInit } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpException,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { ClientGrpc } from '@nestjs/microservices';
 // oxlint-disable max-params
 import {
   type AttendanceZone,
@@ -9,43 +28,36 @@ import {
   type EvidenceUploadAuthorization,
   TokenAudience,
   type UpdateAttendanceZoneRequest,
-} from "@project/contracts";
-import { status, Metadata, type CallOptions, type ServiceError } from "@grpc/grpc-js";
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpException,
-  Inject,
-  OnModuleInit,
-  Param,
-  Patch,
-  Post,
-  Req,
-  Res,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { ClientGrpc } from "@nestjs/microservices";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { randomUUID } from "node:crypto";
-import { STATUS_CODES } from "node:http";
-import { firstValueFrom, fromEvent, type Observable, takeUntil } from "rxjs";
-import { attendanceZoneSchema, type AttendanceZoneDto } from "./attendance-zone.contract.js";
-import type { Environment } from "./config.schema.js";
-import { evidenceUploadSchema, type EvidenceUploadDto } from "./evidence.contract.js";
-import { ATTENDANCE_HEALTH_CLIENT, IDENTITY_HEALTH_CLIENT } from "./grpc-health.client.js";
-import { ZodValidationPipe } from "./zod-validation.pipe.js";
+} from '@project/contracts';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { firstValueFrom, fromEvent, type Observable, takeUntil } from 'rxjs';
 
-interface IdentityClient {
+import {
+  attendanceZoneSchema,
+  type AttendanceZoneDto,
+} from './attendance-zone.contract.js';
+import { cookies } from './auth.controller.js';
+import type { Environment } from './config.schema.js';
+import {
+  evidenceUploadSchema,
+  type EvidenceUploadDto,
+} from './evidence.contract.js';
+import { grpcCode, grpcErrorCode } from './grpc-error.js';
+import {
+  ATTENDANCE_HEALTH_CLIENT,
+  IDENTITY_HEALTH_CLIENT,
+} from './grpc-health.client.js';
+import { ZodValidationPipe } from './zod-validation.pipe.js';
+
+type IdentityClient = {
   authorizeAccess(
     request: { audiences: TokenAudience[] },
     metadata: Metadata,
     options: Partial<CallOptions>,
   ): Observable<Authorization>;
-}
+};
 
-interface AttendanceClient {
+type AttendanceClient = {
   authorizeEvidenceUpload(
     request: AuthorizeEvidenceUploadRequest,
     metadata: Metadata,
@@ -66,66 +78,87 @@ interface AttendanceClient {
     metadata: Metadata,
     options: Partial<CallOptions>,
   ): Observable<AttendanceZone>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
-function accessCookie(request: FastifyRequest) {
-  for (const part of (request.headers.cookie ?? "").split(";")) {
-    const [name, ...value] = part.trim().split("=");
-    if (name === "dexa_access") return value.join("=");
-  }
-  return "";
+function timestampSeconds(value: unknown) {
+  if (
+    typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'bigint'
+  )
+    return Number(value);
+  if (
+    isRecord(value) &&
+    typeof value.low === 'number' &&
+    typeof value.high === 'number'
+  )
+    return value.high * 0x1_0000_0000 + (value.low >>> 0);
+  throw new Error('invalid timestamp');
 }
 
 function timestampIso(value: unknown) {
   if (value instanceof Date) return value.toISOString();
-  const timestamp = value as { seconds: { toString(): string }; nanos?: number };
+  if (!isRecord(value)) throw new Error('invalid timestamp');
+  const nanos = value.nanos;
+  if (nanos !== undefined && typeof nanos !== 'number')
+    throw new Error('invalid timestamp');
   return new Date(
-    Number(timestamp.seconds.toString()) * 1_000 + (timestamp.nanos ?? 0) / 1_000_000,
+    timestampSeconds(value.seconds) * 1_000 + (nanos ?? 0) / 1_000_000,
   ).toISOString();
 }
 
-@Controller({ version: "1" })
+@Controller({ version: '1' })
 export class AttendanceZoneController implements OnModuleInit {
   private identity!: IdentityClient;
   private attendance!: AttendanceClient;
 
   constructor(
     @Inject(IDENTITY_HEALTH_CLIENT) private readonly identityGrpc: ClientGrpc,
-    @Inject(ATTENDANCE_HEALTH_CLIENT) private readonly attendanceGrpc: ClientGrpc,
+    @Inject(ATTENDANCE_HEALTH_CLIENT)
+    private readonly attendanceGrpc: ClientGrpc,
     private readonly config: ConfigService<Environment, true>,
   ) {}
 
   onModuleInit() {
-    this.identity = this.identityGrpc.getService<IdentityClient>("IdentityService");
-    this.attendance = this.attendanceGrpc.getService<AttendanceClient>("AttendanceService");
+    this.identity =
+      this.identityGrpc.getService<IdentityClient>('IdentityService');
+    this.attendance =
+      this.attendanceGrpc.getService<AttendanceClient>('AttendanceService');
   }
 
-  @Get("attendance-zone")
-  get(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  @Get('attendance-zone')
+  get(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
     return this.call(request, reply);
   }
 
-  @Post("me/evidence-uploads")
+  @Post('me/evidence-uploads')
   async authorizeEvidenceUpload(
     @Body(new ZodValidationPipe(evidenceUploadSchema)) body: EvidenceUploadDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     reply.status(201);
-    return this.evidenceCall("upload", body, request, reply);
+    return this.evidenceCall('upload', body, request, reply);
   }
 
-  @Post("evidence/:evidenceId/access")
+  @Post('evidence/:evidenceId/access')
   @HttpCode(200)
   authorizeEvidenceAccess(
-    @Param("evidenceId") evidenceId: string,
+    @Param('evidenceId') evidenceId: string,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    return this.evidenceCall("access", { evidenceId }, request, reply);
+    return this.evidenceCall('access', { evidenceId }, request, reply);
   }
 
-  @Patch("hrd/attendance-zone")
+  @Patch('hrd/attendance-zone')
   update(
     @Body(new ZodValidationPipe(attendanceZoneSchema)) body: AttendanceZoneDto,
     @Req() request: FastifyRequest,
@@ -135,20 +168,31 @@ export class AttendanceZoneController implements OnModuleInit {
   }
 
   private async evidenceCall(
-    operation: "upload" | "access",
+    operation: 'upload' | 'access',
     body: EvidenceUploadDto | AuthorizeEvidenceAccessRequest,
     request: FastifyRequest,
     reply: FastifyReply,
   ) {
     const traceId = randomUUID();
-    reply.header("x-correlation-id", traceId);
-    if (request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true }))
-      this.fail(403, "FORBIDDEN", "Request origin is not allowed", request, traceId);
+    reply.header('x-correlation-id', traceId);
+    if (
+      request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
+    )
+      this.fail(
+        403,
+        'FORBIDDEN',
+        'Request origin is not allowed',
+        request,
+        traceId,
+      );
     const metadata = new Metadata();
-    metadata.set("authorization", `Bearer ${accessCookie(request)}`);
-    metadata.set("x-correlation-id", traceId);
+    metadata.set(
+      'authorization',
+      `Bearer ${cookies(request).dexa_access ?? ''}`,
+    );
+    metadata.set('x-correlation-id', traceId);
     const options = { deadline: Date.now() + 3_000 };
-    const cancelled = fromEvent(request.raw, "aborted");
+    const cancelled = fromEvent(request.raw, 'aborted');
     try {
       const authorization = await firstValueFrom(
         this.identity
@@ -160,18 +204,29 @@ export class AttendanceZoneController implements OnModuleInit {
           .pipe(takeUntil(cancelled)),
       );
       const token = authorization.tokens.find(
-        (candidate) => candidate.audience === TokenAudience.TOKEN_AUDIENCE_ATTENDANCE,
+        (candidate) =>
+          candidate.audience === TokenAudience.TOKEN_AUDIENCE_ATTENDANCE,
       )?.token;
-      if (!token) throw new Error("missing attendance token");
-      metadata.set("authorization", `Bearer ${token}`);
-      const response =
-        operation === "upload"
-          ? this.attendance.authorizeEvidenceUpload(body as EvidenceUploadDto, metadata, options)
-          : this.attendance.authorizeEvidenceAccess(
-              body as AuthorizeEvidenceAccessRequest,
-              metadata,
-              options,
-            );
+      if (!token) throw new Error('missing attendance token');
+      metadata.set('authorization', `Bearer ${token}`);
+      let response: Observable<
+        EvidenceUploadAuthorization | EvidenceAccessAuthorization
+      >;
+      if (operation === 'upload' && 'contentType' in body) {
+        response = this.attendance.authorizeEvidenceUpload(
+          body,
+          metadata,
+          options,
+        );
+      } else if (operation === 'access' && 'evidenceId' in body) {
+        response = this.attendance.authorizeEvidenceAccess(
+          body,
+          metadata,
+          options,
+        );
+      } else {
+        throw new Error('invalid evidence operation');
+      }
       const result = await firstValueFrom(response.pipe(takeUntil(cancelled)));
       return { ...result, expiresAt: timestampIso(result.expiresAt) };
     } catch (error) {
@@ -179,20 +234,33 @@ export class AttendanceZoneController implements OnModuleInit {
     }
   }
 
-  private async call(request: FastifyRequest, reply: FastifyReply, body?: AttendanceZoneDto) {
+  private async call(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    body?: AttendanceZoneDto,
+  ) {
     const traceId = randomUUID();
-    reply.header("x-correlation-id", traceId);
+    reply.header('x-correlation-id', traceId);
     if (
       body !== undefined &&
-      request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true })
+      request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
     )
-      this.fail(403, "FORBIDDEN", "Request origin is not allowed", request, traceId);
+      this.fail(
+        403,
+        'FORBIDDEN',
+        'Request origin is not allowed',
+        request,
+        traceId,
+      );
 
     const metadata = new Metadata();
-    metadata.set("authorization", `Bearer ${accessCookie(request)}`);
-    metadata.set("x-correlation-id", traceId);
+    metadata.set(
+      'authorization',
+      `Bearer ${cookies(request).dexa_access ?? ''}`,
+    );
+    metadata.set('x-correlation-id', traceId);
     const options = { deadline: Date.now() + 3_000 };
-    const cancelled = fromEvent(request.raw, "aborted");
+    const cancelled = fromEvent(request.raw, 'aborted');
     try {
       const authorization = await firstValueFrom(
         this.identity
@@ -204,10 +272,11 @@ export class AttendanceZoneController implements OnModuleInit {
           .pipe(takeUntil(cancelled)),
       );
       const token = authorization.tokens.find(
-        (candidate) => candidate.audience === TokenAudience.TOKEN_AUDIENCE_ATTENDANCE,
+        (candidate) =>
+          candidate.audience === TokenAudience.TOKEN_AUDIENCE_ATTENDANCE,
       )?.token;
-      if (!token) throw new Error("missing attendance token");
-      metadata.set("authorization", `Bearer ${token}`);
+      if (!token) throw new Error('missing attendance token');
+      metadata.set('authorization', `Bearer ${token}`);
       return await firstValueFrom(
         (body
           ? this.attendance.updateAttendanceZone(body, metadata, options)
@@ -219,28 +288,55 @@ export class AttendanceZoneController implements OnModuleInit {
     }
   }
 
-  private grpcFailure(error: unknown, request: FastifyRequest, traceId: string): never {
+  private grpcFailure(
+    error: unknown,
+    request: FastifyRequest,
+    traceId: string,
+  ): never {
     if (error instanceof HttpException) throw error;
-    const code = (error as Partial<ServiceError>).code;
+    const code = grpcCode(error);
     if (code === status.UNAUTHENTICATED)
-      this.fail(401, "AUTHENTICATION_REQUIRED", "Authentication is required", request, traceId);
+      this.fail(
+        401,
+        'AUTHENTICATION_REQUIRED',
+        'Authentication is required',
+        request,
+        traceId,
+      );
     if (code === status.PERMISSION_DENIED)
-      this.fail(403, "FORBIDDEN", "HRD access is required", request, traceId);
+      this.fail(403, 'FORBIDDEN', 'HRD access is required', request, traceId);
     if (code === status.INVALID_ARGUMENT)
-      this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, traceId);
+      this.fail(
+        400,
+        'VALIDATION_ERROR',
+        'Request validation failed',
+        request,
+        traceId,
+      );
     if (code === status.NOT_FOUND)
-      this.fail(404, "EVIDENCE_NOT_FOUND", "Evidence was not found", request, traceId);
+      this.fail(
+        404,
+        'EVIDENCE_NOT_FOUND',
+        'Evidence was not found',
+        request,
+        traceId,
+      );
     if (code === status.FAILED_PRECONDITION) {
-      const errorCode =
-        ((error as ServiceError).metadata.get("x-error-code")[0] as string) ?? "EVIDENCE_INVALID";
-      this.fail(409, errorCode, "Evidence is not available", request, traceId);
+      const errorCode = grpcErrorCode(error) ?? 'EVIDENCE_INVALID';
+      this.fail(409, errorCode, 'Evidence is not available', request, traceId);
     }
     if (code === status.DEADLINE_EXCEEDED)
-      this.fail(504, "DOWNSTREAM_TIMEOUT", "The request timed out", request, traceId);
+      this.fail(
+        504,
+        'DOWNSTREAM_TIMEOUT',
+        'The request timed out',
+        request,
+        traceId,
+      );
     this.fail(
       503,
-      "DEPENDENCY_UNAVAILABLE",
-      "The service is temporarily unavailable",
+      'DEPENDENCY_UNAVAILABLE',
+      'The service is temporarily unavailable',
       request,
       traceId,
     );
@@ -255,8 +351,8 @@ export class AttendanceZoneController implements OnModuleInit {
   ): never {
     throw new HttpException(
       {
-        type: "about:blank",
-        title: STATUS_CODES[statusCode] ?? "Internal Server Error",
+        type: 'about:blank',
+        title: STATUS_CODES[statusCode] ?? 'Internal Server Error',
         status: statusCode,
         detail,
         instance: request.url,

@@ -1,20 +1,21 @@
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
-import { ReadinessService } from "./readiness.js";
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 
-@Controller("health")
+import { ReadinessService } from './readiness.js';
+
+@Controller('health')
 export class HealthController {
   constructor(private readonly readiness: ReadinessService) {}
 
-  @Get("live")
+  @Get('live')
   live() {
-    return { status: "ok" };
+    return { status: 'ok' };
   }
 
-  @Get("ready")
+  @Get('ready')
   async ready() {
     if (!(await this.readiness.isReady())) {
-      throw new ServiceUnavailableException({ status: "not_ready" });
+      throw new ServiceUnavailableException({ status: 'not_ready' });
     }
-    return { status: "ready" };
+    return { status: 'ready' };
   }
 }

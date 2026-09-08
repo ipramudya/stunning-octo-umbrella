@@ -1,7 +1,7 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const evidenceUploadSchema = z.object({
-  contentType: z.enum(["image/jpeg", "image/png"]),
+  contentType: z.enum(['image/jpeg', 'image/png']),
   sizeBytes: z
     .number()
     .int()

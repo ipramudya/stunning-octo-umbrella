@@ -1,8 +1,9 @@
-import { HealthCheckResponse_ServingStatus } from "@project/contracts";
-import type { ClientGrpc } from "@nestjs/microservices";
-import { describe, expect, it } from "vitest";
-import { of } from "rxjs";
-import { ReadinessService } from "../src/readiness.js";
+import type { ClientGrpc } from '@nestjs/microservices';
+import { HealthCheckResponse_ServingStatus } from '@project/contracts';
+import { of } from 'rxjs';
+import { describe, expect, it } from 'vitest';
+
+import { ReadinessService } from '../src/readiness.js';
 
 function client(status: HealthCheckResponse_ServingStatus): ClientGrpc {
   return {
@@ -10,8 +11,8 @@ function client(status: HealthCheckResponse_ServingStatus): ClientGrpc {
   } as unknown as ClientGrpc;
 }
 
-describe("gateway readiness", () => {
-  it("requires both downstream services to be serving", async () => {
+describe('gateway readiness', () => {
+  it('requires both downstream services to be serving', async () => {
     const ready = new ReadinessService(
       client(HealthCheckResponse_ServingStatus.SERVING),
       client(HealthCheckResponse_ServingStatus.SERVING),

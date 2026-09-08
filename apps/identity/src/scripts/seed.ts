@@ -1,27 +1,27 @@
-import { hash } from "argon2";
-import oracledb from "oracledb";
+import { hash } from 'argon2';
+import oracledb from 'oracledb';
 
 const accounts = [
   {
-    id: "00000000-0000-4000-8000-000000000001",
-    employeeNumber: "DEX-001",
-    fullName: "Dexa HRD Administrator",
-    phoneNumber: "+6280000000001",
+    id: '00000000-0000-4000-8000-000000000001',
+    employeeNumber: 'DEX-001',
+    fullName: 'Dexa HRD Administrator',
+    phoneNumber: '+6280000000001',
     password: process.env.DEMO_HRD_PASSWORD,
-    roles: ["EMPLOYEE", "HRD"],
+    roles: ['EMPLOYEE', 'HRD'],
   },
   {
-    id: "00000000-0000-4000-8000-000000000002",
-    employeeNumber: "DEX-002",
-    fullName: "Dexa Employee",
-    phoneNumber: "+6280000000002",
+    id: '00000000-0000-4000-8000-000000000002',
+    employeeNumber: 'DEX-002',
+    fullName: 'Dexa Employee',
+    phoneNumber: '+6280000000002',
     password: process.env.DEMO_EMPLOYEE_PASSWORD,
-    roles: ["EMPLOYEE"],
+    roles: ['EMPLOYEE'],
   },
 ];
 
 if (accounts.some((account) => !account.password))
-  throw new Error("Demo account passwords are required");
+  throw new Error('Demo account passwords are required');
 
 const connection = await oracledb.getConnection({
   user: process.env.ORACLE_USER,
@@ -32,13 +32,14 @@ const connection = await oracledb.getConnection({
 try {
   for (const account of accounts) {
     const existing = await connection.execute<{ ID: string }>(
-      "SELECT id FROM employees WHERE id = :id",
+      'SELECT id FROM employees WHERE id = :id',
       { id: account.id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     if (existing.rows?.length) continue;
 
-    if (!account.password) throw new Error("Demo account passwords are required");
+    if (!account.password)
+      throw new Error('Demo account passwords are required');
     const passwordHash = await hash(account.password, {
       type: 2,
       memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 19_456),
@@ -58,7 +59,7 @@ try {
     );
     for (const role of account.roles) {
       await connection.execute(
-        "INSERT INTO employee_roles (employee_id, role) VALUES (:employeeId, :role)",
+        'INSERT INTO employee_roles (employee_id, role) VALUES (:employeeId, :role)',
         { employeeId: account.id, role },
       );
     }

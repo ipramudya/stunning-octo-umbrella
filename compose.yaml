@@ -29,8 +29,8 @@ x-identity-environment: &identity-environment
 services:
   pki-init:
     image: alpine/openssl:latest
-    entrypoint: ["/bin/sh", "/init.sh"]
-    restart: "no"
+    entrypoint: ['/bin/sh', '/init.sh']
+    restart: 'no'
     volumes:
       - ./infra/pki/init.sh:/init.sh:ro
       - attendance-pki:/pki/attendance
@@ -43,7 +43,7 @@ services:
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
     healthcheck:
-      test: ["CMD", "healthcheck.sh"]
+      test: ['CMD', 'healthcheck.sh']
       interval: 10s
       timeout: 5s
       retries: 30
@@ -53,11 +53,11 @@ services:
 
   identity-schema:
     image: gvenzl/oracle-free:latest
-    restart: "no"
+    restart: 'no'
     depends_on:
       oracle:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-c"]
+    entrypoint: ['/bin/bash', '-c']
     command:
       - >-
         [[ "$$IDENTITY_ORACLE_PASSWORD" =~ ^[A-Za-z0-9_#!_-]+$$ ]] ||
@@ -72,11 +72,11 @@ services:
 
   attendance-schema:
     image: gvenzl/oracle-free:latest
-    restart: "no"
+    restart: 'no'
     depends_on:
       oracle:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-c"]
+    entrypoint: ['/bin/bash', '-c']
     command:
       - >-
         [[ "$$ATTENDANCE_ORACLE_PASSWORD" =~ ^[A-Za-z0-9_#!_-]+$$ ]] ||
@@ -93,8 +93,9 @@ services:
     build:
       context: .
       dockerfile: apps/attendance/Dockerfile
-    restart: "no"
-    command: ["node", "scripts/oracle-migrate.mjs", "apps/attendance/migrations"]
+    restart: 'no'
+    command:
+      ['node', 'scripts/oracle-migrate.mjs', 'apps/attendance/migrations']
     depends_on:
       attendance-schema:
         condition: service_completed_successfully
@@ -104,8 +105,8 @@ services:
     build:
       context: .
       dockerfile: apps/attendance/Dockerfile
-    restart: "no"
-    command: ["node", "apps/attendance/dist/scripts/seed.js"]
+    restart: 'no'
+    command: ['node', 'apps/attendance/dist/scripts/seed.js']
     depends_on:
       attendance-migrate:
         condition: service_completed_successfully
@@ -115,8 +116,8 @@ services:
     build:
       context: .
       dockerfile: apps/identity/Dockerfile
-    restart: "no"
-    command: ["node", "scripts/oracle-migrate.mjs", "apps/identity/migrations"]
+    restart: 'no'
+    command: ['node', 'scripts/oracle-migrate.mjs', 'apps/identity/migrations']
     depends_on:
       identity-schema:
         condition: service_completed_successfully
@@ -126,8 +127,8 @@ services:
     build:
       context: .
       dockerfile: apps/identity/Dockerfile
-    restart: "no"
-    command: ["node", "apps/identity/dist/scripts/seed.js"]
+    restart: 'no'
+    command: ['node', 'apps/identity/dist/scripts/seed.js']
     depends_on:
       identity-migrate:
         condition: service_completed_successfully
@@ -153,7 +154,7 @@ services:
     healthcheck:
       test:
         [
-          "CMD-SHELL",
+          'CMD-SHELL',
           "redis-cli --user identity -a '${REDIS_PASSWORD:-DexaRedis1!}' --no-auth-warning ping",
         ]
       interval: 5s
@@ -164,14 +165,14 @@ services:
 
   minio:
     image: minio/minio:latest
-    command: ["server", "/data", "--console-address", ":9001"]
+    command: ['server', '/data', '--console-address', ':9001']
     restart: unless-stopped
     environment:
       MINIO_API_CORS_ALLOW_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
     ports:
-      - "${MINIO_PORT:-9000}:9000"
+      - '${MINIO_PORT:-9000}:9000'
     volumes:
       - minio-data:/data
 
@@ -197,9 +198,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:3001/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 5s
@@ -230,9 +231,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:3002/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 5s
@@ -263,16 +264,16 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
+          'CMD',
+          'node',
+          '-e',
           "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 5s
       timeout: 3s
       retries: 20
     ports:
-      - "${GATEWAY_PORT:-3000}:3000"
+      - '${GATEWAY_PORT:-3000}:3000'
 
 volumes:
   attendance-pki:

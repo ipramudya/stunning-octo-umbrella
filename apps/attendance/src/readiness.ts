@@ -1,8 +1,10 @@
-import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { connect } from "node:net";
-import { OracleDatabase } from "./oracle.js";
-import type { Environment } from "./config.schema.js";
+import { connect } from 'node:net';
+
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+import type { Environment } from './config.schema.js';
+import { OracleDatabase } from './oracle.js';
 
 function canConnect(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -12,9 +14,9 @@ function canConnect(host: string, port: number): Promise<boolean> {
       resolve(result);
     };
     socket.setTimeout(1_000);
-    socket.once("connect", () => finish(true));
-    socket.once("error", () => finish(false));
-    socket.once("timeout", () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+    socket.once('timeout', () => finish(false));
   });
 }
 
@@ -26,10 +28,13 @@ export class ReadinessService {
   ) {}
 
   async isReady(): Promise<boolean> {
-    const minio = new URL(this.config.get("MINIO_ENDPOINT", { infer: true }));
+    const minio = new URL(this.config.get('MINIO_ENDPOINT', { infer: true }));
     try {
       const [minioReady] = await Promise.all([
-        canConnect(minio.hostname, Number(minio.port || (minio.protocol === "https:" ? 443 : 80))),
+        canConnect(
+          minio.hostname,
+          Number(minio.port || (minio.protocol === 'https:' ? 443 : 80)),
+        ),
         this.database.withConnection((connection) =>
           connection.execute(
             `SELECT SDO_GEOM.SDO_DISTANCE(

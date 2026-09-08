@@ -1,38 +1,46 @@
 // The HTTP helper mirrors fetch arguments used throughout this executable check.
 // oxlint-disable max-params
-import assert from "node:assert/strict";
-import { baseUrl, composeExec, cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
+import assert from 'node:assert/strict';
 
-function zoneRequest(path, jar, method = "GET", body) {
+import {
+  baseUrl,
+  composeExec,
+  cookieHeader,
+  cookieJar,
+  origin,
+  post,
+} from './auth-http.mjs';
+
+function zoneRequest(path, jar, method = 'GET', body) {
   return fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       ...(jar ? { cookie: cookieHeader(jar) } : {}),
-      ...(body ? { "content-type": "application/json", origin } : {}),
+      ...(body ? { 'content-type': 'application/json', origin } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 
 const employee = cookieJar(
-  await post("/api/v1/auth/login", {
-    phoneNumber: "+6280000000002",
-    password: process.env.DEMO_EMPLOYEE_PASSWORD ?? "DexaEmployee1!",
+  await post('/api/v1/auth/login', {
+    phoneNumber: '+6280000000002',
+    password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
   }),
 );
 const hrd = cookieJar(
-  await post("/api/v1/auth/login", {
-    phoneNumber: "+6280000000001",
-    password: process.env.DEMO_HRD_PASSWORD ?? "DexaAdministrator1!",
+  await post('/api/v1/auth/login', {
+    phoneNumber: '+6280000000001',
+    password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
   }),
 );
 
-assert.equal((await zoneRequest("/api/v1/attendance-zone")).status, 401);
-const initial = await zoneRequest("/api/v1/attendance-zone", employee);
+assert.equal((await zoneRequest('/api/v1/attendance-zone')).status, 401);
+const initial = await zoneRequest('/api/v1/attendance-zone', employee);
 assert.equal(initial.status, 200);
 assert.deepEqual(await initial.json(), {
-  name: "Titan Center",
-  address: "Titan Center, Bintaro",
+  name: 'Titan Center',
+  address: 'Titan Center, Bintaro',
   latitude: -6.2806863,
   longitude: 106.7264211,
   radiusMeters: 500,
@@ -40,28 +48,40 @@ assert.deepEqual(await initial.json(), {
 });
 
 const update = {
-  name: "Titan Center Updated",
-  address: "Bintaro, South Tangerang",
+  name: 'Titan Center Updated',
+  address: 'Bintaro, South Tangerang',
   latitude: -6.2807,
   longitude: 106.7265,
   radiusMeters: 650,
   active: false,
 };
 assert.equal(
-  (await zoneRequest("/api/v1/hrd/attendance-zone", employee, "PATCH", update)).status,
+  (await zoneRequest('/api/v1/hrd/attendance-zone', employee, 'PATCH', update))
+    .status,
   403,
 );
 assert.equal(
-  (await zoneRequest("/api/v1/hrd/attendance-zone", hrd, "PATCH", { ...update, radiusMeters: 49 }))
-    .status,
+  (
+    await zoneRequest('/api/v1/hrd/attendance-zone', hrd, 'PATCH', {
+      ...update,
+      radiusMeters: 49,
+    })
+  ).status,
   400,
 );
-const updated = await zoneRequest("/api/v1/hrd/attendance-zone", hrd, "PATCH", update);
+const updated = await zoneRequest(
+  '/api/v1/hrd/attendance-zone',
+  hrd,
+  'PATCH',
+  update,
+);
 assert.equal(updated.status, 200);
 assert.deepEqual(await updated.json(), update);
 
-composeExec(["attendance", "node", "apps/attendance/dist/scripts/seed.js"], { stdio: "inherit" });
-const preserved = await zoneRequest("/api/v1/attendance-zone", employee);
+composeExec(['attendance', 'node', 'apps/attendance/dist/scripts/seed.js'], {
+  stdio: 'inherit',
+});
+const preserved = await zoneRequest('/api/v1/attendance-zone', employee);
 assert.deepEqual(await preserved.json(), update);
 
 const databaseCheck = `
@@ -134,17 +154,24 @@ try {
   await connection.close();
 }
 `;
-composeExec(["attendance", "node", "--input-type=module", "-e", databaseCheck], {
-  stdio: "inherit",
-});
+composeExec(
+  ['attendance', 'node', '--input-type=module', '-e', databaseCheck],
+  {
+    stdio: 'inherit',
+  },
+);
 
 const restore = {
-  name: "Titan Center",
-  address: "Titan Center, Bintaro",
+  name: 'Titan Center',
+  address: 'Titan Center, Bintaro',
   latitude: -6.2806863,
   longitude: 106.7264211,
   radiusMeters: 500,
   active: true,
 };
-assert.equal((await zoneRequest("/api/v1/hrd/attendance-zone", hrd, "PATCH", restore)).status, 200);
-console.log("attendance zone integration passed");
+assert.equal(
+  (await zoneRequest('/api/v1/hrd/attendance-zone', hrd, 'PATCH', restore))
+    .status,
+  200,
+);
+console.log('attendance zone integration passed');

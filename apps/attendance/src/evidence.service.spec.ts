@@ -1,15 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
-import type { EvidenceUpload } from "./evidence.repository.js";
-import { EvidenceError, EvidenceService } from "./evidence.service.js";
+import { describe, expect, it, vi } from 'vitest';
 
-const authorization = { employeeId: "employee-1", roles: ["EMPLOYEE"] };
+import type { EvidenceUpload } from './evidence.repository.js';
+import { EvidenceError, EvidenceService } from './evidence.service.js';
+
+const authorization = { employeeId: 'employee-1', roles: ['EMPLOYEE'] };
 const upload: EvidenceUpload = {
-  id: "upload-1",
-  employeeId: "employee-1",
-  status: "AUTHORIZED",
-  declaredContentType: "image/png",
+  id: 'upload-1',
+  employeeId: 'employee-1',
+  status: 'AUTHORIZED',
+  declaredContentType: 'image/png',
   declaredSizeBytes: 8,
-  stagingKey: "staging/employee-1/upload-1",
+  stagingKey: 'staging/employee-1/upload-1',
   stagingVersion: null,
   permanentKey: null,
   permanentVersion: null,
@@ -27,22 +28,24 @@ function subject() {
     finalizingUploads: vi.fn().mockResolvedValue([]),
   };
   const store = {
-    authorizeUpload: vi.fn().mockResolvedValue("http://upload"),
-    authorizeAccess: vi.fn().mockResolvedValue("http://access"),
+    authorizeUpload: vi.fn().mockResolvedValue('http://upload'),
+    authorizeAccess: vi.fn().mockResolvedValue('http://access'),
     stat: vi
       .fn()
       .mockResolvedValueOnce({
         size: 8,
-        versionId: "staging-version",
-        metaData: { "content-type": "image/png" },
+        versionId: 'staging-version',
+        metaData: { 'content-type': 'image/png' },
       })
-      .mockRejectedValueOnce(new Error("not found"))
+      .mockRejectedValueOnce(new Error('not found'))
       .mockResolvedValueOnce({
         size: 8,
-        versionId: "permanent-version",
-        metaData: { "content-type": "image/png" },
+        versionId: 'permanent-version',
+        metaData: { 'content-type': 'image/png' },
       }),
-    magic: vi.fn().mockResolvedValue(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+    magic: vi
+      .fn()
+      .mockResolvedValue(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
     copy: vi.fn(),
     remove: vi.fn(),
   };
@@ -53,58 +56,82 @@ function subject() {
   };
 }
 
-describe("EvidenceService", () => {
-  it("cleans expired uploads when recovery starts", async () => {
+describe('EvidenceService', () => {
+  it('cleans expired uploads when recovery starts', async () => {
     const { service, repository } = subject();
     await service.onApplicationBootstrap();
     expect(repository.removeExpiredUploads).toHaveBeenCalledOnce();
   });
 
-  it("authorizes only bounded JPEG or PNG uploads", async () => {
+  it('authorizes only bounded JPEG or PNG uploads', async () => {
     const { service, repository } = subject();
-    await expect(service.authorizeUpload(authorization, "text/plain", 8)).rejects.toMatchObject({
-      code: "EVIDENCE_INVALID",
+    await expect(
+      service.authorizeUpload(authorization, 'text/plain', 8),
+    ).rejects.toMatchObject({
+      code: 'EVIDENCE_INVALID',
     });
-    const result = await service.authorizeUpload(authorization, "image/png", 8);
-    expect(result).toMatchObject({ method: "PUT", url: "http://upload" });
+    const result = await service.authorizeUpload(authorization, 'image/png', 8);
+    expect(result).toMatchObject({ method: 'PUT', url: 'http://upload' });
     expect(repository.create).toHaveBeenCalledOnce();
   });
 
-  it("verifies and promotes the exact uploaded version", async () => {
+  it('verifies and promotes the exact uploaded version', async () => {
     const { service, repository, store } = subject();
     repository.lock
       .mockImplementationOnce(
-        async (_id, work: (connection: object, current: typeof upload) => Promise<void>) => {
+        async (
+          _id,
+          work: (connection: object, current: typeof upload) => Promise<void>,
+        ) => {
           await work({}, upload);
           return true;
         },
       )
       .mockImplementationOnce(
-        async (_id, work: (connection: object, current: typeof upload) => Promise<void>) => {
-          await work({}, { ...upload, status: "FINALIZING" });
+        async (
+          _id,
+          work: (connection: object, current: typeof upload) => Promise<void>,
+        ) => {
+          await work({}, { ...upload, status: 'FINALIZING' });
           return true;
         },
       );
 
-    await expect(service.finalize("employee-1", upload.id)).resolves.toBe(upload.id);
-    expect(repository.finalizing).toHaveBeenCalledWith({}, upload, "staging-version");
+    await expect(service.finalize('employee-1', upload.id)).resolves.toBe(
+      upload.id,
+    );
+    expect(repository.finalizing).toHaveBeenCalledWith(
+      {},
+      upload,
+      'staging-version',
+    );
     expect(store.copy).toHaveBeenCalledWith(
       upload.stagingKey,
-      "staging-version",
+      'staging-version',
       `evidence/${upload.id}`,
     );
-    expect(repository.attached).toHaveBeenCalledWith({}, upload.id, "permanent-version");
-    expect(store.remove).toHaveBeenCalledWith(upload.stagingKey, "staging-version");
+    expect(repository.attached).toHaveBeenCalledWith(
+      {},
+      upload.id,
+      'permanent-version',
+    );
+    expect(store.remove).toHaveBeenCalledWith(
+      upload.stagingKey,
+      'staging-version',
+    );
   });
 
-  it("hides evidence from non-owners and rejects unattached access", async () => {
+  it('hides evidence from non-owners and rejects unattached access', async () => {
     const { service, repository } = subject();
     repository.get.mockResolvedValue(upload);
     await expect(
-      service.authorizeAccess({ employeeId: "employee-2", roles: ["EMPLOYEE"] }, upload.id),
-    ).rejects.toEqual(new EvidenceError("EVIDENCE_NOT_FOUND"));
-    await expect(service.authorizeAccess(authorization, upload.id)).rejects.toEqual(
-      new EvidenceError("EVIDENCE_NOT_UPLOADED"),
-    );
+      service.authorizeAccess(
+        { employeeId: 'employee-2', roles: ['EMPLOYEE'] },
+        upload.id,
+      ),
+    ).rejects.toEqual(new EvidenceError('EVIDENCE_NOT_FOUND'));
+    await expect(
+      service.authorizeAccess(authorization, upload.id),
+    ).rejects.toEqual(new EvidenceError('EVIDENCE_NOT_UPLOADED'));
   });
 });

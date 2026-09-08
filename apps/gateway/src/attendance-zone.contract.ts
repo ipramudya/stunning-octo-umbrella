@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const attendanceZoneSchema = z.object({
   name: z.string().trim().min(1).max(120),

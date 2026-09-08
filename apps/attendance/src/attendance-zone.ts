@@ -1,7 +1,8 @@
-import type { UpdateAttendanceZoneRequest } from "@project/contracts";
-import { Injectable } from "@nestjs/common";
-import oracledb, { type Connection } from "oracledb";
-import { OracleDatabase } from "./oracle.js";
+import { Inject, Injectable } from '@nestjs/common';
+import type { UpdateAttendanceZoneRequest } from '@project/contracts';
+import oracledb, { type Connection } from 'oracledb';
+
+import { OracleDatabase } from './oracle.js';
 
 export class AttendanceConflict extends Error {}
 
@@ -16,15 +17,21 @@ type ZoneRow = {
 
 @Injectable()
 export class AttendanceZoneRepository {
-  constructor(private readonly database: OracleDatabase) {}
+  constructor(
+    @Inject(OracleDatabase) private readonly database: OracleDatabase,
+  ) {}
 
   get() {
-    return this.database.withConnection((connection) => this.select(connection));
+    return this.database.withConnection((connection) =>
+      this.select(connection),
+    );
   }
 
   update(value: UpdateAttendanceZoneRequest, employeeId: string) {
     return this.database.withTransaction(async (connection) => {
-      await connection.execute("SELECT id FROM attendance_zones WHERE id = 1 FOR UPDATE");
+      await connection.execute(
+        'SELECT id FROM attendance_zones WHERE id = 1 FOR UPDATE',
+      );
       await connection.execute(
         `UPDATE attendance_zones SET name = :name, address = :address,
            latitude = :latitude, longitude = :longitude,
@@ -54,7 +61,9 @@ export class AttendanceZoneRepository {
   ) {
     try {
       return await this.database.withTransaction(async (connection) => {
-        await connection.execute("SELECT id FROM attendance_zones WHERE id = 1 FOR UPDATE");
+        await connection.execute(
+          'SELECT id FROM attendance_zones WHERE id = 1 FOR UPDATE',
+        );
         await connection.execute(
           `SELECT id FROM attendance_entries
            WHERE employee_id = :employeeId AND work_date = :workDate
@@ -68,8 +77,12 @@ export class AttendanceZoneRepository {
         return work(connection);
       });
     } catch (error) {
-      if ((error as { errorNum?: number }).errorNum === 1)
-        throw new AttendanceConflict("attendance action already exists");
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        Reflect.get(error, 'errorNum') === 1
+      )
+        throw new AttendanceConflict('attendance action already exists');
       throw error;
     }
   }
@@ -82,7 +95,7 @@ export class AttendanceZoneRepository {
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     const row = result.rows?.[0];
-    if (!row) throw new Error("attendance zone is missing");
+    if (!row) throw new Error('attendance zone is missing');
     return {
       name: row.NAME,
       address: row.ADDRESS,

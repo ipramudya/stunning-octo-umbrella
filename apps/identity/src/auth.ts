@@ -1,9 +1,9 @@
-import { status } from "@grpc/grpc-js";
+import { status } from '@grpc/grpc-js';
 
-export const roles = ["EMPLOYEE", "HRD"] as const;
+export const roles = ['EMPLOYEE', 'HRD'] as const;
 export type RoleName = (typeof roles)[number];
 
-export interface Employee {
+export type Employee = {
   id: string;
   employeeNumber: string;
   fullName: string;
@@ -12,15 +12,15 @@ export interface Employee {
   passwordHash: string;
   credentialVersion: number;
   roles: RoleName[];
-}
+};
 
-export interface Session {
+export type Session = {
   employeeId: string;
   credentialVersion: number;
   createdAt: number;
   expiresAt: number;
   refreshDigest: string;
-}
+};
 
 export class AuthError extends Error {
   constructor(
@@ -34,11 +34,11 @@ export class AuthError extends Error {
 export function validateLogin(phoneNumber: string, password: string) {
   const phone = phoneNumber.trim();
   if (!/^\+62[0-9]+$/.test(phone)) {
-    throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
+    throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
   }
   const length = Array.from(password).length;
   if (length < 12 || length > 128) {
-    throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
+    throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
   }
   return { phoneNumber: phone, password };
 }

@@ -1,4 +1,4 @@
-import oracledb from "oracledb";
+import oracledb from 'oracledb';
 
 const connection = await oracledb.getConnection({
   user: process.env.ORACLE_USER,
@@ -15,8 +15,8 @@ try {
        :radiusMeters, 1
      FROM dual WHERE NOT EXISTS (SELECT 1 FROM attendance_zones WHERE id = 1)`,
     {
-      name: "Titan Center",
-      address: "Titan Center, Bintaro",
+      name: 'Titan Center',
+      address: 'Titan Center, Bintaro',
       latitude: -6.2806863,
       longitude: 106.7264211,
       radiusMeters: 500,

@@ -1,11 +1,13 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { Injectable, type OnModuleDestroy } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { createClient, type RedisClientType } from "redis";
-import type { Session } from "./auth.js";
-import { AuthError } from "./auth.js";
-import { status } from "@grpc/grpc-js";
-import type { Environment } from "./config.schema.js";
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+
+import { status } from '@grpc/grpc-js';
+import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient, type RedisClientType } from 'redis';
+
+import type { Session } from './auth.js';
+import { AuthError } from './auth.js';
+import type { Environment } from './config.schema.js';
 
 const CREATE_SESSION = `
 local time = redis.call('TIME')
@@ -84,17 +86,49 @@ end
 redis.call('DEL', sessionsKey)
 return #sids`;
 
-const sessionPrefix = "identity:session:";
-const activePrefix = "identity:refresh:active:";
-const usedPrefix = "identity:refresh:used:";
-const employeePrefix = "identity:employee-sessions:";
+const sessionPrefix = 'identity:session:';
+const activePrefix = 'identity:refresh:active:';
+const usedPrefix = 'identity:refresh:used:';
+const employeePrefix = 'identity:employee-sessions:';
 
 function digest(token: string) {
-  return createHash("sha256").update(token).digest("base64url");
+  return createHash('sha256').update(token).digest('base64url');
 }
 
 function refreshToken() {
-  return randomBytes(32).toString("base64url");
+  return randomBytes(32).toString('base64url');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseSession(json: string): Session {
+  const value: unknown = JSON.parse(json);
+  if (!isRecord(value)) throw new Error('invalid session');
+  const { employeeId, credentialVersion, createdAt, expiresAt, refreshDigest } =
+    value;
+  if (
+    typeof employeeId !== 'string' ||
+    typeof credentialVersion !== 'number' ||
+    typeof createdAt !== 'number' ||
+    typeof expiresAt !== 'number' ||
+    typeof refreshDigest !== 'string'
+  )
+    throw new Error('invalid session');
+  return {
+    employeeId,
+    credentialVersion,
+    createdAt,
+    expiresAt,
+    refreshDigest,
+  };
+}
+
+function stringArray(value: unknown) {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string'))
+    throw new Error('invalid Redis response');
+  return value;
 }
 
 @Injectable()
@@ -105,13 +139,13 @@ export class SessionStore implements OnModuleDestroy {
 
   constructor(private readonly config: ConfigService<Environment, true>) {
     this.client = createClient({
-      url: config.get("REDIS_URL", { infer: true }),
-      username: "identity",
-      password: config.get("REDIS_PASSWORD", { infer: true }),
+      url: config.get('REDIS_URL', { infer: true }),
+      username: 'identity',
+      password: config.get('REDIS_PASSWORD', { infer: true }),
       socket: { reconnectStrategy: false },
       disableOfflineQueue: true,
     });
-    this.client.on("error", () => undefined);
+    this.client.on('error', () => undefined);
   }
 
   private redis() {
@@ -122,28 +156,28 @@ export class SessionStore implements OnModuleDestroy {
   async create(employeeId: string, credentialVersion: number) {
     const token = refreshToken();
     const sid = randomUUID();
-    const ttl = this.config.get("REFRESH_TOKEN_TTL_SECONDS", { infer: true });
+    const ttl = this.config.get('REFRESH_TOKEN_TTL_SECONDS', { infer: true });
     const refreshDigest = digest(token);
-    const session = JSON.parse(
-      (await this.mutate(CREATE_SESSION, {
-        keys: [`${employeePrefix}${employeeId}`],
-        arguments: [
-          sessionPrefix,
-          sid,
-          employeeId,
-          String(credentialVersion),
-          activePrefix,
-          refreshDigest,
-          String(ttl),
-        ],
-      })) as string,
-    ) as Session;
+    const result = await this.mutate(CREATE_SESSION, {
+      keys: [`${employeePrefix}${employeeId}`],
+      arguments: [
+        sessionPrefix,
+        sid,
+        employeeId,
+        String(credentialVersion),
+        activePrefix,
+        refreshDigest,
+        String(ttl),
+      ],
+    });
+    if (typeof result !== 'string') throw new Error('invalid Redis response');
+    const session = parseSession(result);
     return { sid, session, refreshToken: token };
   }
 
   async get(sid: string) {
     const value = await (await this.redis()).get(`${sessionPrefix}${sid}`);
-    return value ? (JSON.parse(value) as Session) : undefined;
+    return value ? parseSession(value) : undefined;
   }
 
   async getByRefreshToken(token: string) {
@@ -157,29 +191,37 @@ export class SessionStore implements OnModuleDestroy {
   async rotate(token: string) {
     const nextToken = refreshToken();
     const nextDigest = digest(nextToken);
-    const result = (await this.mutate(ROTATE_SESSION, {
-      arguments: [
-        digest(token),
-        activePrefix,
-        usedPrefix,
-        sessionPrefix,
-        employeePrefix,
-        nextDigest,
-      ],
-    })) as string[];
-    if (result[0] !== "OK" || !result[1] || !result[2]) {
-      throw new AuthError("AUTHENTICATION_REQUIRED", status.UNAUTHENTICATED);
+    const result = stringArray(
+      await this.mutate(ROTATE_SESSION, {
+        arguments: [
+          digest(token),
+          activePrefix,
+          usedPrefix,
+          sessionPrefix,
+          employeePrefix,
+          nextDigest,
+        ],
+      }),
+    );
+    if (result[0] !== 'OK' || !result[1] || !result[2]) {
+      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
     return {
       sid: result[2],
-      session: JSON.parse(result[1]) as Session,
+      session: parseSession(result[1]),
       refreshToken: nextToken,
     };
   }
 
   async revoke(token: string) {
     await this.mutate(LOGOUT_SESSION, {
-      arguments: [digest(token), activePrefix, usedPrefix, sessionPrefix, employeePrefix],
+      arguments: [
+        digest(token),
+        activePrefix,
+        usedPrefix,
+        sessionPrefix,
+        employeePrefix,
+      ],
     });
   }
 
@@ -189,7 +231,10 @@ export class SessionStore implements OnModuleDestroy {
     });
   }
 
-  private async mutate(script: string, options: { keys?: string[]; arguments: string[] }) {
+  private async mutate(
+    script: string,
+    options: { keys?: string[]; arguments: string[] },
+  ) {
     const client = await this.redis();
     let sha = this.scriptShas.get(script);
     if (!sha) {
@@ -199,7 +244,7 @@ export class SessionStore implements OnModuleDestroy {
     try {
       return await client.evalSha(sha, options);
     } catch (error) {
-      if (!String(error).includes("NOSCRIPT")) throw error;
+      if (!String(error).includes('NOSCRIPT')) throw error;
       sha = await client.scriptLoad(script);
       this.scriptShas.set(script, sha);
       return client.evalSha(sha, options);

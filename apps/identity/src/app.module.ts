@@ -1,16 +1,17 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { environmentSchema } from "./config.schema.js";
-import { GrpcHealthController } from "./grpc-health.controller.js";
-import { EmployeeAdminService } from "./employee-admin.service.js";
-import { EmployeeRepository } from "./employee.repository.js";
-import { HealthController } from "./health.controller.js";
-import { IdentityController } from "./identity.controller.js";
-import { IdentityAuthService } from "./identity.service.js";
-import { OracleDatabase } from "./oracle.js";
-import { ReadinessService } from "./readiness.js";
-import { SessionStore } from "./session.store.js";
-import { TokenService } from "./tokens.js";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { environmentSchema } from './config.schema.js';
+import { EmployeeAdminService } from './employee-admin.service.js';
+import { EmployeeRepository } from './employee.repository.js';
+import { GrpcHealthController } from './grpc-health.controller.js';
+import { HealthController } from './health.controller.js';
+import { IdentityController } from './identity.controller.js';
+import { IdentityAuthService } from './identity.service.js';
+import { OracleDatabase } from './oracle.js';
+import { ReadinessService } from './readiness.js';
+import { SessionStore } from './session.store.js';
+import { TokenService } from './tokens.js';
 
 @Module({
   imports: [

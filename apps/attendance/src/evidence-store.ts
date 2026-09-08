@@ -1,15 +1,17 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Client, CopyDestinationOptions, CopySourceOptions } from "minio";
-import type { Environment } from "./config.schema.js";
+import type { OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Client, CopyDestinationOptions, CopySourceOptions } from 'minio';
+
+import type { Environment } from './config.schema.js';
 
 function client(endpoint: string, accessKey: string, secretKey: string) {
   const url = new URL(endpoint);
   return new Client({
     endPoint: url.hostname,
-    port: url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80,
-    useSSL: url.protocol === "https:",
-    region: "us-east-1",
+    port: url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80,
+    useSSL: url.protocol === 'https:',
+    region: 'us-east-1',
     accessKey,
     secretKey,
   });
@@ -22,12 +24,16 @@ export class EvidenceStore implements OnModuleInit {
   private readonly public: Client;
 
   constructor(config: ConfigService<Environment, true>) {
-    const accessKey = config.get("MINIO_ACCESS_KEY", { infer: true });
-    const secretKey = config.get("MINIO_SECRET_KEY", { infer: true });
-    this.bucket = config.get("MINIO_EVIDENCE_BUCKET", { infer: true });
-    this.internal = client(config.get("MINIO_ENDPOINT", { infer: true }), accessKey, secretKey);
+    const accessKey = config.get('MINIO_ACCESS_KEY', { infer: true });
+    const secretKey = config.get('MINIO_SECRET_KEY', { infer: true });
+    this.bucket = config.get('MINIO_EVIDENCE_BUCKET', { infer: true });
+    this.internal = client(
+      config.get('MINIO_ENDPOINT', { infer: true }),
+      accessKey,
+      secretKey,
+    );
     this.public = client(
-      config.get("MINIO_PUBLIC_ENDPOINT", { infer: true }),
+      config.get('MINIO_PUBLIC_ENDPOINT', { infer: true }),
       accessKey,
       secretKey,
     );
@@ -36,13 +42,13 @@ export class EvidenceStore implements OnModuleInit {
   async onModuleInit() {
     if (!(await this.internal.bucketExists(this.bucket)))
       await this.internal.makeBucket(this.bucket);
-    await this.internal.setBucketVersioning(this.bucket, { Status: "Enabled" });
+    await this.internal.setBucketVersioning(this.bucket, { Status: 'Enabled' });
     await this.internal.setBucketLifecycle(this.bucket, {
       Rule: [
         {
-          ID: "expire-staging-evidence",
-          Status: "Enabled",
-          Filter: { Prefix: "staging/" },
+          ID: 'expire-staging-evidence',
+          Status: 'Enabled',
+          Filter: { Prefix: 'staging/' },
           Expiration: { Days: 1 },
           NoncurrentVersionExpiration: { NoncurrentDays: 1 },
           AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
@@ -56,18 +62,26 @@ export class EvidenceStore implements OnModuleInit {
   }
 
   authorizeAccess(key: string, versionId: string, expiresSeconds: number) {
-    return this.public.presignedUrl("GET", this.bucket, key, expiresSeconds, { versionId });
+    return this.public.presignedUrl('GET', this.bucket, key, expiresSeconds, {
+      versionId,
+    });
   }
 
   stat(key: string, versionId?: string) {
-    return this.internal.statObject(this.bucket, key, versionId ? { versionId } : undefined);
+    return this.internal.statObject(
+      this.bucket,
+      key,
+      versionId ? { versionId } : undefined,
+    );
   }
 
   async magic(key: string, versionId: string) {
-    const stream = await this.internal.getObject(this.bucket, key, { versionId });
+    const stream = await this.internal.getObject(this.bucket, key, {
+      versionId,
+    });
     for await (const chunk of stream) {
       stream.destroy();
-      return Buffer.from(chunk as Buffer).subarray(0, 8);
+      return Buffer.from(chunk).subarray(0, 8);
     }
     return Buffer.alloc(0);
   }
@@ -84,6 +98,10 @@ export class EvidenceStore implements OnModuleInit {
   }
 
   remove(key: string, versionId?: string) {
-    return this.internal.removeObject(this.bucket, key, versionId ? { versionId } : undefined);
+    return this.internal.removeObject(
+      this.bucket,
+      key,
+      versionId ? { versionId } : undefined,
+    );
   }
 }
