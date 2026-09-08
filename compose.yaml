@@ -91,7 +91,7 @@ services:
       context: .
       dockerfile: apps/attendance/Dockerfile
     restart: "no"
-    command: ["node", "apps/attendance/dist/scripts/migrate.js"]
+    command: ["node", "scripts/oracle-migrate.mjs", "apps/attendance/migrations"]
     depends_on:
       attendance-schema:
         condition: service_completed_successfully
@@ -113,7 +113,7 @@ services:
       context: .
       dockerfile: apps/identity/Dockerfile
     restart: "no"
-    command: ["node", "apps/identity/dist/scripts/migrate.js"]
+    command: ["node", "scripts/oracle-migrate.mjs", "apps/identity/migrations"]
     depends_on:
       identity-schema:
         condition: service_completed_successfully

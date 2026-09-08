@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 
 export const origin = process.env.APP_ORIGIN ?? "http://localhost:3000";
-const baseUrl = origin.replace("localhost", "127.0.0.1");
+export const baseUrl = origin.replace("localhost", "127.0.0.1");
 
 export function composeExec(args, options) {
   return execFileSync("docker", ["compose", "exec", "-T", ...args], options);

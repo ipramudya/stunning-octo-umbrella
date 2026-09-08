@@ -1,17 +1,11 @@
 import assert from "node:assert/strict";
-import { composeExec, cookieJar, origin, post } from "./auth-http.mjs";
-
-function cookies(jar) {
-  return Object.entries(jar)
-    .map(([name, value]) => `${name}=${value}`)
-    .join("; ");
-}
+import { baseUrl, composeExec, cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
 
 function zoneRequest(path, jar, method = "GET", body) {
-  return fetch(`${origin.replace("localhost", "127.0.0.1")}${path}`, {
+  return fetch(`${baseUrl}${path}`, {
     method,
     headers: {
-      ...(jar ? { cookie: cookies(jar) } : {}),
+      ...(jar ? { cookie: cookieHeader(jar) } : {}),
       ...(body ? { "content-type": "application/json", origin } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),

@@ -74,7 +74,7 @@ export class AttendanceZoneController implements OnModuleInit {
 
   @Get("attendance-zone")
   get(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    return this.call(request, reply, false);
+    return this.call(request, reply);
   }
 
   @Patch("hrd/attendance-zone")
@@ -83,18 +83,16 @@ export class AttendanceZoneController implements OnModuleInit {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    return this.call(request, reply, true, body);
+    return this.call(request, reply, body);
   }
 
-  private async call(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    unsafe: boolean,
-    body?: AttendanceZoneDto,
-  ) {
+  private async call(request: FastifyRequest, reply: FastifyReply, body?: AttendanceZoneDto) {
     const traceId = randomUUID();
     reply.header("x-correlation-id", traceId);
-    if (unsafe && request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true }))
+    if (
+      body !== undefined &&
+      request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true })
+    )
       this.fail(403, "FORBIDDEN", "Request origin is not allowed", request, traceId);
 
     const metadata = new Metadata();

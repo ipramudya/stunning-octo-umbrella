@@ -1,4 +1,4 @@
-import type { AttendanceZone, UpdateAttendanceZoneRequest } from "@project/contracts";
+import type { UpdateAttendanceZoneRequest } from "@project/contracts";
 import { Injectable } from "@nestjs/common";
 import oracledb, { type Connection } from "oracledb";
 import { OracleDatabase } from "./oracle.js";
@@ -13,18 +13,6 @@ type ZoneRow = {
   RADIUS_METERS: number;
   ACTIVE: number;
 };
-
-function zone(row: ZoneRow | undefined): AttendanceZone {
-  if (!row) throw new Error("attendance zone is missing");
-  return {
-    name: row.NAME,
-    address: row.ADDRESS,
-    latitude: row.LATITUDE,
-    longitude: row.LONGITUDE,
-    radiusMeters: row.RADIUS_METERS,
-    active: row.ACTIVE === 1,
-  };
-}
 
 @Injectable()
 export class AttendanceZoneRepository {
@@ -93,6 +81,15 @@ export class AttendanceZoneRepository {
       {},
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
-    return zone(result.rows?.[0]);
+    const row = result.rows?.[0];
+    if (!row) throw new Error("attendance zone is missing");
+    return {
+      name: row.NAME,
+      address: row.ADDRESS,
+      latitude: row.LATITUDE,
+      longitude: row.LONGITUDE,
+      radiusMeters: row.RADIUS_METERS,
+      active: row.ACTIVE === 1,
+    };
   }
 }
