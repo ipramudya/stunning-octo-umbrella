@@ -74,20 +74,3 @@ export class TokenService {
     return this.publicKey.then((publicKey) => assertToken(token, publicKey, this.issuer, audience));
   }
 }
-
-export async function verifyInternalAccess(
-  token: string,
-  publicKeyPem: string,
-  issuer: string,
-  audience: string,
-  requiredRoles: RoleName[] = [],
-) {
-  const claims = await assertToken(
-    token,
-    await importSPKI(publicKeyPem, "EdDSA"),
-    issuer,
-    audience,
-  );
-  if (!requiredRoles.every((role) => claims.roles.includes(role))) throw new Error("forbidden");
-  return claims;
-}

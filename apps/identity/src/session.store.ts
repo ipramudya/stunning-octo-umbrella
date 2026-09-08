@@ -106,10 +106,9 @@ export class SessionStore implements OnModuleDestroy {
     const sid = randomUUID();
     const ttl = this.config.get("REFRESH_TOKEN_TTL_SECONDS", { infer: true });
     const refreshDigest = digest(token);
+    const client = await this.redis();
     const session = JSON.parse(
-      (await (
-        await this.redis()
-      ).eval(CREATE_SESSION, {
+      (await client.eval(CREATE_SESSION, {
         keys: [`${employeePrefix}${employeeId}`],
         arguments: [
           sessionPrefix,
@@ -141,9 +140,8 @@ export class SessionStore implements OnModuleDestroy {
   async rotate(token: string) {
     const nextToken = refreshToken();
     const nextDigest = digest(nextToken);
-    const result = (await (
-      await this.redis()
-    ).eval(ROTATE_SESSION, {
+    const client = await this.redis();
+    const result = (await client.eval(ROTATE_SESSION, {
       arguments: [
         digest(token),
         activePrefix,
@@ -164,9 +162,8 @@ export class SessionStore implements OnModuleDestroy {
   }
 
   async revoke(token: string) {
-    await (
-      await this.redis()
-    ).eval(LOGOUT_SESSION, {
+    const client = await this.redis();
+    await client.eval(LOGOUT_SESSION, {
       arguments: [digest(token), activePrefix, usedPrefix, sessionPrefix, employeePrefix],
     });
   }

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const accessToken = process.argv[2];
 const certificateName = process.argv[3] ?? "gateway";
+const audience = process.argv[4] ?? "TOKEN_AUDIENCE_ATTENDANCE";
 if (!accessToken) throw new Error("Access token is required");
 
 const definition = loadSync("/app/packages/contracts/proto/dexa/identity/v1/identity.proto", {
@@ -34,7 +35,7 @@ metadata.set("x-correlation-id", "00000000-0000-4000-8000-000000000099");
 
 const response = await new Promise((resolve, reject) => {
   client.AuthorizeAccess(
-    { audiences: process.argv[4] === "none" ? [] : ["TOKEN_AUDIENCE_ATTENDANCE"] },
+    { audiences: audience === "none" ? [] : [audience] },
     metadata,
     (error, value) => (error ? reject(error) : resolve(value)),
   );

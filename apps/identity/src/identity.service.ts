@@ -15,7 +15,7 @@ import { EmployeeRepository } from "./employee.repository.js";
 import { SessionStore } from "./session.store.js";
 import { TokenService } from "./tokens.js";
 
-const audiences = new Map([
+const audienceNames = new Map([
   [TokenAudience.TOKEN_AUDIENCE_IDENTITY, "dexa-identity"],
   [TokenAudience.TOKEN_AUDIENCE_ATTENDANCE, "dexa-attendance"],
 ]);
@@ -29,6 +29,14 @@ function profile(employee: Employee): EmployeeProfile {
     ...(employee.email ? { email: employee.email } : {}),
     roles: employee.roles.map((role) => (role === "HRD" ? Role.ROLE_HRD : Role.ROLE_EMPLOYEE)),
   };
+}
+
+async function passwordMatches(passwordHash: string, password: string) {
+  try {
+    return await verify(passwordHash, password);
+  } catch {
+    return false;
+  }
 }
 
 @Injectable()
@@ -51,13 +59,12 @@ export class IdentityAuthService {
       timeCost: this.config.get("ARGON2_TIME_COST", { infer: true }),
       parallelism: this.config.get("ARGON2_PARALLELISM", { infer: true }),
     }));
-    let valid = false;
-    try {
-      valid = await verify(employee?.passwordHash ?? dummyHash, login.password);
-    } catch {
-      valid = false;
-    }
-    if (!employee || !valid) throw new AuthError("INVALID_CREDENTIALS", status.UNAUTHENTICATED);
+    const validPassword = await passwordMatches(
+      employee?.passwordHash ?? dummyHash,
+      login.password,
+    );
+    if (!employee || !validPassword)
+      throw new AuthError("INVALID_CREDENTIALS", status.UNAUTHENTICATED);
     const session = await this.sessions.create(employee.id, employee.credentialVersion);
     return this.credentials(employee, session.sid, session.refreshToken);
   }
@@ -93,7 +100,7 @@ export class IdentityAuthService {
     if (
       requested.length !== requestedAudiences.length ||
       requested.length > 2 ||
-      requested.some((value) => !audiences.has(value))
+      requested.some((value) => !audienceNames.has(value))
     ) {
       throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
     }
@@ -112,7 +119,7 @@ export class IdentityAuthService {
           employee.id,
           claims.sid,
           employee.roles,
-          audiences.get(audience)!,
+          audienceNames.get(audience)!,
           60,
         ),
       })),

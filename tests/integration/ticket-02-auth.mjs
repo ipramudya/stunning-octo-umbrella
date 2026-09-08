@@ -3,6 +3,10 @@ import { execFileSync } from "node:child_process";
 
 const origin = "http://localhost:3000";
 
+function composeExec(args, options) {
+  return execFileSync("docker", ["compose", "exec", "-T", ...args], options);
+}
+
 function cookieJar(response) {
   return Object.fromEntries(
     response.headers.getSetCookie().map((value) => {
@@ -68,27 +72,14 @@ const current = await me(jar);
 assert.equal(current.status, 200);
 assert.equal((await current.json()).id, employee.id);
 
-const internalToken = execFileSync(
-  "docker",
-  [
-    "compose",
-    "exec",
-    "-T",
-    "gateway",
-    "node",
-    "/app/tests/integration/request-internal-token.mjs",
-    jar.dexa_access,
-  ],
+const internalToken = composeExec(
+  ["gateway", "node", "/app/tests/integration/request-internal-token.mjs", jar.dexa_access],
   { encoding: "utf8" },
 ).trim();
 assert.ok(internalToken);
 assert.throws(() =>
-  execFileSync(
-    "docker",
+  composeExec(
     [
-      "compose",
-      "exec",
-      "-T",
       "attendance",
       "node",
       "/app/tests/integration/request-internal-token.mjs",
@@ -109,40 +100,35 @@ try {
   if (error.message !== 'forbidden') throw error;
 }
 `;
-execFileSync(
-  "docker",
-  [
-    "compose",
-    "exec",
-    "-T",
-    "-e",
-    `TOKEN=${internalToken}`,
-    "attendance",
-    "node",
-    "--input-type=module",
-    "-e",
-    roleCheck,
-  ],
+composeExec(
+  ["-e", `TOKEN=${internalToken}`, "attendance", "node", "--input-type=module", "-e", roleCheck],
   { stdio: "pipe" },
 );
 
+const identityToken = composeExec(
+  [
+    "gateway",
+    "node",
+    "/app/tests/integration/request-internal-token.mjs",
+    jar.dexa_access,
+    "gateway",
+    "TOKEN_AUDIENCE_IDENTITY",
+  ],
+  { encoding: "utf8" },
+).trim();
 const audienceCheck = `
 import { readFileSync } from 'node:fs';
-import { verifyInternalAccess } from './apps/identity/dist/tokens.js';
+import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
 try {
-  await verifyInternalAccess(process.env.TOKEN, readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), 'dexa-identity', 'dexa-identity');
+  await verifyInternalAccess(process.env.TOKEN, readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), 'dexa-identity');
   process.exit(1);
 } catch {}
 `;
-execFileSync(
-  "docker",
+composeExec(
   [
-    "compose",
-    "exec",
-    "-T",
     "-e",
-    `TOKEN=${internalToken}`,
-    "identity",
+    `TOKEN=${identityToken}`,
+    "attendance",
     "node",
     "--input-type=module",
     "-e",
@@ -154,12 +140,8 @@ execFileSync(
 const tokenParts = internalToken.split(".");
 tokenParts[2] = `${tokenParts[2][0] === "A" ? "B" : "A"}${tokenParts[2].slice(1)}`;
 const invalidToken = tokenParts.join(".");
-const expiredToken = execFileSync(
-  "docker",
+const expiredToken = composeExec(
   [
-    "compose",
-    "exec",
-    "-T",
     "identity",
     "node",
     "--input-type=module",
@@ -190,12 +172,8 @@ for (const token of [process.env.INVALID_TOKEN, process.env.EXPIRED_TOKEN]) {
   } catch {}
 }
 `;
-execFileSync(
-  "docker",
+composeExec(
   [
-    "compose",
-    "exec",
-    "-T",
     "-e",
     `INVALID_TOKEN=${invalidToken}`,
     "-e",
@@ -227,12 +205,8 @@ const staleLogin = await post("/api/v1/auth/login", {
 });
 assert.equal(staleLogin.status, 200);
 const staleJar = cookieJar(staleLogin);
-execFileSync(
-  "docker",
+composeExec(
   [
-    "compose",
-    "exec",
-    "-T",
     "oracle",
     "sqlplus",
     "-s",

@@ -168,12 +168,11 @@ export class AuthController implements OnModuleInit {
   @Get("me")
   async me(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const context = this.context(request, reply, false);
-    const metadata = context.metadata;
-    metadata.set("authorization", `Bearer ${cookies(request).dexa_access ?? ""}`);
+    context.metadata.set("authorization", `Bearer ${cookies(request).dexa_access ?? ""}`);
     try {
       const result = await firstValueFrom(
         this.identity
-          .authorizeAccess({ audiences: [] }, metadata, context.options)
+          .authorizeAccess({ audiences: [] }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
       return publicProfile(result.profile);
@@ -221,7 +220,7 @@ export class AuthController implements OnModuleInit {
     const grpcCode = (error as Partial<ServiceError>)?.code;
     if (grpcCode === status.UNAUTHENTICATED) {
       const code = operation === "login" ? "INVALID_CREDENTIALS" : "AUTHENTICATION_REQUIRED";
-      return this.fail(
+      this.fail(
         401,
         code,
         operation === "login"
@@ -232,9 +231,9 @@ export class AuthController implements OnModuleInit {
       );
     }
     if (grpcCode === status.INVALID_ARGUMENT)
-      return this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, traceId);
+      this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, traceId);
     if (grpcCode === status.UNAVAILABLE)
-      return this.fail(
+      this.fail(
         503,
         "DEPENDENCY_UNAVAILABLE",
         "The service is temporarily unavailable",
@@ -242,8 +241,8 @@ export class AuthController implements OnModuleInit {
         traceId,
       );
     if (grpcCode === status.DEADLINE_EXCEEDED)
-      return this.fail(504, "DOWNSTREAM_TIMEOUT", "The request timed out", request, traceId);
-    return this.fail(500, "INTERNAL_ERROR", "An unexpected error occurred", request, traceId);
+      this.fail(504, "DOWNSTREAM_TIMEOUT", "The request timed out", request, traceId);
+    this.fail(500, "INTERNAL_ERROR", "An unexpected error occurred", request, traceId);
   }
 
   private fail(

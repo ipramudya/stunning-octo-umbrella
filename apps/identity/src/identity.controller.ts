@@ -37,7 +37,7 @@ export class IdentityController {
     try {
       return await this.auth.login(request.phoneNumber, request.password);
     } catch (error) {
-      return failure(error);
+      failure(error);
     }
   }
 
@@ -46,7 +46,7 @@ export class IdentityController {
     try {
       return await this.auth.refresh(request.refreshToken);
     } catch (error) {
-      return failure(error);
+      failure(error);
     }
   }
 
@@ -56,7 +56,7 @@ export class IdentityController {
       await this.auth.revoke(request.refreshToken);
       return {};
     } catch (error) {
-      return failure(error);
+      failure(error);
     }
   }
 
@@ -68,7 +68,7 @@ export class IdentityController {
     try {
       return await this.auth.authorize(authorization(metadata), request.audiences);
     } catch (error) {
-      return failure(error);
+      failure(error);
     }
   }
 }
