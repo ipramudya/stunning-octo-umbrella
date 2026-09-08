@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package dexa.identity.v1;
+
+import "google/protobuf/empty.proto";
+
+service IdentityService {
+  rpc Login(LoginRequest) returns (SessionCredentials);
+  rpc RefreshSession(RefreshSessionRequest) returns (SessionCredentials);
+  rpc LogoutSession(LogoutSessionRequest) returns (google.protobuf.Empty);
+  rpc AuthorizeAccess(AuthorizeAccessRequest) returns (Authorization);
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_EMPLOYEE = 1;
+  ROLE_HRD = 2;
+}
+
+enum TokenAudience {
+  TOKEN_AUDIENCE_UNSPECIFIED = 0;
+  TOKEN_AUDIENCE_IDENTITY = 1;
+  TOKEN_AUDIENCE_ATTENDANCE = 2;
+}
+
+message LoginRequest {
+  string phone_number = 1;
+  string password = 2;
+}
+
+message RefreshSessionRequest {
+  string refresh_token = 1;
+}
+
+message LogoutSessionRequest {
+  string refresh_token = 1;
+}
+
+message AuthorizeAccessRequest {
+  repeated TokenAudience audiences = 1;
+}
+
+message EmployeeProfile {
+  string id = 1;
+  string employee_number = 2;
+  string full_name = 3;
+  string phone_number = 4;
+  optional string email = 5;
+  repeated Role roles = 6;
+}
+
+message SessionCredentials {
+  EmployeeProfile profile = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+}
+
+message AudienceToken {
+  TokenAudience audience = 1;
+  string token = 2;
+}
+
+message Authorization {
+  EmployeeProfile profile = 1;
+  string session_id = 2;
+  repeated AudienceToken tokens = 3;
+}

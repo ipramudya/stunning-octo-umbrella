@@ -4,9 +4,20 @@ import assert from "node:assert/strict";
 const response = await fetch("http://127.0.0.1:3000/health/ready");
 assert.equal(response.status, 200, "Gateway must reach both services over mutual TLS");
 
-const redis = execFileSync("docker", ["compose", "exec", "-T", "redis", "redis-cli", "ping"], {
-  encoding: "utf8",
-});
+const redis = execFileSync(
+  "docker",
+  [
+    "compose",
+    "exec",
+    "-T",
+    "redis",
+    "redis-cli",
+    "-a",
+    process.env.IDENTITY_REDIS_PASSWORD ?? "DexaRedis1!",
+    "ping",
+  ],
+  { encoding: "utf8" },
+);
 assert.match(redis, /PONG/);
 
 const oracle = execFileSync(

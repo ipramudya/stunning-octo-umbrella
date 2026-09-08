@@ -1,4 +1,4 @@
-import { HEALTH_PROTO_PATH } from "@dexa/contracts";
+import { HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH } from "@dexa/contracts";
 import { ChannelCredentials } from "@grpc/grpc-js";
 import { Transport, type GrpcOptions } from "@nestjs/microservices";
 import { readFileSync } from "node:fs";
@@ -11,6 +11,7 @@ export function createHealthClientOptions(
   address: string,
   serverName: string,
   pkiDir: string,
+  identity = false,
 ): GrpcOptions {
   return {
     transport: Transport.GRPC,
@@ -24,8 +25,8 @@ export function createHealthClientOptions(
         readFileSync(join(pkiDir, "gateway.key")),
         readFileSync(join(pkiDir, "gateway.crt")),
       ),
-      package: "grpc.health.v1",
-      protoPath: HEALTH_PROTO_PATH,
+      package: identity ? ["grpc.health.v1", "dexa.identity.v1"] : "grpc.health.v1",
+      protoPath: identity ? [HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH] : HEALTH_PROTO_PATH,
       url: address,
     },
   };

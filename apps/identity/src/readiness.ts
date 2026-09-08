@@ -22,15 +22,12 @@ export class ReadinessService {
   constructor(private readonly config: ConfigService<Environment, true>) {}
 
   async isReady(): Promise<boolean> {
+    const oracle = this.config.get("ORACLE_CONNECT_STRING", { infer: true }).split("/")[0]!;
+    const separator = oracle.lastIndexOf(":");
+    const redis = new URL(this.config.get("REDIS_URL", { infer: true }));
     const checks = await Promise.all([
-      canConnect(
-        this.config.get("ORACLE_HOST", { infer: true }),
-        this.config.get("ORACLE_PORT", { infer: true }),
-      ),
-      canConnect(
-        this.config.get("REDIS_HOST", { infer: true }),
-        this.config.get("REDIS_PORT", { infer: true }),
-      ),
+      canConnect(oracle.slice(0, separator), Number(oracle.slice(separator + 1))),
+      canConnect(redis.hostname, Number(redis.port || 6379)),
     ]);
     return checks.every(Boolean);
   }

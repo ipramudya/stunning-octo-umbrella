@@ -3,8 +3,18 @@ name: dexa
 x-app: &app
   restart: unless-stopped
   init: true
-  volumes:
-    - pki:/app/.local/pki:ro
+
+x-identity-environment: &identity-environment
+  ARGON2_MEMORY_COST: ${ARGON2_MEMORY_COST:-19456}
+  ARGON2_PARALLELISM: ${ARGON2_PARALLELISM:-1}
+  ARGON2_TIME_COST: ${ARGON2_TIME_COST:-2}
+  JWT_ISSUER: ${JWT_ISSUER:-dexa-identity}
+  ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
+  ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:-DexaIdentity1!}
+  ORACLE_USER: DEXA_IDENTITY
+  PKI_DIR: /app/.local/pki
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-DexaRedis1!}
+  REDIS_URL: redis://redis:6379
 
 services:
   pki-init:
@@ -13,7 +23,9 @@ services:
     restart: "no"
     volumes:
       - ./infra/pki/init.sh:/init.sh:ro
-      - pki:/pki
+      - attendance-pki:/pki/attendance
+      - gateway-pki:/pki/gateway
+      - identity-pki:/pki/identity
 
   oracle:
     image: gvenzl/oracle-free:slim
@@ -29,11 +41,67 @@ services:
     volumes:
       - oracle-data:/opt/oracle/oradata
 
+  identity-schema:
+    image: gvenzl/oracle-free:slim
+    restart: "no"
+    depends_on:
+      oracle:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        [[ "$$IDENTITY_ORACLE_PASSWORD" =~ ^[A-Za-z0-9_#!_-]+$$ ]] ||
+        { echo 'IDENTITY_ORACLE_PASSWORD contains unsupported characters' >&2; exit 1; };
+        sqlplus -s system/"$$ORACLE_PASSWORD"@//oracle:1521/FREEPDB1
+        @/schema.sql "$$IDENTITY_ORACLE_PASSWORD"
+    environment:
+      IDENTITY_ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:-DexaIdentity1!}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+    volumes:
+      - ./infra/oracle/create-identity-schema.sql:/schema.sql:ro
+
+  identity-migrate:
+    build:
+      context: .
+      dockerfile: apps/identity/Dockerfile
+    restart: "no"
+    command: ["node", "apps/identity/dist/scripts/migrate.js"]
+    depends_on:
+      identity-schema:
+        condition: service_completed_successfully
+    environment: *identity-environment
+
+  identity-seed:
+    build:
+      context: .
+      dockerfile: apps/identity/Dockerfile
+    restart: "no"
+    command: ["node", "apps/identity/dist/scripts/seed.js"]
+    depends_on:
+      identity-migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *identity-environment
+      DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD:-DexaEmployee1!}
+      DEMO_HRD_PASSWORD: ${DEMO_HRD_PASSWORD:-DexaAdministrator1!}
+
   redis:
     image: redis:alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--maxmemory-policy",
+        "noeviction",
+        "--requirepass",
+        "${REDIS_PASSWORD:-DexaRedis1!}",
+      ]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD:-DexaRedis1!}' --no-auth-warning ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -56,21 +124,19 @@ services:
       context: .
       dockerfile: apps/identity/Dockerfile
     depends_on:
-      oracle:
-        condition: service_healthy
+      identity-seed:
+        condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
+      <<: *identity-environment
       GRPC_PORT: 50051
       HOST: 0.0.0.0
       HTTP_PORT: 3001
-      ORACLE_HOST: oracle
-      ORACLE_PORT: 1521
-      PKI_DIR: /app/.local/pki
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    volumes:
+      - identity-pki:/app/.local/pki:ro
     healthcheck:
       test:
         [
@@ -103,6 +169,8 @@ services:
       ORACLE_HOST: oracle
       ORACLE_PORT: 1521
       PKI_DIR: /app/.local/pki
+    volumes:
+      - attendance-pki:/app/.local/pki:ro
     healthcheck:
       test:
         [
@@ -126,11 +194,14 @@ services:
       identity:
         condition: service_healthy
     environment:
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
       ATTENDANCE_GRPC_URL: attendance:50052
       HOST: 0.0.0.0
       HTTP_PORT: 3000
       IDENTITY_GRPC_URL: identity:50051
       PKI_DIR: /app/.local/pki
+    volumes:
+      - gateway-pki:/app/.local/pki:ro
     healthcheck:
       test:
         [
@@ -146,7 +217,9 @@ services:
       - "${GATEWAY_PORT:-3000}:3000"
 
 volumes:
+  attendance-pki:
+  gateway-pki:
+  identity-pki:
   minio-data:
   oracle-data:
-  pki:
   redis-data:

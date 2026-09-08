@@ -44,6 +44,8 @@
   "packageManager": "npm@11.19.0",
   "allowScripts": {
     "@swc/core@1.16.2": true,
+    "argon2@0.44.0": true,
+    "oracledb@6.10.0": true,
     "grpc-tools@1.13.1": true,
     "protobufjs@7.6.6": true,
     "protobufjs@8.8.0": true

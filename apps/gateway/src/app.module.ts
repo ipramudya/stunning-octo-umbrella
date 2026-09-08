@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule } from "@nestjs/microservices";
+import { AuthController } from "./auth.controller.js";
 import { environmentSchema, type Environment } from "./config.js";
 import {
   ATTENDANCE_HEALTH_CLIENT,
@@ -27,6 +28,7 @@ import { ReadinessService } from "./readiness.js";
             config.get("IDENTITY_GRPC_URL", { infer: true }),
             config.get("IDENTITY_GRPC_SERVER_NAME", { infer: true }),
             config.get("PKI_DIR", { infer: true }),
+            true,
           ),
       },
       {
@@ -41,7 +43,7 @@ import { ReadinessService } from "./readiness.js";
       },
     ]),
   ],
-  controllers: [HealthController],
+  controllers: [AuthController, HealthController],
   providers: [ReadinessService],
 })
 export class AppModule {}

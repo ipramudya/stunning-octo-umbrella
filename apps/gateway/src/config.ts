@@ -5,6 +5,10 @@ const endpoint = z.string().regex(/^[a-zA-Z0-9.-]+:\d+$/);
 const port = z.coerce.number().int().min(1).max(65_535);
 
 export const environmentSchema = z.object({
+  APP_ORIGIN: z
+    .url()
+    .refine((value) => new URL(value).origin === value)
+    .default("http://localhost:3000"),
   ATTENDANCE_GRPC_SERVER_NAME: z.string().default("attendance"),
   ATTENDANCE_GRPC_URL: endpoint.default("localhost:50052"),
   HOST: z.string().default("0.0.0.0"),
