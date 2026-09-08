@@ -17,8 +17,7 @@ import { z } from 'zod';
 
 import { AttendanceZoneRepository } from './attendance-zone.js';
 import type { Environment } from './config.schema.js';
-import { EvidenceService } from './evidence.service.js';
-import { EvidenceError } from './evidence.service.js';
+import { EvidenceError, EvidenceService } from './evidence.service.js';
 import { verifyInternalAccess } from './internal-token.js';
 import {
   RegularAttendanceError,
@@ -77,23 +76,24 @@ function evidenceFailure(error: unknown): never {
 
 function regularFailure(error: unknown): never {
   const code = error instanceof Error ? error.message : '';
-  if (code === 'EVIDENCE_NOT_FOUND') failure(status.NOT_FOUND, code);
-  if (
-    [
-      'ATTENDANCE_ALREADY_EXISTS',
-      'IDEMPOTENCY_KEY_REUSED',
-      'REQUEST_IN_PROGRESS',
-    ].includes(code)
-  )
-    failure(status.ALREADY_EXISTS, code);
-  if (
-    code === 'DEPENDENCY_UNAVAILABLE' ||
-    code === 'EVIDENCE_FINALIZATION_FAILED'
-  )
-    failure(status.UNAVAILABLE, code);
-  if (error instanceof RegularAttendanceError || error instanceof EvidenceError)
-    failure(status.FAILED_PRECONDITION, code);
-  throw error;
+  switch (code) {
+    case 'EVIDENCE_NOT_FOUND':
+      failure(status.NOT_FOUND, code);
+    case 'ATTENDANCE_ALREADY_EXISTS':
+    case 'IDEMPOTENCY_KEY_REUSED':
+    case 'REQUEST_IN_PROGRESS':
+      failure(status.ALREADY_EXISTS, code);
+    case 'DEPENDENCY_UNAVAILABLE':
+    case 'EVIDENCE_FINALIZATION_FAILED':
+      failure(status.UNAVAILABLE, code);
+    default:
+      if (
+        error instanceof RegularAttendanceError ||
+        error instanceof EvidenceError
+      )
+        failure(status.FAILED_PRECONDITION, code);
+      throw error;
+  }
 }
 
 @Controller()

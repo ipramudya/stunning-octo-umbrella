@@ -433,11 +433,12 @@ export class AttendanceZoneController implements OnModuleInit {
     error: unknown,
     request: FastifyRequest,
     traceId: string,
-    regular = false,
+    regularAttendance = false,
     reply?: FastifyReply,
   ): never {
     if (error instanceof HttpException) throw error;
     const code = grpcCode(error);
+    const backendErrorCode = grpcErrorCode(error);
     if (code === status.UNAUTHENTICATED)
       this.fail(
         401,
@@ -450,14 +451,16 @@ export class AttendanceZoneController implements OnModuleInit {
       this.fail(
         403,
         'FORBIDDEN',
-        regular ? 'Employee access is required' : 'HRD access is required',
+        regularAttendance
+          ? 'Employee access is required'
+          : 'HRD access is required',
         request,
         traceId,
       );
     if (code === status.INVALID_ARGUMENT)
       this.fail(
         400,
-        grpcErrorCode(error) ?? 'VALIDATION_ERROR',
+        backendErrorCode ?? 'VALIDATION_ERROR',
         'Request validation failed',
         request,
         traceId,
@@ -471,7 +474,7 @@ export class AttendanceZoneController implements OnModuleInit {
         traceId,
       );
     if (code === status.ALREADY_EXISTS) {
-      const errorCode = grpcErrorCode(error) ?? 'ATTENDANCE_ALREADY_EXISTS';
+      const errorCode = backendErrorCode ?? 'ATTENDANCE_ALREADY_EXISTS';
       if (errorCode === 'REQUEST_IN_PROGRESS') reply?.header('retry-after', 1);
       this.fail(
         409,
@@ -482,11 +485,13 @@ export class AttendanceZoneController implements OnModuleInit {
       );
     }
     if (code === status.FAILED_PRECONDITION) {
-      const errorCode = grpcErrorCode(error) ?? 'EVIDENCE_INVALID';
+      const errorCode = backendErrorCode ?? 'EVIDENCE_INVALID';
       this.fail(
-        regular ? 422 : 409,
+        regularAttendance ? 422 : 409,
         errorCode,
-        regular ? 'Attendance is not eligible' : 'Evidence is not available',
+        regularAttendance
+          ? 'Attendance is not eligible'
+          : 'Evidence is not available',
         request,
         traceId,
       );
@@ -501,7 +506,7 @@ export class AttendanceZoneController implements OnModuleInit {
       );
     this.fail(
       503,
-      grpcErrorCode(error) ?? 'DEPENDENCY_UNAVAILABLE',
+      backendErrorCode ?? 'DEPENDENCY_UNAVAILABLE',
       'The service is temporarily unavailable',
       request,
       traceId,

@@ -159,12 +159,7 @@ export class EvidenceService implements OnApplicationBootstrap {
         throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
       }
       return permanentVersion;
-    } catch (error) {
-      if (
-        error instanceof EvidenceError &&
-        error.code === 'EVIDENCE_FINALIZATION_FAILED'
-      )
-        throw error;
+    } catch {
       throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
     }
   }

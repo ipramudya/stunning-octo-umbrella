@@ -154,21 +154,21 @@ export class RegularAttendanceService implements OnApplicationBootstrap {
             time.oracleDate,
             attempt.createdAt,
           );
-          attendanceTime(attempt.createdAt, request.clockType);
           const distanceMeters = await this.validateLocation(
             connection,
             request,
           );
-          const value: RegularAttendanceEntry = {
+          const recordedAt = attempt.createdAt.toISOString();
+          const entry: RegularAttendanceEntry = {
             id: randomUUID(),
             employeeId,
             workDate: time.workDate,
             clockType: request.clockType,
             source: 'REGULAR',
             status: 'RECORDED',
-            occurredAt: attempt.createdAt.toISOString(),
+            occurredAt: recordedAt,
             claimedAt: null,
-            submittedAt: attempt.createdAt.toISOString(),
+            submittedAt: recordedAt,
             location: {
               address: null,
               latitude: request.latitude,
@@ -185,8 +185,8 @@ export class RegularAttendanceService implements OnApplicationBootstrap {
             request.evidenceUploadId,
             permanentVersion,
           );
-          await this.attendance.record(connection, value, idempotencyKey);
-          return value;
+          await this.attendance.record(connection, entry, idempotencyKey);
+          return entry;
         },
       );
       this.evidence
