@@ -71,6 +71,19 @@ if session then
 end
 return 1`;
 
+const REVOKE_EMPLOYEE_SESSIONS = `
+local sessionsKey = ARGV[1] .. ARGV[2]
+local sids = redis.call('ZRANGE', sessionsKey, 0, -1)
+for _, sid in ipairs(sids) do
+  local session = redis.call('GET', ARGV[3] .. sid)
+  if session then
+    redis.call('DEL', ARGV[4] .. cjson.decode(session).refreshDigest)
+    redis.call('DEL', ARGV[3] .. sid)
+  end
+end
+redis.call('DEL', sessionsKey)
+return #sids`;
+
 const sessionPrefix = "identity:session:";
 const activePrefix = "identity:refresh:active:";
 const usedPrefix = "identity:refresh:used:";
@@ -88,12 +101,17 @@ function refreshToken() {
 export class SessionStore implements OnModuleDestroy {
   private readonly client: RedisClientType;
   private connection?: Promise<RedisClientType>;
+  private readonly scriptShas = new Map<string, string>();
 
   constructor(private readonly config: ConfigService<Environment, true>) {
     this.client = createClient({
       url: config.get("REDIS_URL", { infer: true }),
+      username: "identity",
       password: config.get("REDIS_PASSWORD", { infer: true }),
+      socket: { reconnectStrategy: false },
+      disableOfflineQueue: true,
     });
+    this.client.on("error", () => undefined);
   }
 
   private redis() {
@@ -106,9 +124,8 @@ export class SessionStore implements OnModuleDestroy {
     const sid = randomUUID();
     const ttl = this.config.get("REFRESH_TOKEN_TTL_SECONDS", { infer: true });
     const refreshDigest = digest(token);
-    const client = await this.redis();
     const session = JSON.parse(
-      (await client.eval(CREATE_SESSION, {
+      (await this.mutate(CREATE_SESSION, {
         keys: [`${employeePrefix}${employeeId}`],
         arguments: [
           sessionPrefix,
@@ -140,8 +157,7 @@ export class SessionStore implements OnModuleDestroy {
   async rotate(token: string) {
     const nextToken = refreshToken();
     const nextDigest = digest(nextToken);
-    const client = await this.redis();
-    const result = (await client.eval(ROTATE_SESSION, {
+    const result = (await this.mutate(ROTATE_SESSION, {
       arguments: [
         digest(token),
         activePrefix,
@@ -162,10 +178,32 @@ export class SessionStore implements OnModuleDestroy {
   }
 
   async revoke(token: string) {
-    const client = await this.redis();
-    await client.eval(LOGOUT_SESSION, {
+    await this.mutate(LOGOUT_SESSION, {
       arguments: [digest(token), activePrefix, usedPrefix, sessionPrefix, employeePrefix],
     });
+  }
+
+  async revokeEmployee(employeeId: string) {
+    await this.mutate(REVOKE_EMPLOYEE_SESSIONS, {
+      arguments: [employeePrefix, employeeId, sessionPrefix, activePrefix],
+    });
+  }
+
+  private async mutate(script: string, options: { keys?: string[]; arguments: string[] }) {
+    const client = await this.redis();
+    let sha = this.scriptShas.get(script);
+    if (!sha) {
+      sha = await client.scriptLoad(script);
+      this.scriptShas.set(script, sha);
+    }
+    try {
+      return await client.evalSha(sha, options);
+    } catch (error) {
+      if (!String(error).includes("NOSCRIPT")) throw error;
+      sha = await client.scriptLoad(script);
+      this.scriptShas.set(script, sha);
+      return client.evalSha(sha, options);
+    }
   }
 
   async onModuleDestroy() {

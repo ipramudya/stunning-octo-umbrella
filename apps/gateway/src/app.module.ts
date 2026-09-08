@@ -9,6 +9,7 @@ import {
   IDENTITY_HEALTH_CLIENT,
 } from "./grpc-health.client.js";
 import { HealthController } from "./health.controller.js";
+import { RateLimiter } from "./rate-limiter.js";
 import { ReadinessService } from "./readiness.js";
 
 @Module({
@@ -44,6 +45,6 @@ import { ReadinessService } from "./readiness.js";
     ]),
   ],
   controllers: [AuthController, HealthController],
-  providers: [ReadinessService],
+  providers: [RateLimiter, ReadinessService],
 })
 export class AppModule {}

@@ -29,6 +29,7 @@ import { firstValueFrom, fromEvent, type Observable, takeUntil } from "rxjs";
 import { z } from "zod";
 import type { Environment } from "./config.schema.js";
 import { IDENTITY_HEALTH_CLIENT } from "./grpc-health.client.js";
+import { RateLimiter, RateLimitError, rateKey } from "./rate-limiter.js";
 
 interface IdentityClient {
   login(
@@ -92,6 +93,7 @@ export class AuthController implements OnModuleInit {
   constructor(
     @Inject(IDENTITY_HEALTH_CLIENT) private readonly grpc: ClientGrpc,
     private readonly config: ConfigService<Environment, true>,
+    private readonly rateLimiter: RateLimiter,
   ) {}
 
   onModuleInit() {
@@ -109,6 +111,16 @@ export class AuthController implements OnModuleInit {
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success)
       this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, context.traceId);
+    await this.limit(
+      "login:phone",
+      rateKey(parsed.data.phoneNumber.trim()),
+      5,
+      900,
+      request,
+      reply,
+      context.traceId,
+    );
+    await this.limit("login:ip", rateKey(request.ip), 20, 900, request, reply, context.traceId);
     try {
       const result = await firstValueFrom(
         this.identity
@@ -125,14 +137,21 @@ export class AuthController implements OnModuleInit {
   @Post("refresh")
   async refresh(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const context = this.context(request, reply, true);
+    const refreshToken = cookies(request).dexa_refresh ?? "";
+    await this.limit(
+      "refresh:token",
+      rateKey(refreshToken),
+      10,
+      60,
+      request,
+      reply,
+      context.traceId,
+    );
+    await this.limit("refresh:ip", rateKey(request.ip), 30, 60, request, reply, context.traceId);
     try {
       const result = await firstValueFrom(
         this.identity
-          .refreshSession(
-            { refreshToken: cookies(request).dexa_refresh ?? "" },
-            context.metadata,
-            context.options,
-          )
+          .refreshSession({ refreshToken }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
       this.setCredentials(reply, result);
@@ -175,6 +194,7 @@ export class AuthController implements OnModuleInit {
           .authorizeAccess({ audiences: [] }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
+      await this.limit("authenticated", result.sessionId, 120, 60, request, reply, context.traceId);
       return publicProfile(result.profile);
     } catch (error) {
       this.grpcFailure(error, "authorize", request, context.traceId);
@@ -197,6 +217,32 @@ export class AuthController implements OnModuleInit {
     };
   }
 
+  private async limit(
+    scope: string,
+    subject: string,
+    maximum: number,
+    windowSeconds: number,
+    request: FastifyRequest,
+    reply: FastifyReply,
+    traceId: string,
+  ) {
+    try {
+      await this.rateLimiter.consume(scope, subject, maximum, windowSeconds);
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        reply.header("retry-after", error.retryAfter);
+        this.fail(429, "RATE_LIMIT_EXCEEDED", "Too many requests", request, traceId);
+      }
+      this.fail(
+        503,
+        "DEPENDENCY_UNAVAILABLE",
+        "The service is temporarily unavailable",
+        request,
+        traceId,
+      );
+    }
+  }
+
   private setCredentials(reply: FastifyReply, credentials: SessionCredentials) {
     reply.header("set-cookie", [
       this.cookie("dexa_access", credentials.accessToken, "/api", 900),
@@ -217,6 +263,7 @@ export class AuthController implements OnModuleInit {
     request: FastifyRequest,
     traceId: string,
   ): never {
+    if (error instanceof HttpException) throw error;
     const grpcCode = (error as Partial<ServiceError>)?.code;
     if (grpcCode === status.UNAUTHENTICATED) {
       const code = operation === "login" ? "INVALID_CREDENTIALS" : "AUTHENTICATION_REQUIRED";

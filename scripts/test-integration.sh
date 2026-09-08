@@ -12,3 +12,4 @@ trap cleanup EXIT INT TERM
 docker compose up --build --detach --wait
 node tests/integration/walking-skeleton.mjs
 node tests/integration/ticket-02-auth.mjs
+node tests/integration/ticket-03-sessions.mjs

@@ -16,6 +16,8 @@ export const environmentSchema = z.object({
   IDENTITY_GRPC_SERVER_NAME: z.string().default("identity"),
   IDENTITY_GRPC_URL: endpoint.default("localhost:50051"),
   PKI_DIR: z.string().default(resolve(process.cwd(), ".local/dev/pki")),
+  RATE_LIMIT_REDIS_PASSWORD: z.string().min(1).default("DexaRateLimit1!"),
+  RATE_LIMIT_REDIS_URL: z.url().default("redis://localhost:6379"),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

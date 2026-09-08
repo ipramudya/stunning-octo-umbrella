@@ -88,20 +88,23 @@ services:
   redis:
     image: redis:alpine
     command:
-      [
-        "redis-server",
-        "--appendonly",
-        "yes",
-        "--appendfsync",
-        "everysec",
-        "--maxmemory-policy",
-        "noeviction",
-        "--requirepass",
-        "${REDIS_PASSWORD:-DexaRedis1!}",
-      ]
+      - /bin/sh
+      - -c
+      - >-
+        printf 'user default off\nuser identity on >%s ~identity:* +@connection +@scripting +@read +@write +time\nuser gateway on >%s ~rate:* +@connection +@scripting +@read +@write +time\n'
+        "$${REDIS_PASSWORD}" "$${RATE_LIMIT_REDIS_PASSWORD}" > /tmp/users.acl &&
+        exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction
+        --aclfile /tmp/users.acl
+    environment:
+      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:-DexaRateLimit1!}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-DexaRedis1!}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD:-DexaRedis1!}' --no-auth-warning ping"]
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli --user identity -a '${REDIS_PASSWORD:-DexaRedis1!}' --no-auth-warning ping",
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -200,6 +203,8 @@ services:
       HTTP_PORT: 3000
       IDENTITY_GRPC_URL: identity:50051
       PKI_DIR: /app/.local/pki
+      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:-DexaRateLimit1!}
+      RATE_LIMIT_REDIS_URL: redis://redis:6379
     volumes:
       - gateway-pki:/app/.local/pki:ro
     healthcheck:

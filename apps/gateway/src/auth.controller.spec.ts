@@ -6,13 +6,16 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { AuthController } from "./auth.controller.js";
 import type { Environment } from "./config.schema.js";
+import type { RateLimiter } from "./rate-limiter.js";
 
 describe("AuthController", () => {
   it("rejects unexpected login fields", async () => {
     const config = {
       get: vi.fn().mockReturnValue("http://localhost:3000"),
     } as unknown as ConfigService<Environment, true>;
-    const controller = new AuthController({} as ClientGrpc, config);
+    const controller = new AuthController({} as ClientGrpc, config, {
+      consume: vi.fn(),
+    } as unknown as RateLimiter);
     const request = {
       headers: { origin: "http://localhost:3000" },
       raw: new EventEmitter(),
@@ -36,7 +39,9 @@ describe("AuthController", () => {
     const config = {
       get: vi.fn().mockReturnValue("http://localhost:3000"),
     } as unknown as ConfigService<Environment, true>;
-    const controller = new AuthController({} as ClientGrpc, config);
+    const controller = new AuthController({} as ClientGrpc, config, {
+      consume: vi.fn(),
+    } as unknown as RateLimiter);
     const request = {
       headers: { origin: "https://attacker.example" },
       url: "/api/v1/auth/login",
