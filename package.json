@@ -32,6 +32,7 @@
     "grpc-tools": "1.13.1",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "ts-proto": "2.12.2",
     "turbo": "2.10.12",
     "typescript": "6.0.3",
