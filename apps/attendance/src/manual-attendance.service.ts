@@ -11,10 +11,11 @@ import {
 } from '@project/contracts';
 
 import { AttendanceConflict } from './attendance-zone.js';
-import { EvidenceError, EvidenceService } from './evidence.service.js';
+import type { EvidenceUpload } from './evidence.repository.js';
+import { EvidenceService } from './evidence.service.js';
 import { ManualAttendanceRepository } from './manual-attendance.repository.js';
 
-const jakarta = new Intl.DateTimeFormat('en-CA', {
+const jakartaDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
   year: 'numeric',
   month: '2-digit',
@@ -29,12 +30,14 @@ export class ManualAttendanceError extends Error {
 
 function jakartaDate(value: Date) {
   const parts = Object.fromEntries(
-    jakarta.formatToParts(value).map((part) => [part.type, part.value]),
+    jakartaDateFormatter
+      .formatToParts(value)
+      .map((part) => [part.type, part.value]),
   );
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-function dateNumber(value: string) {
+function utcDateValue(value: string) {
   const [year = 0, month = 0, day = 0] = value.split('-').map(Number);
   return Date.UTC(year, month - 1, day);
 }
@@ -50,11 +53,11 @@ export function validateManualAttendancePolicy(
     throw new ManualAttendanceError('VALIDATION_ERROR');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(request.workDate))
     throw new ManualAttendanceError('VALIDATION_ERROR');
-  const workDateNumber = dateNumber(request.workDate);
+  const workDateNumber = utcDateValue(request.workDate);
   if (new Date(workDateNumber).toISOString().slice(0, 10) !== request.workDate)
     throw new ManualAttendanceError('VALIDATION_ERROR');
   const today = jakartaDate(now);
-  const age = (dateNumber(today) - workDateNumber) / 86_400_000;
+  const age = (utcDateValue(today) - workDateNumber) / 86_400_000;
   if (!Number.isInteger(age) || age < 0 || age > 7)
     throw new ManualAttendanceError('MANUAL_DATE_OUT_OF_RANGE');
   if (!request.claimedAt || Number.isNaN(request.claimedAt.getTime()))
@@ -115,7 +118,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
     if (claim.kind === 'completed')
       return { entry: claim.response, replay: true };
 
-    let upload;
+    let upload: EvidenceUpload | undefined;
     try {
       upload = await this.evidence.prepareStandalone(
         employeeId,
@@ -174,7 +177,6 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
       }
       if (error instanceof AttendanceConflict)
         throw new ManualAttendanceError('ATTENDANCE_ALREADY_EXISTS');
-      if (error instanceof EvidenceError) throw error;
       throw error;
     }
   }

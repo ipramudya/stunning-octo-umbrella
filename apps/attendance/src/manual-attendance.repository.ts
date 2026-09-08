@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AttendanceEntry } from '@project/contracts';
+import { AttendanceEntry, ClockType } from '@project/contracts';
 import oracledb, { type Connection } from 'oracledb';
 
 import { AttendanceZoneRepository } from './attendance-zone.js';
@@ -48,18 +48,18 @@ export class ManualAttendanceRepository {
     await this.database.withTransaction(async (connection) => {
       await connection.execute(
         `DELETE FROM idempotency_records
-         WHERE operation = :operation AND status = 'IN_PROGRESS'`,
-        { operation },
-      );
-      await connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE operation = :operation AND expires_at <= SYSTIMESTAMP`,
+         WHERE operation = :operation
+           AND (status = 'IN_PROGRESS' OR expires_at <= SYSTIMESTAMP)`,
         { operation },
       );
     });
   }
 
-  async claim(employeeId: string, key: string, hash: string) {
+  async claim(
+    employeeId: string,
+    key: string,
+    hash: string,
+  ): Promise<IdempotencyClaim> {
     try {
       await this.database.withTransaction(async (connection) => {
         await connection.execute(
@@ -79,20 +79,19 @@ export class ManualAttendanceRepository {
           { employeeId, operation, key, hash },
         );
       });
-      return { kind: 'new' } as const;
+      return { kind: 'new' };
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       const record = await this.getClaim(employeeId, key);
       if (!record) throw error;
-      if (record.REQUEST_HASH !== hash) return { kind: 'mismatch' } as const;
-      if (record.STATUS === 'IN_PROGRESS')
-        return { kind: 'in-progress' } as const;
+      if (record.REQUEST_HASH !== hash) return { kind: 'mismatch' };
+      if (record.STATUS === 'IN_PROGRESS') return { kind: 'in-progress' };
       if (!record.RESPONSE_BODY)
         throw new Error('idempotency response missing');
       return {
         kind: 'completed',
         response: restoreResponse(record.RESPONSE_BODY),
-      } as const;
+      };
     }
   }
 
@@ -209,7 +208,10 @@ export class ManualAttendanceRepository {
         id: entry.id,
         employeeId: entry.employeeId,
         workDate: { val: workDate, type: oracledb.DATE },
-        clockType: entry.clockType === 1 ? 'CLOCK_IN' : 'CLOCK_OUT',
+        clockType:
+          entry.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
+            ? 'CLOCK_IN'
+            : 'CLOCK_OUT',
         claimedAt: {
           val: entry.claimedAt,
           type: oracledb.DB_TYPE_TIMESTAMP_TZ,

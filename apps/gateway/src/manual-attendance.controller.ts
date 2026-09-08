@@ -86,7 +86,14 @@ function timestampIso(value: unknown) {
   ).toISOString();
 }
 
-function response(entry: AttendanceEntry) {
+function attendanceStatus(status: AttendanceStatus) {
+  if (status === AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW)
+    return 'PENDING_REVIEW';
+  if (status === AttendanceStatus.ATTENDANCE_STATUS_RECORDED) return 'RECORDED';
+  return 'REJECTED';
+}
+
+function attendanceResponse(entry: AttendanceEntry) {
   return {
     id: entry.id,
     employeeId: entry.employeeId,
@@ -99,12 +106,7 @@ function response(entry: AttendanceEntry) {
       entry.source === AttendanceSource.ATTENDANCE_SOURCE_MANUAL
         ? 'MANUAL'
         : 'REGULAR',
-    status:
-      entry.status === AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW
-        ? 'PENDING_REVIEW'
-        : entry.status === AttendanceStatus.ATTENDANCE_STATUS_RECORDED
-          ? 'RECORDED'
-          : 'REJECTED',
+    status: attendanceStatus(entry.status),
     occurredAt: entry.occurredAt ? timestampIso(entry.occurredAt) : null,
     claimedAt: entry.claimedAt ? timestampIso(entry.claimedAt) : null,
     submittedAt: timestampIso(entry.submittedAt),
@@ -204,7 +206,7 @@ export class ManualAttendanceController implements OnModuleInit {
           .pipe(takeUntil(cancelled)),
       );
       reply.status(entry.idempotentReplay ? 200 : 201);
-      return response(entry);
+      return attendanceResponse(entry);
     } catch (error) {
       this.grpcFailure(error, request, reply, traceId);
     }

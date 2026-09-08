@@ -93,7 +93,7 @@ const manualSchema = z.object({
     z.literal(ClockType.CLOCK_TYPE_CLOCK_OUT),
   ]),
   workDate: z.iso.date(),
-  claimedAt: z.unknown().transform(protoDate),
+  claimedAt: z.unknown().transform(protoDate).pipe(z.date()),
   address: z.string().trim().min(1).max(500),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -101,16 +101,18 @@ const manualSchema = z.object({
   evidenceUploadId: z.string().uuid(),
 });
 
+function evidenceStatus(code: string) {
+  if (code === 'EVIDENCE_ALREADY_ATTACHED') return status.ALREADY_EXISTS;
+  if (code === 'EVIDENCE_FINALIZATION_FAILED') return status.UNAVAILABLE;
+  return status.FAILED_PRECONDITION;
+}
+
 function evidenceFailure(error: unknown): never {
   if (!(error instanceof EvidenceError)) throw error;
   const code =
     error.code === 'EVIDENCE_NOT_FOUND'
       ? status.NOT_FOUND
-      : error.code === 'EVIDENCE_ALREADY_ATTACHED'
-        ? status.ALREADY_EXISTS
-        : error.code === 'EVIDENCE_FINALIZATION_FAILED'
-          ? status.UNAVAILABLE
-          : status.FAILED_PRECONDITION;
+      : evidenceStatus(error.code);
   failure(code, error.code);
 }
 
@@ -252,13 +254,12 @@ export class AttendanceController {
       failure(status.INVALID_ARGUMENT, 'IDEMPOTENCY_KEY_REQUIRED');
     const parsed = manualSchema.safeParse(request);
     if (!parsed.success) failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
-    const data = parsed.data;
-    if (!data.claimedAt) failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
     try {
-      const result = await this.manualAttendance.create(claims.sub, key, {
-        ...data,
-        claimedAt: data.claimedAt,
-      });
+      const result = await this.manualAttendance.create(
+        claims.sub,
+        key,
+        parsed.data,
+      );
       if (!result.entry.claimedAt || !result.entry.submittedAt)
         throw new Error('manual attendance timestamps missing');
       return {
@@ -270,16 +271,17 @@ export class AttendanceController {
     } catch (error) {
       if (error instanceof EvidenceError) evidenceFailure(error);
       if (!(error instanceof ManualAttendanceError)) throw error;
-      if (error.code === 'REQUEST_IN_PROGRESS')
-        failure(status.ABORTED, error.code, 1);
-      if (
-        error.code === 'IDEMPOTENCY_KEY_REUSED' ||
-        error.code === 'ATTENDANCE_ALREADY_EXISTS'
-      )
-        failure(status.ALREADY_EXISTS, error.code);
-      if (error.code === 'VALIDATION_ERROR')
-        failure(status.INVALID_ARGUMENT, error.code);
-      failure(status.FAILED_PRECONDITION, error.code);
+      switch (error.code) {
+        case 'REQUEST_IN_PROGRESS':
+          failure(status.ABORTED, error.code, 1);
+        case 'IDEMPOTENCY_KEY_REUSED':
+        case 'ATTENDANCE_ALREADY_EXISTS':
+          failure(status.ALREADY_EXISTS, error.code);
+        case 'VALIDATION_ERROR':
+          failure(status.INVALID_ARGUMENT, error.code);
+        default:
+          failure(status.FAILED_PRECONDITION, error.code);
+      }
     }
   }
 
