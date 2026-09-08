@@ -9,6 +9,8 @@ import { EvidenceRepository } from './evidence.repository.js';
 import { EvidenceService } from './evidence.service.js';
 import { GrpcHealthController } from './grpc-health.controller.js';
 import { HealthController } from './health.controller.js';
+import { ManualAttendanceRepository } from './manual-attendance.repository.js';
+import { ManualAttendanceService } from './manual-attendance.service.js';
 import { OracleDatabase } from './oracle.js';
 import { ReadinessService } from './readiness.js';
 import { RegularAttendanceRepository } from './regular-attendance.repository.js';
@@ -29,6 +31,8 @@ import { RegularAttendanceService } from './regular-attendance.service.js';
     EvidenceRepository,
     EvidenceService,
     EvidenceStore,
+    ManualAttendanceRepository,
+    ManualAttendanceService,
     OracleDatabase,
     ReadinessService,
     RegularAttendanceRepository,

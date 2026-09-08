@@ -1,15 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// oxlint-disable max-params -- Nest supplies RPC handler dependencies separately.
 import { status, Metadata } from '@grpc/grpc-js';
 import { Controller } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import {
-  ClockType,
   type AttendanceZone,
   type AuthorizeEvidenceAccessRequest,
   type AuthorizeEvidenceUploadRequest,
+  ClockType,
+  type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
   type UpdateAttendanceZoneRequest,
 } from '@project/contracts';
@@ -20,14 +22,18 @@ import type { Environment } from './config.schema.js';
 import { EvidenceError, EvidenceService } from './evidence.service.js';
 import { verifyInternalAccess } from './internal-token.js';
 import {
+  ManualAttendanceError,
+  ManualAttendanceService,
+} from './manual-attendance.service.js';
+import {
   RegularAttendanceError,
   RegularAttendanceService,
 } from './regular-attendance.service.js';
 
 const regularSchema = z.object({
   clockType: z.union([
-    z.literal(ClockType.CLOCK_IN),
-    z.literal(ClockType.CLOCK_OUT),
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_IN),
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_OUT),
   ]),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -51,9 +57,10 @@ function bearer(metadata: Metadata) {
     : '';
 }
 
-function failure(code: number, detail: string): never {
+function failure(code: number, detail: string, retryAfter?: number): never {
   const metadata = new Metadata();
   metadata.set('x-error-code', detail);
+  if (retryAfter !== undefined) metadata.set('retry-after', String(retryAfter));
   throw new RpcException({ code, details: detail, metadata });
 }
 
@@ -65,12 +72,45 @@ function grpcTimestamp(date: Date) {
   };
 }
 
+function protoDate(value: unknown) {
+  if (value instanceof Date) return value;
+  if (typeof value !== 'object' || value === null) return undefined;
+  const seconds: unknown = Reflect.get(value, 'seconds');
+  const nanos: unknown = Reflect.get(value, 'nanos');
+  const numericSeconds =
+    typeof seconds === 'object' && seconds !== null
+      ? Number(Reflect.get(seconds, 'low')) +
+        Number(Reflect.get(seconds, 'high')) * 0x1_0000_0000
+      : Number(seconds);
+  if (!Number.isFinite(numericSeconds) || !Number.isFinite(Number(nanos ?? 0)))
+    return undefined;
+  return new Date(numericSeconds * 1_000 + Number(nanos ?? 0) / 1_000_000);
+}
+
+const manualSchema = z.object({
+  clockType: z.union([
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_IN),
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_OUT),
+  ]),
+  workDate: z.iso.date(),
+  claimedAt: z.unknown().transform(protoDate),
+  address: z.string().trim().min(1).max(500),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  reason: z.string().trim().min(1).max(1000),
+  evidenceUploadId: z.string().uuid(),
+});
+
 function evidenceFailure(error: unknown): never {
   if (!(error instanceof EvidenceError)) throw error;
   const code =
     error.code === 'EVIDENCE_NOT_FOUND'
       ? status.NOT_FOUND
-      : status.FAILED_PRECONDITION;
+      : error.code === 'EVIDENCE_ALREADY_ATTACHED'
+        ? status.ALREADY_EXISTS
+        : error.code === 'EVIDENCE_FINALIZATION_FAILED'
+          ? status.UNAVAILABLE
+          : status.FAILED_PRECONDITION;
   failure(code, error.code);
 }
 
@@ -107,6 +147,7 @@ export class AttendanceController {
     private readonly zones: AttendanceZoneRepository,
     private readonly evidence: EvidenceService,
     private readonly regularAttendance: RegularAttendanceService,
+    private readonly manualAttendance: ManualAttendanceService,
     config: ConfigService<Environment, true>,
   ) {
     this.issuer = config.get('JWT_ISSUER', { infer: true });
@@ -181,7 +222,7 @@ export class AttendanceController {
       const result = await this.regularAttendance.create(claims.sub, key, {
         ...parsed.data,
         clockType:
-          parsed.data.clockType === ClockType.CLOCK_IN
+          parsed.data.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
             ? 'CLOCK_IN'
             : 'CLOCK_OUT',
       });
@@ -189,14 +230,56 @@ export class AttendanceController {
         ...result.entry,
         clockType:
           result.entry.clockType === 'CLOCK_IN'
-            ? ClockType.CLOCK_IN
-            : ClockType.CLOCK_OUT,
+            ? ClockType.CLOCK_TYPE_CLOCK_IN
+            : ClockType.CLOCK_TYPE_CLOCK_OUT,
         occurredAt: grpcTimestamp(new Date(result.entry.occurredAt)),
         submittedAt: grpcTimestamp(new Date(result.entry.submittedAt)),
-        replayed: result.replayed,
+        idempotentReplay: result.replayed,
       };
     } catch (error) {
       regularFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'CreateManualAttendance')
+  async createManualAttendance(
+    request: CreateManualAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    const claims = await this.authorize(metadata, ['EMPLOYEE']);
+    const key = metadata.get('idempotency-key')[0];
+    if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+      failure(status.INVALID_ARGUMENT, 'IDEMPOTENCY_KEY_REQUIRED');
+    const parsed = manualSchema.safeParse(request);
+    if (!parsed.success) failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
+    const data = parsed.data;
+    if (!data.claimedAt) failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
+    try {
+      const result = await this.manualAttendance.create(claims.sub, key, {
+        ...data,
+        claimedAt: data.claimedAt,
+      });
+      if (!result.entry.claimedAt || !result.entry.submittedAt)
+        throw new Error('manual attendance timestamps missing');
+      return {
+        ...result.entry,
+        claimedAt: grpcTimestamp(result.entry.claimedAt),
+        submittedAt: grpcTimestamp(result.entry.submittedAt),
+        idempotentReplay: result.replay,
+      };
+    } catch (error) {
+      if (error instanceof EvidenceError) evidenceFailure(error);
+      if (!(error instanceof ManualAttendanceError)) throw error;
+      if (error.code === 'REQUEST_IN_PROGRESS')
+        failure(status.ABORTED, error.code, 1);
+      if (
+        error.code === 'IDEMPOTENCY_KEY_REUSED' ||
+        error.code === 'ATTENDANCE_ALREADY_EXISTS'
+      )
+        failure(status.ALREADY_EXISTS, error.code);
+      if (error.code === 'VALIDATION_ERROR')
+        failure(status.INVALID_ARGUMENT, error.code);
+      failure(status.FAILED_PRECONDITION, error.code);
     }
   }
 

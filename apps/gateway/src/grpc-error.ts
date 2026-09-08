@@ -10,10 +10,14 @@ export function grpcCode(error: unknown): status | undefined {
   return typeof code === 'number' ? code : undefined;
 }
 
-export function grpcErrorCode(error: unknown) {
+export function grpcMetadata(error: unknown, key: string) {
   if (!isRecord(error)) return undefined;
   const metadata = error.metadata;
   if (!(metadata instanceof Metadata)) return undefined;
-  const value = metadata.get('x-error-code')[0];
+  const value = metadata.get(key)[0];
   return typeof value === 'string' ? value : undefined;
+}
+
+export function grpcErrorCode(error: unknown) {
+  return grpcMetadata(error, 'x-error-code');
 }

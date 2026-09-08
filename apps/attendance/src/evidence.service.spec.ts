@@ -24,6 +24,7 @@ function subject() {
     lock: vi.fn(),
     finalizing: vi.fn(),
     attached: vi.fn(),
+    reset: vi.fn(),
     removeExpiredUploads: vi.fn(),
     finalizingUploads: vi.fn().mockResolvedValue([]),
   };
@@ -37,7 +38,6 @@ function subject() {
         versionId: 'staging-version',
         metaData: { 'content-type': 'image/png' },
       })
-      .mockRejectedValueOnce(new Error('not found'))
       .mockResolvedValueOnce({
         size: 8,
         versionId: 'permanent-version',
@@ -77,48 +77,25 @@ describe('EvidenceService', () => {
 
   it('verifies and promotes the exact uploaded version', async () => {
     const { service, repository, store } = subject();
-    repository.lock
-      .mockImplementationOnce(
-        async (
-          _id,
-          work: (connection: object, current: typeof upload) => Promise<void>,
-        ) => {
-          await work({}, upload);
-          return true;
-        },
-      )
-      .mockImplementationOnce(
-        async (
-          _id,
-          work: (connection: object, current: typeof upload) => Promise<void>,
-        ) => {
-          await work({}, { ...upload, status: 'FINALIZING' });
-          return true;
-        },
-      );
-
-    await expect(service.finalize('employee-1', upload.id)).resolves.toBe(
-      upload.id,
+    repository.lock.mockImplementationOnce(
+      async (
+        _id,
+        work: (connection: object, current: typeof upload) => Promise<void>,
+      ) => {
+        await work({}, upload);
+        return true;
+      },
     );
+
+    const prepared = await service.prepareStandalone('employee-1', upload.id);
+    await expect(service.promote(prepared)).resolves.toBe('permanent-version');
     expect(repository.finalizing).toHaveBeenCalledWith(
       {},
       upload,
       'staging-version',
     );
-    expect(store.copy).toHaveBeenCalledWith(
-      upload.stagingKey,
-      'staging-version',
-      `evidence/${upload.id}`,
-    );
-    expect(repository.attached).toHaveBeenCalledWith(
-      {},
-      upload.id,
-      'permanent-version',
-    );
-    expect(store.remove).toHaveBeenCalledWith(
-      upload.stagingKey,
-      'staging-version',
-    );
+    expect(store.copy).not.toHaveBeenCalled();
+    expect(repository.attached).not.toHaveBeenCalled();
   });
 
   it('hides evidence from non-owners and rejects unattached access', async () => {

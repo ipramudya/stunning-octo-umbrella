@@ -2,13 +2,18 @@ import { fileURLToPath } from 'node:url';
 
 export * from './generated/grpc/health/v1/health.js';
 export {
+  type AttendanceDecision,
+  AttendanceEntry,
+  type AttendanceLocation,
+  AttendanceSource,
+  AttendanceStatus,
   type AttendanceServiceClient,
   AttendanceServiceService,
-  type AttendanceEntry,
   type AttendanceZone,
   type AuthorizeEvidenceAccessRequest,
   type AuthorizeEvidenceUploadRequest,
   ClockType,
+  type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
   type EvidenceAccessAuthorization,
   type EvidenceUploadAuthorization,

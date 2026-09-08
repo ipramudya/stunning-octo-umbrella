@@ -12,6 +12,7 @@ import {
   IDENTITY_HEALTH_CLIENT,
 } from './grpc-health.client.js';
 import { HealthController } from './health.controller.js';
+import { ManualAttendanceController } from './manual-attendance.controller.js';
 import { RateLimiter } from './rate-limiter.js';
 import { ReadinessService } from './readiness.js';
 
@@ -57,6 +58,7 @@ import { ReadinessService } from './readiness.js';
     AuthController,
     EmployeeController,
     HealthController,
+    ManualAttendanceController,
   ],
   providers: [RateLimiter, ReadinessService],
 })

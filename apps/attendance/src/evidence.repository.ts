@@ -105,12 +105,20 @@ export class EvidenceRepository {
     id: string,
     work: (connection: Connection, upload: EvidenceUpload) => Promise<void>,
   ) {
-    return this.database.withTransaction(async (connection) => {
-      const upload = await this.getForUpdate(connection, id);
-      if (!upload) return false;
-      await work(connection, upload);
-      return true;
-    });
+    return this.database.withTransaction((connection) =>
+      this.lockWithConnection(connection, id, work),
+    );
+  }
+
+  async lockWithConnection(
+    connection: Connection,
+    id: string,
+    work: (connection: Connection, upload: EvidenceUpload) => Promise<void>,
+  ) {
+    const upload = await this.getForUpdate(connection, id);
+    if (!upload) return false;
+    await work(connection, upload);
+    return true;
   }
 
   async getForUpdate(connection: Connection, id: string) {

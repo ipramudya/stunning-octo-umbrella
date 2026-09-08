@@ -25,8 +25,8 @@ export const protobufPackage = "dexa.attendance.v1";
 
 export enum ClockType {
   CLOCK_TYPE_UNSPECIFIED = 0,
-  CLOCK_IN = 1,
-  CLOCK_OUT = 2,
+  CLOCK_TYPE_CLOCK_IN = 1,
+  CLOCK_TYPE_CLOCK_OUT = 2,
   UNRECOGNIZED = -1,
 }
 
@@ -36,11 +36,11 @@ export function clockTypeFromJSON(object: any): ClockType {
     case "CLOCK_TYPE_UNSPECIFIED":
       return ClockType.CLOCK_TYPE_UNSPECIFIED;
     case 1:
-    case "CLOCK_IN":
-      return ClockType.CLOCK_IN;
+    case "CLOCK_TYPE_CLOCK_IN":
+      return ClockType.CLOCK_TYPE_CLOCK_IN;
     case 2:
-    case "CLOCK_OUT":
-      return ClockType.CLOCK_OUT;
+    case "CLOCK_TYPE_CLOCK_OUT":
+      return ClockType.CLOCK_TYPE_CLOCK_OUT;
     case -1:
     case "UNRECOGNIZED":
     default:
@@ -52,11 +52,95 @@ export function clockTypeToJSON(object: ClockType): string {
   switch (object) {
     case ClockType.CLOCK_TYPE_UNSPECIFIED:
       return "CLOCK_TYPE_UNSPECIFIED";
-    case ClockType.CLOCK_IN:
-      return "CLOCK_IN";
-    case ClockType.CLOCK_OUT:
-      return "CLOCK_OUT";
+    case ClockType.CLOCK_TYPE_CLOCK_IN:
+      return "CLOCK_TYPE_CLOCK_IN";
+    case ClockType.CLOCK_TYPE_CLOCK_OUT:
+      return "CLOCK_TYPE_CLOCK_OUT";
     case ClockType.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+export enum AttendanceSource {
+  ATTENDANCE_SOURCE_UNSPECIFIED = 0,
+  ATTENDANCE_SOURCE_REGULAR = 1,
+  ATTENDANCE_SOURCE_MANUAL = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function attendanceSourceFromJSON(object: any): AttendanceSource {
+  switch (object) {
+    case 0:
+    case "ATTENDANCE_SOURCE_UNSPECIFIED":
+      return AttendanceSource.ATTENDANCE_SOURCE_UNSPECIFIED;
+    case 1:
+    case "ATTENDANCE_SOURCE_REGULAR":
+      return AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
+    case 2:
+    case "ATTENDANCE_SOURCE_MANUAL":
+      return AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return AttendanceSource.UNRECOGNIZED;
+  }
+}
+
+export function attendanceSourceToJSON(object: AttendanceSource): string {
+  switch (object) {
+    case AttendanceSource.ATTENDANCE_SOURCE_UNSPECIFIED:
+      return "ATTENDANCE_SOURCE_UNSPECIFIED";
+    case AttendanceSource.ATTENDANCE_SOURCE_REGULAR:
+      return "ATTENDANCE_SOURCE_REGULAR";
+    case AttendanceSource.ATTENDANCE_SOURCE_MANUAL:
+      return "ATTENDANCE_SOURCE_MANUAL";
+    case AttendanceSource.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+export enum AttendanceStatus {
+  ATTENDANCE_STATUS_UNSPECIFIED = 0,
+  ATTENDANCE_STATUS_PENDING_REVIEW = 1,
+  ATTENDANCE_STATUS_RECORDED = 2,
+  ATTENDANCE_STATUS_REJECTED = 3,
+  UNRECOGNIZED = -1,
+}
+
+export function attendanceStatusFromJSON(object: any): AttendanceStatus {
+  switch (object) {
+    case 0:
+    case "ATTENDANCE_STATUS_UNSPECIFIED":
+      return AttendanceStatus.ATTENDANCE_STATUS_UNSPECIFIED;
+    case 1:
+    case "ATTENDANCE_STATUS_PENDING_REVIEW":
+      return AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW;
+    case 2:
+    case "ATTENDANCE_STATUS_RECORDED":
+      return AttendanceStatus.ATTENDANCE_STATUS_RECORDED;
+    case 3:
+    case "ATTENDANCE_STATUS_REJECTED":
+      return AttendanceStatus.ATTENDANCE_STATUS_REJECTED;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return AttendanceStatus.UNRECOGNIZED;
+  }
+}
+
+export function attendanceStatusToJSON(object: AttendanceStatus): string {
+  switch (object) {
+    case AttendanceStatus.ATTENDANCE_STATUS_UNSPECIFIED:
+      return "ATTENDANCE_STATUS_UNSPECIFIED";
+    case AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW:
+      return "ATTENDANCE_STATUS_PENDING_REVIEW";
+    case AttendanceStatus.ATTENDANCE_STATUS_RECORDED:
+      return "ATTENDANCE_STATUS_RECORDED";
+    case AttendanceStatus.ATTENDANCE_STATUS_REJECTED:
+      return "ATTENDANCE_STATUS_REJECTED";
+    case AttendanceStatus.UNRECOGNIZED:
     default:
       return "UNRECOGNIZED";
   }
@@ -97,12 +181,29 @@ export interface CreateRegularAttendanceRequest {
   evidenceUploadId: string;
 }
 
+export interface CreateManualAttendanceRequest {
+  clockType: ClockType;
+  workDate: string;
+  claimedAt: Date | undefined;
+  address: string;
+  latitude: number;
+  longitude: number;
+  reason: string;
+  evidenceUploadId: string;
+}
+
 export interface AttendanceLocation {
   address?: string | undefined;
   latitude: number;
   longitude: number;
-  accuracyMeters: number;
-  distanceMeters: number;
+  accuracyMeters?: number | undefined;
+  distanceMeters?: number | undefined;
+}
+
+export interface AttendanceDecision {
+  decidedByEmployeeId: string;
+  decidedAt: Date | undefined;
+  reason: string;
 }
 
 export interface AttendanceEntry {
@@ -110,13 +211,16 @@ export interface AttendanceEntry {
   employeeId: string;
   workDate: string;
   clockType: ClockType;
-  source: string;
-  status: string;
-  occurredAt: Date | undefined;
+  source: AttendanceSource;
+  status: AttendanceStatus;
+  occurredAt?: Date | undefined;
+  claimedAt?: Date | undefined;
   submittedAt: Date | undefined;
   location: AttendanceLocation | undefined;
-  evidenceId: string;
-  replayed: boolean;
+  reason?: string | undefined;
+  evidenceId?: string | undefined;
+  decision?: AttendanceDecision | undefined;
+  idempotentReplay: boolean;
 }
 
 export interface AttendanceZone {
@@ -793,8 +897,214 @@ export const CreateRegularAttendanceRequest: MessageFns<CreateRegularAttendanceR
   },
 };
 
+function createBaseCreateManualAttendanceRequest(): CreateManualAttendanceRequest {
+  return {
+    clockType: 0,
+    workDate: "",
+    claimedAt: undefined,
+    address: "",
+    latitude: 0,
+    longitude: 0,
+    reason: "",
+    evidenceUploadId: "",
+  };
+}
+
+export const CreateManualAttendanceRequest: MessageFns<CreateManualAttendanceRequest> = {
+  encode(message: CreateManualAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.clockType !== 0) {
+      writer.uint32(8).int32(message.clockType);
+    }
+    if (message.workDate !== "") {
+      writer.uint32(18).string(message.workDate);
+    }
+    if (message.claimedAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.claimedAt), writer.uint32(26).fork()).join();
+    }
+    if (message.address !== "") {
+      writer.uint32(34).string(message.address);
+    }
+    if (message.latitude !== 0) {
+      writer.uint32(41).double(message.latitude);
+    }
+    if (message.longitude !== 0) {
+      writer.uint32(49).double(message.longitude);
+    }
+    if (message.reason !== "") {
+      writer.uint32(58).string(message.reason);
+    }
+    if (message.evidenceUploadId !== "") {
+      writer.uint32(66).string(message.evidenceUploadId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateManualAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCreateManualAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.clockType = reader.int32() as any;
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.workDate = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.claimedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.address = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 41) {
+              break;
+            }
+
+            message.latitude = reader.double();
+            continue;
+          }
+          case 6: {
+            if (tag !== 49) {
+              break;
+            }
+
+            message.longitude = reader.double();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.reason = reader.string();
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.evidenceUploadId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): CreateManualAttendanceRequest {
+    return {
+      clockType: isSet(object.clockType)
+        ? clockTypeFromJSON(object.clockType)
+        : isSet(object.clock_type)
+        ? clockTypeFromJSON(object.clock_type)
+        : 0,
+      workDate: isSet(object.workDate)
+        ? globalThis.String(object.workDate)
+        : isSet(object.work_date)
+        ? globalThis.String(object.work_date)
+        : "",
+      claimedAt: isSet(object.claimedAt)
+        ? fromJsonTimestamp(object.claimedAt)
+        : isSet(object.claimed_at)
+        ? fromJsonTimestamp(object.claimed_at)
+        : undefined,
+      address: isSet(object.address) ? globalThis.String(object.address) : "",
+      latitude: isSet(object.latitude) ? globalThis.Number(object.latitude) : 0,
+      longitude: isSet(object.longitude) ? globalThis.Number(object.longitude) : 0,
+      reason: isSet(object.reason) ? globalThis.String(object.reason) : "",
+      evidenceUploadId: isSet(object.evidenceUploadId)
+        ? globalThis.String(object.evidenceUploadId)
+        : isSet(object.evidence_upload_id)
+        ? globalThis.String(object.evidence_upload_id)
+        : "",
+    };
+  },
+
+  toJSON(message: CreateManualAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.clockType !== 0) {
+      obj.clockType = clockTypeToJSON(message.clockType);
+    }
+    if (message.workDate !== "") {
+      obj.workDate = message.workDate;
+    }
+    if (message.claimedAt !== undefined) {
+      obj.claimedAt = message.claimedAt.toISOString();
+    }
+    if (message.address !== "") {
+      obj.address = message.address;
+    }
+    if (message.latitude !== 0) {
+      obj.latitude = message.latitude;
+    }
+    if (message.longitude !== 0) {
+      obj.longitude = message.longitude;
+    }
+    if (message.reason !== "") {
+      obj.reason = message.reason;
+    }
+    if (message.evidenceUploadId !== "") {
+      obj.evidenceUploadId = message.evidenceUploadId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreateManualAttendanceRequest>): CreateManualAttendanceRequest {
+    return CreateManualAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreateManualAttendanceRequest>): CreateManualAttendanceRequest {
+    const message = createBaseCreateManualAttendanceRequest();
+    message.clockType = object.clockType ?? 0;
+    message.workDate = object.workDate ?? "";
+    message.claimedAt = object.claimedAt ?? undefined;
+    message.address = object.address ?? "";
+    message.latitude = object.latitude ?? 0;
+    message.longitude = object.longitude ?? 0;
+    message.reason = object.reason ?? "";
+    message.evidenceUploadId = object.evidenceUploadId ?? "";
+    return message;
+  },
+};
+
 function createBaseAttendanceLocation(): AttendanceLocation {
-  return { address: undefined, latitude: 0, longitude: 0, accuracyMeters: 0, distanceMeters: 0 };
+  return { address: undefined, latitude: 0, longitude: 0, accuracyMeters: undefined, distanceMeters: undefined };
 }
 
 export const AttendanceLocation: MessageFns<AttendanceLocation> = {
@@ -808,10 +1118,10 @@ export const AttendanceLocation: MessageFns<AttendanceLocation> = {
     if (message.longitude !== 0) {
       writer.uint32(25).double(message.longitude);
     }
-    if (message.accuracyMeters !== 0) {
+    if (message.accuracyMeters !== undefined) {
       writer.uint32(33).double(message.accuracyMeters);
     }
-    if (message.distanceMeters !== 0) {
+    if (message.distanceMeters !== undefined) {
       writer.uint32(41).double(message.distanceMeters);
     }
     return writer;
@@ -891,12 +1201,12 @@ export const AttendanceLocation: MessageFns<AttendanceLocation> = {
         ? globalThis.Number(object.accuracyMeters)
         : isSet(object.accuracy_meters)
         ? globalThis.Number(object.accuracy_meters)
-        : 0,
+        : undefined,
       distanceMeters: isSet(object.distanceMeters)
         ? globalThis.Number(object.distanceMeters)
         : isSet(object.distance_meters)
         ? globalThis.Number(object.distance_meters)
-        : 0,
+        : undefined,
     };
   },
 
@@ -911,10 +1221,10 @@ export const AttendanceLocation: MessageFns<AttendanceLocation> = {
     if (message.longitude !== 0) {
       obj.longitude = message.longitude;
     }
-    if (message.accuracyMeters !== 0) {
+    if (message.accuracyMeters !== undefined) {
       obj.accuracyMeters = message.accuracyMeters;
     }
-    if (message.distanceMeters !== 0) {
+    if (message.distanceMeters !== undefined) {
       obj.distanceMeters = message.distanceMeters;
     }
     return obj;
@@ -928,8 +1238,117 @@ export const AttendanceLocation: MessageFns<AttendanceLocation> = {
     message.address = object.address ?? undefined;
     message.latitude = object.latitude ?? 0;
     message.longitude = object.longitude ?? 0;
-    message.accuracyMeters = object.accuracyMeters ?? 0;
-    message.distanceMeters = object.distanceMeters ?? 0;
+    message.accuracyMeters = object.accuracyMeters ?? undefined;
+    message.distanceMeters = object.distanceMeters ?? undefined;
+    return message;
+  },
+};
+
+function createBaseAttendanceDecision(): AttendanceDecision {
+  return { decidedByEmployeeId: "", decidedAt: undefined, reason: "" };
+}
+
+export const AttendanceDecision: MessageFns<AttendanceDecision> = {
+  encode(message: AttendanceDecision, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.decidedByEmployeeId !== "") {
+      writer.uint32(10).string(message.decidedByEmployeeId);
+    }
+    if (message.decidedAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.decidedAt), writer.uint32(18).fork()).join();
+    }
+    if (message.reason !== "") {
+      writer.uint32(26).string(message.reason);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AttendanceDecision {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAttendanceDecision();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.decidedByEmployeeId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.decidedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.reason = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AttendanceDecision {
+    return {
+      decidedByEmployeeId: isSet(object.decidedByEmployeeId)
+        ? globalThis.String(object.decidedByEmployeeId)
+        : isSet(object.decided_by_employee_id)
+        ? globalThis.String(object.decided_by_employee_id)
+        : "",
+      decidedAt: isSet(object.decidedAt)
+        ? fromJsonTimestamp(object.decidedAt)
+        : isSet(object.decided_at)
+        ? fromJsonTimestamp(object.decided_at)
+        : undefined,
+      reason: isSet(object.reason) ? globalThis.String(object.reason) : "",
+    };
+  },
+
+  toJSON(message: AttendanceDecision): unknown {
+    const obj: any = {};
+    if (message.decidedByEmployeeId !== "") {
+      obj.decidedByEmployeeId = message.decidedByEmployeeId;
+    }
+    if (message.decidedAt !== undefined) {
+      obj.decidedAt = message.decidedAt.toISOString();
+    }
+    if (message.reason !== "") {
+      obj.reason = message.reason;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AttendanceDecision>): AttendanceDecision {
+    return AttendanceDecision.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AttendanceDecision>): AttendanceDecision {
+    const message = createBaseAttendanceDecision();
+    message.decidedByEmployeeId = object.decidedByEmployeeId ?? "";
+    message.decidedAt = object.decidedAt ?? undefined;
+    message.reason = object.reason ?? "";
     return message;
   },
 };
@@ -940,13 +1359,16 @@ function createBaseAttendanceEntry(): AttendanceEntry {
     employeeId: "",
     workDate: "",
     clockType: 0,
-    source: "",
-    status: "",
+    source: 0,
+    status: 0,
     occurredAt: undefined,
+    claimedAt: undefined,
     submittedAt: undefined,
     location: undefined,
-    evidenceId: "",
-    replayed: false,
+    reason: undefined,
+    evidenceId: undefined,
+    decision: undefined,
+    idempotentReplay: false,
   };
 }
 
@@ -964,26 +1386,35 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
     if (message.clockType !== 0) {
       writer.uint32(32).int32(message.clockType);
     }
-    if (message.source !== "") {
-      writer.uint32(42).string(message.source);
+    if (message.source !== 0) {
+      writer.uint32(40).int32(message.source);
     }
-    if (message.status !== "") {
-      writer.uint32(50).string(message.status);
+    if (message.status !== 0) {
+      writer.uint32(48).int32(message.status);
     }
     if (message.occurredAt !== undefined) {
       Timestamp.encode(toTimestamp(message.occurredAt), writer.uint32(58).fork()).join();
     }
+    if (message.claimedAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.claimedAt), writer.uint32(66).fork()).join();
+    }
     if (message.submittedAt !== undefined) {
-      Timestamp.encode(toTimestamp(message.submittedAt), writer.uint32(66).fork()).join();
+      Timestamp.encode(toTimestamp(message.submittedAt), writer.uint32(74).fork()).join();
     }
     if (message.location !== undefined) {
-      AttendanceLocation.encode(message.location, writer.uint32(74).fork()).join();
+      AttendanceLocation.encode(message.location, writer.uint32(82).fork()).join();
     }
-    if (message.evidenceId !== "") {
-      writer.uint32(82).string(message.evidenceId);
+    if (message.reason !== undefined) {
+      writer.uint32(90).string(message.reason);
     }
-    if (message.replayed !== false) {
-      writer.uint32(88).bool(message.replayed);
+    if (message.evidenceId !== undefined) {
+      writer.uint32(98).string(message.evidenceId);
+    }
+    if (message.decision !== undefined) {
+      AttendanceDecision.encode(message.decision, writer.uint32(106).fork()).join();
+    }
+    if (message.idempotentReplay !== false) {
+      writer.uint32(112).bool(message.idempotentReplay);
     }
     return writer;
   },
@@ -1034,19 +1465,19 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
             continue;
           }
           case 5: {
-            if (tag !== 42) {
+            if (tag !== 40) {
               break;
             }
 
-            message.source = reader.string();
+            message.source = reader.int32() as any;
             continue;
           }
           case 6: {
-            if (tag !== 50) {
+            if (tag !== 48) {
               break;
             }
 
-            message.status = reader.string();
+            message.status = reader.int32() as any;
             continue;
           }
           case 7: {
@@ -1062,7 +1493,7 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
               break;
             }
 
-            message.submittedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            message.claimedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
             continue;
           }
           case 9: {
@@ -1070,7 +1501,7 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
               break;
             }
 
-            message.location = AttendanceLocation.decode(reader, reader.uint32());
+            message.submittedAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
             continue;
           }
           case 10: {
@@ -1078,15 +1509,39 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
               break;
             }
 
-            message.evidenceId = reader.string();
+            message.location = AttendanceLocation.decode(reader, reader.uint32());
             continue;
           }
           case 11: {
-            if (tag !== 88) {
+            if (tag !== 90) {
               break;
             }
 
-            message.replayed = reader.bool();
+            message.reason = reader.string();
+            continue;
+          }
+          case 12: {
+            if (tag !== 98) {
+              break;
+            }
+
+            message.evidenceId = reader.string();
+            continue;
+          }
+          case 13: {
+            if (tag !== 106) {
+              break;
+            }
+
+            message.decision = AttendanceDecision.decode(reader, reader.uint32());
+            continue;
+          }
+          case 14: {
+            if (tag !== 112) {
+              break;
+            }
+
+            message.idempotentReplay = reader.bool();
             continue;
           }
         }
@@ -1119,12 +1574,17 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
         : isSet(object.clock_type)
         ? clockTypeFromJSON(object.clock_type)
         : 0,
-      source: isSet(object.source) ? globalThis.String(object.source) : "",
-      status: isSet(object.status) ? globalThis.String(object.status) : "",
+      source: isSet(object.source) ? attendanceSourceFromJSON(object.source) : 0,
+      status: isSet(object.status) ? attendanceStatusFromJSON(object.status) : 0,
       occurredAt: isSet(object.occurredAt)
         ? fromJsonTimestamp(object.occurredAt)
         : isSet(object.occurred_at)
         ? fromJsonTimestamp(object.occurred_at)
+        : undefined,
+      claimedAt: isSet(object.claimedAt)
+        ? fromJsonTimestamp(object.claimedAt)
+        : isSet(object.claimed_at)
+        ? fromJsonTimestamp(object.claimed_at)
         : undefined,
       submittedAt: isSet(object.submittedAt)
         ? fromJsonTimestamp(object.submittedAt)
@@ -1132,12 +1592,18 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
         ? fromJsonTimestamp(object.submitted_at)
         : undefined,
       location: isSet(object.location) ? AttendanceLocation.fromJSON(object.location) : undefined,
+      reason: isSet(object.reason) ? globalThis.String(object.reason) : undefined,
       evidenceId: isSet(object.evidenceId)
         ? globalThis.String(object.evidenceId)
         : isSet(object.evidence_id)
         ? globalThis.String(object.evidence_id)
-        : "",
-      replayed: isSet(object.replayed) ? globalThis.Boolean(object.replayed) : false,
+        : undefined,
+      decision: isSet(object.decision) ? AttendanceDecision.fromJSON(object.decision) : undefined,
+      idempotentReplay: isSet(object.idempotentReplay)
+        ? globalThis.Boolean(object.idempotentReplay)
+        : isSet(object.idempotent_replay)
+        ? globalThis.Boolean(object.idempotent_replay)
+        : false,
     };
   },
 
@@ -1155,14 +1621,17 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
     if (message.clockType !== 0) {
       obj.clockType = clockTypeToJSON(message.clockType);
     }
-    if (message.source !== "") {
-      obj.source = message.source;
+    if (message.source !== 0) {
+      obj.source = attendanceSourceToJSON(message.source);
     }
-    if (message.status !== "") {
-      obj.status = message.status;
+    if (message.status !== 0) {
+      obj.status = attendanceStatusToJSON(message.status);
     }
     if (message.occurredAt !== undefined) {
       obj.occurredAt = message.occurredAt.toISOString();
+    }
+    if (message.claimedAt !== undefined) {
+      obj.claimedAt = message.claimedAt.toISOString();
     }
     if (message.submittedAt !== undefined) {
       obj.submittedAt = message.submittedAt.toISOString();
@@ -1170,11 +1639,17 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
     if (message.location !== undefined) {
       obj.location = AttendanceLocation.toJSON(message.location);
     }
-    if (message.evidenceId !== "") {
+    if (message.reason !== undefined) {
+      obj.reason = message.reason;
+    }
+    if (message.evidenceId !== undefined) {
       obj.evidenceId = message.evidenceId;
     }
-    if (message.replayed !== false) {
-      obj.replayed = message.replayed;
+    if (message.decision !== undefined) {
+      obj.decision = AttendanceDecision.toJSON(message.decision);
+    }
+    if (message.idempotentReplay !== false) {
+      obj.idempotentReplay = message.idempotentReplay;
     }
     return obj;
   },
@@ -1188,15 +1663,20 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
     message.employeeId = object.employeeId ?? "";
     message.workDate = object.workDate ?? "";
     message.clockType = object.clockType ?? 0;
-    message.source = object.source ?? "";
-    message.status = object.status ?? "";
+    message.source = object.source ?? 0;
+    message.status = object.status ?? 0;
     message.occurredAt = object.occurredAt ?? undefined;
+    message.claimedAt = object.claimedAt ?? undefined;
     message.submittedAt = object.submittedAt ?? undefined;
     message.location = (object.location !== undefined && object.location !== null)
       ? AttendanceLocation.fromPartial(object.location)
       : undefined;
-    message.evidenceId = object.evidenceId ?? "";
-    message.replayed = object.replayed ?? false;
+    message.reason = object.reason ?? undefined;
+    message.evidenceId = object.evidenceId ?? undefined;
+    message.decision = (object.decision !== undefined && object.decision !== null)
+      ? AttendanceDecision.fromPartial(object.decision)
+      : undefined;
+    message.idempotentReplay = object.idempotentReplay ?? false;
     return message;
   },
 };
@@ -1560,6 +2040,16 @@ export const AttendanceServiceService = {
     responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
     responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
   },
+  createManualAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/CreateManualAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: CreateManualAttendanceRequest): Buffer =>
+      Buffer.from(CreateManualAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CreateManualAttendanceRequest => CreateManualAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
 } as const;
 
 export interface AttendanceServiceServer extends UntypedServiceImplementation {
@@ -1568,6 +2058,7 @@ export interface AttendanceServiceServer extends UntypedServiceImplementation {
   authorizeEvidenceUpload: handleUnaryCall<AuthorizeEvidenceUploadRequest, EvidenceUploadAuthorization>;
   authorizeEvidenceAccess: handleUnaryCall<AuthorizeEvidenceAccessRequest, EvidenceAccessAuthorization>;
   createRegularAttendance: handleUnaryCall<CreateRegularAttendanceRequest, AttendanceEntry>;
+  createManualAttendance: handleUnaryCall<CreateManualAttendanceRequest, AttendanceEntry>;
 }
 
 export interface AttendanceServiceClient extends Client {
@@ -1642,6 +2133,21 @@ export interface AttendanceServiceClient extends Client {
   ): ClientUnaryCall;
   createRegularAttendance(
     request: CreateRegularAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  createManualAttendance(
+    request: CreateManualAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  createManualAttendance(
+    request: CreateManualAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  createManualAttendance(
+    request: CreateManualAttendanceRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: AttendanceEntry) => void,

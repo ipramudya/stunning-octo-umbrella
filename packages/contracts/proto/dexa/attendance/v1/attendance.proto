@@ -11,6 +11,7 @@ service AttendanceService {
   rpc AuthorizeEvidenceUpload(AuthorizeEvidenceUploadRequest) returns (EvidenceUploadAuthorization);
   rpc AuthorizeEvidenceAccess(AuthorizeEvidenceAccessRequest) returns (EvidenceAccessAuthorization);
   rpc CreateRegularAttendance(CreateRegularAttendanceRequest) returns (AttendanceEntry);
+  rpc CreateManualAttendance(CreateManualAttendanceRequest) returns (AttendanceEntry);
 }
 
 message AuthorizeEvidenceUploadRequest {
@@ -37,8 +38,21 @@ message EvidenceAccessAuthorization {
 
 enum ClockType {
   CLOCK_TYPE_UNSPECIFIED = 0;
-  CLOCK_IN = 1;
-  CLOCK_OUT = 2;
+  CLOCK_TYPE_CLOCK_IN = 1;
+  CLOCK_TYPE_CLOCK_OUT = 2;
+}
+
+enum AttendanceSource {
+  ATTENDANCE_SOURCE_UNSPECIFIED = 0;
+  ATTENDANCE_SOURCE_REGULAR = 1;
+  ATTENDANCE_SOURCE_MANUAL = 2;
+}
+
+enum AttendanceStatus {
+  ATTENDANCE_STATUS_UNSPECIFIED = 0;
+  ATTENDANCE_STATUS_PENDING_REVIEW = 1;
+  ATTENDANCE_STATUS_RECORDED = 2;
+  ATTENDANCE_STATUS_REJECTED = 3;
 }
 
 message CreateRegularAttendanceRequest {
@@ -49,12 +63,29 @@ message CreateRegularAttendanceRequest {
   string evidence_upload_id = 5;
 }
 
+message CreateManualAttendanceRequest {
+  ClockType clock_type = 1;
+  string work_date = 2;
+  google.protobuf.Timestamp claimed_at = 3;
+  string address = 4;
+  double latitude = 5;
+  double longitude = 6;
+  string reason = 7;
+  string evidence_upload_id = 8;
+}
+
 message AttendanceLocation {
   optional string address = 1;
   double latitude = 2;
   double longitude = 3;
-  double accuracy_meters = 4;
-  double distance_meters = 5;
+  optional double accuracy_meters = 4;
+  optional double distance_meters = 5;
+}
+
+message AttendanceDecision {
+  string decided_by_employee_id = 1;
+  google.protobuf.Timestamp decided_at = 2;
+  string reason = 3;
 }
 
 message AttendanceEntry {
@@ -62,13 +93,16 @@ message AttendanceEntry {
   string employee_id = 2;
   string work_date = 3;
   ClockType clock_type = 4;
-  string source = 5;
-  string status = 6;
-  google.protobuf.Timestamp occurred_at = 7;
-  google.protobuf.Timestamp submitted_at = 8;
-  AttendanceLocation location = 9;
-  string evidence_id = 10;
-  bool replayed = 11;
+  AttendanceSource source = 5;
+  AttendanceStatus status = 6;
+  optional google.protobuf.Timestamp occurred_at = 7;
+  optional google.protobuf.Timestamp claimed_at = 8;
+  google.protobuf.Timestamp submitted_at = 9;
+  AttendanceLocation location = 10;
+  optional string reason = 11;
+  optional string evidence_id = 12;
+  optional AttendanceDecision decision = 13;
+  bool idempotent_replay = 14;
 }
 
 message AttendanceZone {

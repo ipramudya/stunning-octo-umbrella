@@ -247,8 +247,8 @@ export class AttendanceZoneController implements OnModuleInit {
               ...body,
               clockType:
                 body.clockType === 'CLOCK_IN'
-                  ? ClockType.CLOCK_IN
-                  : ClockType.CLOCK_OUT,
+                  ? ClockType.CLOCK_TYPE_CLOCK_IN
+                  : ClockType.CLOCK_TYPE_CLOCK_OUT,
             },
             metadata,
             options,
@@ -257,15 +257,17 @@ export class AttendanceZoneController implements OnModuleInit {
       );
       if (!result.occurredAt || !result.submittedAt || !result.location)
         throw new Error('invalid regular attendance response');
-      reply.status(result.replayed ? 200 : 201);
+      reply.status(result.idempotentReplay ? 200 : 201);
       return {
         id: result.id,
         employeeId: result.employeeId,
         workDate: result.workDate,
         clockType:
-          result.clockType === ClockType.CLOCK_IN ? 'CLOCK_IN' : 'CLOCK_OUT',
-        source: result.source,
-        status: result.status,
+          result.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
+            ? 'CLOCK_IN'
+            : 'CLOCK_OUT',
+        source: 'REGULAR',
+        status: 'RECORDED',
         occurredAt: timestampIso(result.occurredAt),
         claimedAt: null,
         submittedAt: timestampIso(result.submittedAt),

@@ -131,6 +131,20 @@ export class EvidenceService implements OnApplicationBootstrap {
     return this.prepareUpload(connection, upload);
   }
 
+  async prepareStandalone(employeeId: string, uploadId: string) {
+    let current: EvidenceUpload | undefined;
+    const found = await this.repository.lock(
+      uploadId,
+      async (connection, upload) => {
+        if (upload.employeeId !== employeeId)
+          throw new EvidenceError('EVIDENCE_NOT_FOUND');
+        current = await this.prepareUpload(connection, upload);
+      },
+    );
+    if (!found || !current) throw new EvidenceError('EVIDENCE_NOT_FOUND');
+    return current;
+  }
+
   async promote(upload: EvidenceUpload) {
     if (!upload.stagingVersion || !upload.permanentKey)
       throw new EvidenceError('EVIDENCE_FINALIZATION_FAILED');
@@ -176,6 +190,10 @@ export class EvidenceService implements OnApplicationBootstrap {
   async cleanup(upload: EvidenceUpload) {
     if (upload.stagingVersion)
       await this.store.remove(upload.stagingKey, upload.stagingVersion);
+  }
+
+  complete(upload: EvidenceUpload) {
+    return this.cleanup(upload);
   }
 
   async finalize(employeeId: string, uploadId: string) {
