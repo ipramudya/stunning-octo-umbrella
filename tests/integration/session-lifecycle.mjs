@@ -1,46 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { composeExec, cookieJar, me, post } from "./auth-http.mjs";
 
-const origin = "http://localhost:3000";
 const password = process.env.DEMO_HRD_PASSWORD ?? "DexaAdministrator1!";
-
-function composeExec(args, options) {
-  return execFileSync("docker", ["compose", "exec", "-T", ...args], options);
-}
-
-function cookieJar(response) {
-  return Object.fromEntries(
-    response.headers.getSetCookie().map((value) => {
-      const [pair] = value.split(";", 1);
-      const index = pair.indexOf("=");
-      return [pair.slice(0, index), pair.slice(index + 1)];
-    }),
-  );
-}
-
-function cookieHeader(jar) {
-  return Object.entries(jar)
-    .map(([name, value]) => `${name}=${value}`)
-    .join("; ");
-}
-
-function post(path, body, jar) {
-  return fetch(`http://127.0.0.1:3000${path}`, {
-    method: "POST",
-    headers: {
-      ...(body === undefined ? {} : { "content-type": "application/json" }),
-      origin,
-      ...(jar ? { cookie: cookieHeader(jar) } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
-function me(jar) {
-  return fetch("http://127.0.0.1:3000/api/v1/auth/me", {
-    headers: { cookie: cookieHeader(jar) },
-  });
-}
 
 async function login() {
   const response = await post("/api/v1/auth/login", {
@@ -163,4 +125,4 @@ for (const cookie of logout.headers.getSetCookie()) {
   assert.match(cookie, /SameSite=Strict/);
 }
 
-console.log("Ticket 03 session lifecycle integration check passed.");
+console.log("Session lifecycle integration check passed.");

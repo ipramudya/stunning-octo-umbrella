@@ -1,45 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-
-const origin = "http://localhost:3000";
-
-function composeExec(args, options) {
-  return execFileSync("docker", ["compose", "exec", "-T", ...args], options);
-}
-
-function cookieJar(response) {
-  return Object.fromEntries(
-    response.headers.getSetCookie().map((value) => {
-      const [pair] = value.split(";", 1);
-      const index = pair.indexOf("=");
-      return [pair.slice(0, index), pair.slice(index + 1)];
-    }),
-  );
-}
-
-function cookieHeader(jar) {
-  return Object.entries(jar)
-    .map(([name, value]) => `${name}=${value}`)
-    .join("; ");
-}
-
-async function post(path, body, jar) {
-  return fetch(`http://127.0.0.1:3000${path}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin,
-      ...(jar ? { cookie: cookieHeader(jar) } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
-async function me(jar) {
-  return fetch("http://127.0.0.1:3000/api/v1/auth/me", {
-    headers: { cookie: cookieHeader(jar) },
-  });
-}
+import { composeExec, cookieJar, me, post } from "./auth-http.mjs";
 
 async function problem(response, status, code) {
   assert.equal(response.status, status);
@@ -245,4 +205,4 @@ const hrdLogin = await post("/api/v1/auth/login", {
 assert.equal(hrdLogin.status, 200);
 assert.deepEqual((await hrdLogin.json()).roles, ["EMPLOYEE", "HRD"]);
 
-console.log("Ticket 02 authentication integration check passed.");
+console.log("Authentication integration check passed.");
