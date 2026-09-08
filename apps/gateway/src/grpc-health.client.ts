@@ -7,12 +7,17 @@ import { join } from "node:path";
 export const ATTENDANCE_HEALTH_CLIENT = Symbol("ATTENDANCE_HEALTH_CLIENT");
 export const IDENTITY_HEALTH_CLIENT = Symbol("IDENTITY_HEALTH_CLIENT");
 
-export function createHealthClientOptions(
-  address: string,
-  serverName: string,
-  pkiDir: string,
+export function createHealthClientOptions({
+  address,
+  serverName,
+  pkiDir,
   identity = false,
-): GrpcOptions {
+}: {
+  address: string;
+  serverName: string;
+  pkiDir: string;
+  identity?: boolean;
+}): GrpcOptions {
   return {
     transport: Transport.GRPC,
     options: {

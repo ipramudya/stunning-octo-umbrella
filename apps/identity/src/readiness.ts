@@ -22,7 +22,7 @@ export class ReadinessService {
   constructor(private readonly config: ConfigService<Environment, true>) {}
 
   async isReady(): Promise<boolean> {
-    const oracle = this.config.get("ORACLE_CONNECT_STRING", { infer: true }).split("/")[0]!;
+    const oracle = this.config.get("ORACLE_CONNECT_STRING", { infer: true }).split("/", 1)[0] ?? "";
     const separator = oracle.lastIndexOf(":");
     const redis = new URL(this.config.get("REDIS_URL", { infer: true }));
     const checks = await Promise.all([

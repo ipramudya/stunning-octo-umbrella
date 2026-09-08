@@ -41,7 +41,10 @@ const attempts = await Promise.all([
   post("/api/v1/auth/refresh", undefined, concurrent),
   post("/api/v1/auth/refresh", undefined, concurrent),
 ]);
-assert.deepEqual(attempts.map((response) => response.status).sort(), [204, 401]);
+assert.deepEqual(
+  attempts.map((response) => response.status).sort((left, right) => left - right),
+  [204, 401],
+);
 const invalid = await post("/api/v1/auth/refresh", undefined, {
   dexa_refresh: "random-invalid-token",
 });

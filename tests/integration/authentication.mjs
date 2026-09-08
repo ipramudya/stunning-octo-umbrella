@@ -54,7 +54,7 @@ const roleCheck = `
 import { readFileSync } from 'node:fs';
 import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
 try {
-  await verifyInternalAccess(process.env.TOKEN, readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), 'dexa-identity', ['HRD']);
+  await verifyInternalAccess({ token: process.env.TOKEN, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity', requiredRoles: ['HRD'] });
   process.exit(1);
 } catch (error) {
   if (error.message !== 'forbidden') throw error;
@@ -80,7 +80,7 @@ const audienceCheck = `
 import { readFileSync } from 'node:fs';
 import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
 try {
-  await verifyInternalAccess(process.env.TOKEN, readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), 'dexa-identity');
+  await verifyInternalAccess({ token: process.env.TOKEN, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity' });
   process.exit(1);
 } catch {}
 `;
@@ -127,7 +127,7 @@ import { readFileSync } from 'node:fs';
 import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
 for (const token of [process.env.INVALID_TOKEN, process.env.EXPIRED_TOKEN]) {
   try {
-    await verifyInternalAccess(token, readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), 'dexa-identity');
+    await verifyInternalAccess({ token, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity' });
     process.exit(1);
   } catch {}
 }

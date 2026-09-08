@@ -8,12 +8,17 @@ export type InternalClaims = JWTPayload & {
   aud: string;
 };
 
-export async function verifyInternalAccess(
-  token: string,
-  publicKeyPem: string,
-  issuer: string,
-  requiredRoles: InternalRole[] = [],
-): Promise<InternalClaims> {
+export async function verifyInternalAccess({
+  token,
+  publicKeyPem,
+  issuer,
+  requiredRoles = [],
+}: {
+  token: string;
+  publicKeyPem: string;
+  issuer: string;
+  requiredRoles?: InternalRole[];
+}): Promise<InternalClaims> {
   const { payload, protectedHeader } = await jwtVerify(
     token,
     await importSPKI(publicKeyPem, "EdDSA"),

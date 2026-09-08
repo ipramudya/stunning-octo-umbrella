@@ -13,12 +13,17 @@ export type AccessClaims = JWTPayload & {
   aud: string;
 };
 
-async function assertToken(
-  token: string,
-  publicKey: CryptoKey,
-  issuer: string,
-  audience: string,
-): Promise<AccessClaims> {
+async function assertToken({
+  token,
+  publicKey,
+  issuer,
+  audience,
+}: {
+  token: string;
+  publicKey: CryptoKey;
+  issuer: string;
+  audience: string;
+}): Promise<AccessClaims> {
   const { payload, protectedHeader } = await jwtVerify(token, publicKey, {
     algorithms: ["EdDSA"],
     audience,
@@ -59,7 +64,19 @@ export class TokenService {
     );
   }
 
-  async sign(employeeId: string, sid: string, roles: RoleName[], audience: string, ttl: number) {
+  async sign({
+    employeeId,
+    sid,
+    roles,
+    audience,
+    ttl,
+  }: {
+    employeeId: string;
+    sid: string;
+    roles: RoleName[];
+    audience: string;
+    ttl: number;
+  }) {
     return new SignJWT({ sid, roles })
       .setProtectedHeader({ alg: "EdDSA", typ: "at+jwt" })
       .setIssuer(this.issuer)
@@ -71,6 +88,8 @@ export class TokenService {
   }
 
   verify(token: string, audience: string) {
-    return this.publicKey.then((publicKey) => assertToken(token, publicKey, this.issuer, audience));
+    return this.publicKey.then((publicKey) =>
+      assertToken({ token, publicKey, issuer: this.issuer, audience }),
+    );
   }
 }

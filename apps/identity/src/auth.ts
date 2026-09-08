@@ -36,7 +36,7 @@ export function validateLogin(phoneNumber: string, password: string) {
   if (!/^\+62[0-9]+$/.test(phone)) {
     throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
   }
-  const length = [...password].length;
+  const length = Array.from(password).length;
   if (length < 12 || length > 128) {
     throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
   }

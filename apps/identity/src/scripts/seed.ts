@@ -38,7 +38,8 @@ try {
     );
     if (existing.rows?.length) continue;
 
-    const passwordHash = await hash(account.password!, {
+    if (!account.password) throw new Error("Demo account passwords are required");
+    const passwordHash = await hash(account.password, {
       type: 2,
       memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 19_456),
       timeCost: Number(process.env.ARGON2_TIME_COST ?? 2),

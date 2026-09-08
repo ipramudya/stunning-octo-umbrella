@@ -1,4 +1,48 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "rules": {
+    "eslint/max-params": ["error", 3],
+    "eslint/no-console": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/switch-exhaustiveness-check": "error"
+  },
+  "overrides": [
+    {
+      "files": ["apps/identity/src/identity.service.ts"],
+      "rules": {
+        "eslint/max-params": "off"
+      }
+    },
+    {
+      "files": ["**/*.js", "**/*.mjs", "**/*.cjs"],
+      "rules": {
+        "eslint/no-console": "off",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["**/dist/**", "packages/contracts/src/generated/**", ".local/**"]
 }

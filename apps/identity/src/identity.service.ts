@@ -113,16 +113,20 @@ export class IdentityAuthService {
       throw new AuthError("AUTHENTICATION_REQUIRED", status.UNAUTHENTICATED);
     }
     const tokens: AudienceToken[] = await Promise.all(
-      requested.map(async (audience) => ({
-        audience,
-        token: await this.tokens.sign(
-          employee.id,
-          claims.sid,
-          employee.roles,
-          audienceNames.get(audience)!,
-          60,
-        ),
-      })),
+      requested.map(async (audience) => {
+        const audienceName = audienceNames.get(audience);
+        if (!audienceName) throw new AuthError("VALIDATION_ERROR", status.INVALID_ARGUMENT);
+        return {
+          audience,
+          token: await this.tokens.sign({
+            employeeId: employee.id,
+            sid: claims.sid,
+            roles: employee.roles,
+            audience: audienceName,
+            ttl: 60,
+          }),
+        };
+      }),
     );
     return { profile: profile(employee), sessionId: claims.sid, tokens };
   }
@@ -130,13 +134,13 @@ export class IdentityAuthService {
   private async credentials(employee: Employee, sid: string, refreshToken: string) {
     return {
       profile: profile(employee),
-      accessToken: await this.tokens.sign(
-        employee.id,
+      accessToken: await this.tokens.sign({
+        employeeId: employee.id,
         sid,
-        employee.roles,
-        "dexa-gateway",
-        this.config.get("ACCESS_TOKEN_TTL_SECONDS", { infer: true }),
-      ),
+        roles: employee.roles,
+        audience: "dexa-gateway",
+        ttl: this.config.get("ACCESS_TOKEN_TTL_SECONDS", { infer: true }),
+      }),
       refreshToken,
     };
   }

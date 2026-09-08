@@ -41,7 +41,17 @@ export class RateLimiter implements OnModuleDestroy {
     this.client.on("error", () => undefined);
   }
 
-  async consume(scope: string, subject: string, maximum: number, windowSeconds: number) {
+  async consume({
+    scope,
+    subject,
+    maximum,
+    windowSeconds,
+  }: {
+    scope: string;
+    subject: string;
+    maximum: number;
+    windowSeconds: number;
+  }) {
     const client = await this.redis();
     const arguments_ = [`rate:${scope}:${subject}:`, String(windowSeconds)];
     let result;

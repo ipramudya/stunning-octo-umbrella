@@ -4,7 +4,7 @@ export const loginSchema = z
   .object({
     phoneNumber: z.string(),
     password: z.string().refine((value) => {
-      const length = [...value].length;
+      const length = Array.from(value).length;
       return length >= 12 && length <= 128;
     }),
   })

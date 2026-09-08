@@ -19,14 +19,22 @@ describe("Attendance internal access tokens", () => {
   it("rejects the wrong audience", async () => {
     const value = await token("dexa-identity", ["EMPLOYEE"]);
     await expect(
-      verifyInternalAccess(value.jwt, value.publicKey, "dexa-identity"),
+      verifyInternalAccess({
+        token: value.jwt,
+        publicKeyPem: value.publicKey,
+        issuer: "dexa-identity",
+      }),
     ).rejects.toThrow();
   });
 
   it("rejects an expired token", async () => {
     const value = await token("dexa-attendance", ["EMPLOYEE"], 0);
     await expect(
-      verifyInternalAccess(value.jwt, value.publicKey, "dexa-identity"),
+      verifyInternalAccess({
+        token: value.jwt,
+        publicKeyPem: value.publicKey,
+        issuer: "dexa-identity",
+      }),
     ).rejects.toThrow();
   });
 
@@ -34,14 +42,23 @@ describe("Attendance internal access tokens", () => {
     const value = await token("dexa-attendance", ["EMPLOYEE"]);
     const other = await token("dexa-attendance", ["EMPLOYEE"]);
     await expect(
-      verifyInternalAccess(value.jwt, other.publicKey, "dexa-identity"),
+      verifyInternalAccess({
+        token: value.jwt,
+        publicKeyPem: other.publicKey,
+        issuer: "dexa-identity",
+      }),
     ).rejects.toThrow();
   });
 
   it("rejects callers without the required role", async () => {
     const value = await token("dexa-attendance", ["EMPLOYEE"]);
     await expect(
-      verifyInternalAccess(value.jwt, value.publicKey, "dexa-identity", ["HRD"]),
+      verifyInternalAccess({
+        token: value.jwt,
+        publicKeyPem: value.publicKey,
+        issuer: "dexa-identity",
+        requiredRoles: ["HRD"],
+      }),
     ).rejects.toThrow("forbidden");
   });
 });

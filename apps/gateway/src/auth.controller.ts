@@ -6,6 +6,7 @@ import {
   type SessionCredentials,
 } from "@project/contracts";
 import { status, Metadata, type CallOptions, type ServiceError } from "@grpc/grpc-js";
+import type { OnModuleInit } from "@nestjs/common";
 import {
   Body,
   Controller,
@@ -15,7 +16,6 @@ import {
   HttpStatus,
   Inject,
   Logger,
-  OnModuleInit,
   Post,
   Req,
   Res,
@@ -99,16 +99,24 @@ export class AuthController implements OnModuleInit {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const context = this.context(request, reply, true);
-    await this.limit(
-      "login:phone",
-      rateKey(body.phoneNumber.trim()),
-      5,
-      900,
+    await this.limit({
+      scope: "login:phone",
+      subject: rateKey(body.phoneNumber.trim()),
+      maximum: 5,
+      windowSeconds: 900,
       request,
       reply,
-      context.traceId,
-    );
-    await this.limit("login:ip", rateKey(request.ip), 20, 900, request, reply, context.traceId);
+      traceId: context.traceId,
+    });
+    await this.limit({
+      scope: "login:ip",
+      subject: rateKey(request.ip),
+      maximum: 20,
+      windowSeconds: 900,
+      request,
+      reply,
+      traceId: context.traceId,
+    });
     try {
       const result = await firstValueFrom(
         this.identity
@@ -118,7 +126,7 @@ export class AuthController implements OnModuleInit {
       this.setCredentials(reply, result);
       return publicProfile(result.profile);
     } catch (error) {
-      this.grpcFailure(error, "login", request, context.traceId);
+      this.grpcFailure({ error, operation: "login", request, traceId: context.traceId });
     }
   }
 
@@ -126,16 +134,24 @@ export class AuthController implements OnModuleInit {
   async refresh(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const context = this.context(request, reply, true);
     const refreshToken = cookies(request).dexa_refresh ?? "";
-    await this.limit(
-      "refresh:token",
-      rateKey(refreshToken),
-      10,
-      60,
+    await this.limit({
+      scope: "refresh:token",
+      subject: rateKey(refreshToken),
+      maximum: 10,
+      windowSeconds: 60,
       request,
       reply,
-      context.traceId,
-    );
-    await this.limit("refresh:ip", rateKey(request.ip), 30, 60, request, reply, context.traceId);
+      traceId: context.traceId,
+    });
+    await this.limit({
+      scope: "refresh:ip",
+      subject: rateKey(request.ip),
+      maximum: 30,
+      windowSeconds: 60,
+      request,
+      reply,
+      traceId: context.traceId,
+    });
     try {
       const result = await firstValueFrom(
         this.identity
@@ -145,7 +161,7 @@ export class AuthController implements OnModuleInit {
       this.setCredentials(reply, result);
       reply.status(204);
     } catch (error) {
-      this.grpcFailure(error, "refresh", request, context.traceId);
+      this.grpcFailure({ error, operation: "refresh", request, traceId: context.traceId });
     }
   }
 
@@ -166,8 +182,8 @@ export class AuthController implements OnModuleInit {
       this.logger.warn(`Session revocation could not be confirmed traceId=${context.traceId}`);
     }
     reply.header("set-cookie", [
-      this.cookie("dexa_access", "", "/api", 0),
-      this.cookie("dexa_refresh", "", "/api/v1/auth", 0),
+      this.cookie({ name: "dexa_access", value: "", path: "/api", maxAge: 0 }),
+      this.cookie({ name: "dexa_refresh", value: "", path: "/api/v1/auth", maxAge: 0 }),
     ]);
     reply.status(204);
   }
@@ -182,10 +198,18 @@ export class AuthController implements OnModuleInit {
           .authorizeAccess({ audiences: [] }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
-      await this.limit("authenticated", result.sessionId, 120, 60, request, reply, context.traceId);
+      await this.limit({
+        scope: "authenticated",
+        subject: result.sessionId,
+        maximum: 120,
+        windowSeconds: 60,
+        request,
+        reply,
+        traceId: context.traceId,
+      });
       return publicProfile(result.profile);
     } catch (error) {
-      this.grpcFailure(error, "authorize", request, context.traceId);
+      this.grpcFailure({ error, operation: "authorize", request, traceId: context.traceId });
     }
   }
 
@@ -193,7 +217,13 @@ export class AuthController implements OnModuleInit {
     const traceId = randomUUID();
     reply.header("x-correlation-id", traceId);
     if (unsafe && request.headers.origin !== this.config.get("APP_ORIGIN", { infer: true })) {
-      this.fail(403, "FORBIDDEN", "Request origin is not allowed", request, traceId);
+      this.fail({
+        statusCode: 403,
+        code: "FORBIDDEN",
+        detail: "Request origin is not allowed",
+        request,
+        traceId,
+      });
     }
     const metadata = new Metadata();
     metadata.set("x-correlation-id", traceId);
@@ -205,88 +235,152 @@ export class AuthController implements OnModuleInit {
     };
   }
 
-  private async limit(
-    scope: string,
-    subject: string,
-    maximum: number,
-    windowSeconds: number,
-    request: FastifyRequest,
-    reply: FastifyReply,
-    traceId: string,
-  ) {
+  private async limit({
+    scope,
+    subject,
+    maximum,
+    windowSeconds,
+    request,
+    reply,
+    traceId,
+  }: {
+    scope: string;
+    subject: string;
+    maximum: number;
+    windowSeconds: number;
+    request: FastifyRequest;
+    reply: FastifyReply;
+    traceId: string;
+  }) {
     try {
-      await this.rateLimiter.consume(scope, subject, maximum, windowSeconds);
+      await this.rateLimiter.consume({ scope, subject, maximum, windowSeconds });
     } catch (error) {
       if (error instanceof RateLimitError) {
         reply.header("retry-after", error.retryAfter);
-        this.fail(429, "RATE_LIMIT_EXCEEDED", "Too many requests", request, traceId);
+        this.fail({
+          statusCode: 429,
+          code: "RATE_LIMIT_EXCEEDED",
+          detail: "Too many requests",
+          request,
+          traceId,
+        });
       }
-      this.fail(
-        503,
-        "DEPENDENCY_UNAVAILABLE",
-        "The service is temporarily unavailable",
+      this.fail({
+        statusCode: 503,
+        code: "DEPENDENCY_UNAVAILABLE",
+        detail: "The service is temporarily unavailable",
         request,
         traceId,
-      );
+      });
     }
   }
 
   private setCredentials(reply: FastifyReply, credentials: SessionCredentials) {
     reply.header("set-cookie", [
-      this.cookie("dexa_access", credentials.accessToken, "/api", 900),
-      this.cookie("dexa_refresh", credentials.refreshToken, "/api/v1/auth", 604_800),
+      this.cookie({
+        name: "dexa_access",
+        value: credentials.accessToken,
+        path: "/api",
+        maxAge: 900,
+      }),
+      this.cookie({
+        name: "dexa_refresh",
+        value: credentials.refreshToken,
+        path: "/api/v1/auth",
+        maxAge: 604_800,
+      }),
     ]);
   }
 
-  private cookie(name: string, value: string, path: string, maxAge: number) {
+  private cookie({
+    name,
+    value,
+    path,
+    maxAge,
+  }: {
+    name: string;
+    value: string;
+    path: string;
+    maxAge: number;
+  }) {
     const localhost = ["localhost", "127.0.0.1"].includes(
       new URL(this.config.get("APP_ORIGIN", { infer: true })).hostname,
     );
     return `${name}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${localhost ? "" : "; Secure"}`;
   }
 
-  private grpcFailure(
-    error: unknown,
-    operation: "login" | "refresh" | "authorize",
-    request: FastifyRequest,
-    traceId: string,
-  ): never {
+  private grpcFailure({
+    error,
+    operation,
+    request,
+    traceId,
+  }: {
+    error: unknown;
+    operation: "login" | "refresh" | "authorize";
+    request: FastifyRequest;
+    traceId: string;
+  }): never {
     if (error instanceof HttpException) throw error;
     const grpcCode = (error as Partial<ServiceError>)?.code;
     if (grpcCode === status.UNAUTHENTICATED) {
       const code = operation === "login" ? "INVALID_CREDENTIALS" : "AUTHENTICATION_REQUIRED";
-      this.fail(
-        401,
+      this.fail({
+        statusCode: 401,
         code,
-        operation === "login"
-          ? "Phone number or password is incorrect"
-          : "Authentication is required",
+        detail:
+          operation === "login"
+            ? "Phone number or password is incorrect"
+            : "Authentication is required",
         request,
         traceId,
-      );
+      });
     }
     if (grpcCode === status.INVALID_ARGUMENT)
-      this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, traceId);
-    if (grpcCode === status.UNAVAILABLE)
-      this.fail(
-        503,
-        "DEPENDENCY_UNAVAILABLE",
-        "The service is temporarily unavailable",
+      this.fail({
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+        detail: "Request validation failed",
         request,
         traceId,
-      );
+      });
+    if (grpcCode === status.UNAVAILABLE)
+      this.fail({
+        statusCode: 503,
+        code: "DEPENDENCY_UNAVAILABLE",
+        detail: "The service is temporarily unavailable",
+        request,
+        traceId,
+      });
     if (grpcCode === status.DEADLINE_EXCEEDED)
-      this.fail(504, "DOWNSTREAM_TIMEOUT", "The request timed out", request, traceId);
-    this.fail(500, "INTERNAL_ERROR", "An unexpected error occurred", request, traceId);
+      this.fail({
+        statusCode: 504,
+        code: "DOWNSTREAM_TIMEOUT",
+        detail: "The request timed out",
+        request,
+        traceId,
+      });
+    this.fail({
+      statusCode: 500,
+      code: "INTERNAL_ERROR",
+      detail: "An unexpected error occurred",
+      request,
+      traceId,
+    });
   }
 
-  private fail(
-    statusCode: number,
-    code: string,
-    detail: string,
-    request: FastifyRequest,
-    traceId: string,
-  ): never {
+  private fail({
+    statusCode,
+    code,
+    detail,
+    request,
+    traceId,
+  }: {
+    statusCode: number;
+    code: string;
+    detail: string;
+    request: FastifyRequest;
+    traceId: string;
+  }): never {
     throw new HttpException(
       {
         type: "about:blank",
