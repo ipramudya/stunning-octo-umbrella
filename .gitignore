@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 .local/
 .agents/
+skills-lock.json
 PRODUCT.md
 .env
 .env.*
