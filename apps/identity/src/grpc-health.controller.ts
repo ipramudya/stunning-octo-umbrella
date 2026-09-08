@@ -1,4 +1,4 @@
-import { type HealthCheckResponse, HealthCheckResponse_ServingStatus } from "@dexa/contracts";
+import { type HealthCheckResponse, HealthCheckResponse_ServingStatus } from "@project/contracts";
 import { Controller } from "@nestjs/common";
 import { GrpcMethod } from "@nestjs/microservices";
 import { ReadinessService } from "./readiness.js";

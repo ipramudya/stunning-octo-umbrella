@@ -1,7 +1,7 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import oracledb, { type Pool } from "oracledb";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 @Injectable()
 export class OracleDatabase implements OnModuleDestroy {

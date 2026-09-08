@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { connect } from "node:net";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 function canConnect(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {

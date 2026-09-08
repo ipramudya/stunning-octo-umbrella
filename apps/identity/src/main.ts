@@ -1,4 +1,4 @@
-import { HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH } from "@dexa/contracts";
+import { HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH } from "@project/contracts";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { Transport, type MicroserviceOptions } from "@nestjs/microservices";
@@ -7,7 +7,7 @@ import { ServerCredentials } from "@grpc/grpc-js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AppModule } from "./app.module.js";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());

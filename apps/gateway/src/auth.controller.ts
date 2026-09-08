@@ -4,7 +4,7 @@ import {
   type LoginRequest,
   Role,
   type SessionCredentials,
-} from "@dexa/contracts";
+} from "@project/contracts";
 import { status, Metadata, type CallOptions, type ServiceError } from "@grpc/grpc-js";
 import {
   Body,
@@ -27,7 +27,7 @@ import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import { firstValueFrom, fromEvent, type Observable, takeUntil } from "rxjs";
 import { z } from "zod";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 import { IDENTITY_HEALTH_CLIENT } from "./grpc-health.client.js";
 
 interface IdentityClient {
@@ -84,7 +84,7 @@ function publicProfile(value: EmployeeProfile | undefined) {
   };
 }
 
-@Controller("api/v1/auth")
+@Controller({ path: "auth", version: "1" })
 export class AuthController implements OnModuleInit {
   private readonly logger = new Logger(AuthController.name);
   private identity!: IdentityClient;

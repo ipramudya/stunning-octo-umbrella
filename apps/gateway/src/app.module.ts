@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule } from "@nestjs/microservices";
 import { AuthController } from "./auth.controller.js";
-import { environmentSchema, type Environment } from "./config.js";
+import { environmentSchema, type Environment } from "./config.schema.js";
 import {
   ATTENDANCE_HEALTH_CLIENT,
   createHealthClientOptions,

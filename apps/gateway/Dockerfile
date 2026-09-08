@@ -7,7 +7,7 @@ COPY apps/attendance/package.json apps/attendance/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 RUN npm ci --ignore-scripts --legacy-peer-deps
 COPY . .
-RUN npm run build -w @dexa/contracts && npm run build -w @dexa/gateway
+RUN npm run build -w @project/contracts && npm run build -w @project/gateway
 RUN npm prune --ignore-scripts --omit=dev --legacy-peer-deps
 
 FROM node:24-alpine

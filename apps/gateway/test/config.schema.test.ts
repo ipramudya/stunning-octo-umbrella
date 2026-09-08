@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { environmentSchema } from "../src/config.js";
+import { environmentSchema } from "../src/config.schema.js";
 
 describe("gateway configuration", () => {
   it("parses ports and rejects malformed endpoints", () => {

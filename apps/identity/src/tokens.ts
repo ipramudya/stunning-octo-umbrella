@@ -4,7 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { importPKCS8, importSPKI, jwtVerify, SignJWT, type JWTPayload } from "jose";
 import type { RoleName } from "./auth.js";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 export type AccessClaims = JWTPayload & {
   sub: string;

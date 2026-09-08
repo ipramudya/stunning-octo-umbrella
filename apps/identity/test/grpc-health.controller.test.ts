@@ -1,4 +1,4 @@
-import { HealthCheckResponse_ServingStatus } from "@dexa/contracts";
+import { HealthCheckResponse_ServingStatus } from "@project/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { GrpcHealthController } from "../src/grpc-health.controller.js";
 import type { ReadinessService } from "../src/readiness.js";

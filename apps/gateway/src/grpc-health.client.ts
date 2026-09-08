@@ -1,4 +1,4 @@
-import { HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH } from "@dexa/contracts";
+import { HEALTH_PROTO_PATH, IDENTITY_PROTO_PATH } from "@project/contracts";
 import { ChannelCredentials } from "@grpc/grpc-js";
 import { Transport, type GrpcOptions } from "@nestjs/microservices";
 import { readFileSync } from "node:fs";

@@ -5,7 +5,7 @@ import { createClient, type RedisClientType } from "redis";
 import type { Session } from "./auth.js";
 import { AuthError } from "./auth.js";
 import { status } from "@grpc/grpc-js";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 const CREATE_SESSION = `
 local time = redis.call('TIME')

@@ -8,9 +8,9 @@ import {
   type AudienceToken,
   type EmployeeProfile,
   type SessionCredentials,
-} from "@dexa/contracts";
+} from "@project/contracts";
 import { AuthError, type Employee, validateLogin } from "./auth.js";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 import { EmployeeRepository } from "./employee.repository.js";
 import { SessionStore } from "./session.store.js";
 import { TokenService } from "./tokens.js";

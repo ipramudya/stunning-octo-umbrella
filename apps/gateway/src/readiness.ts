@@ -2,7 +2,7 @@ import {
   type HealthCheckRequest,
   type HealthCheckResponse,
   HealthCheckResponse_ServingStatus,
-} from "@dexa/contracts";
+} from "@project/contracts";
 import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
 import type { ClientGrpc } from "@nestjs/microservices";
 import { catchError, firstValueFrom, map, type Observable, of, timeout } from "rxjs";

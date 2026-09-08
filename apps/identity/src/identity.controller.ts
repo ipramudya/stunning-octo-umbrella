@@ -6,7 +6,7 @@ import {
   type LogoutSessionRequest,
   type RefreshSessionRequest,
   type SessionCredentials,
-} from "@dexa/contracts";
+} from "@project/contracts";
 import { status, Metadata } from "@grpc/grpc-js";
 import { Controller } from "@nestjs/common";
 import { GrpcMethod, RpcException } from "@nestjs/microservices";

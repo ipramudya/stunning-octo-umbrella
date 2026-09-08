@@ -1,5 +1,5 @@
 {
-  "name": "@dexa/contracts",
+  "name": "@project/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,5 +13,8 @@
   "dependencies": {
     "@bufbuild/protobuf": "2.14.1",
     "@grpc/grpc-js": "1.14.4"
+  },
+  "devDependencies": {
+    "@project/tsconfigs": "0.0.0"
   }
 }

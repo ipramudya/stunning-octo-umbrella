@@ -1,6 +1,6 @@
 import type { ConfigService } from "@nestjs/config";
 import { describe, expect, it, vi } from "vitest";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 import type { EmployeeRepository } from "./employee.repository.js";
 import { IdentityAuthService } from "./identity.service.js";
 import type { SessionStore } from "./session.store.js";

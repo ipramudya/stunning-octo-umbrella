@@ -1,5 +1,5 @@
 {
-  "name": "@dexa/gateway",
+  "name": "@project/gateway",
   "version": "0.0.0",
   "private": true,
   "description": "",
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dexa/contracts": "0.0.0",
+    "@fastify/compress": "^9.2.0",
     "@fastify/helmet": "^13.1.1",
     "@grpc/grpc-js": "1.14.4",
     "@nestjs/common": "12.0.1",
@@ -22,11 +22,13 @@
     "@nestjs/core": "12.0.1",
     "@nestjs/microservices": "12.0.1",
     "@nestjs/platform-fastify": "12.0.1",
+    "@project/contracts": "0.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.5.4"
   },
   "devDependencies": {
-    "@nestjs/cli": "12.0.0"
+    "@nestjs/cli": "12.0.0",
+    "@project/tsconfigs": "0.0.0"
   }
 }

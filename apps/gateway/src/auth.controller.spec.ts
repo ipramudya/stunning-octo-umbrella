@@ -5,7 +5,7 @@ import type { ClientGrpc } from "@nestjs/microservices";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { AuthController } from "./auth.controller.js";
-import type { Environment } from "./config.js";
+import type { Environment } from "./config.schema.js";
 
 describe("AuthController", () => {
   it("rejects unexpected login fields", async () => {

@@ -32,7 +32,7 @@ export class EmployeeRepository {
         `SELECT e.id, e.employee_number, e.full_name, e.phone_number, e.email,
                 e.password_hash, e.credential_version,
                 LISTAGG(r.role, ',') WITHIN GROUP (ORDER BY r.role) AS roles
-           FROM employees e JOIN employee_roles r ON r.employee_id = e.id
+          FROM employees e JOIN employee_roles r ON r.employee_id = e.id
           WHERE ${where}
           GROUP BY e.id, e.employee_number, e.full_name, e.phone_number, e.email,
                    e.password_hash, e.credential_version`,

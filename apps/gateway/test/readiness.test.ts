@@ -1,4 +1,4 @@
-import { HealthCheckResponse_ServingStatus } from "@dexa/contracts";
+import { HealthCheckResponse_ServingStatus } from "@project/contracts";
 import type { ClientGrpc } from "@nestjs/microservices";
 import { describe, expect, it } from "vitest";
 import { of } from "rxjs";
