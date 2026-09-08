@@ -18,4 +18,6 @@ node tests/integration/authentication.mjs
 node tests/integration/employee-administration.mjs
 node tests/integration/attendance-zone.mjs
 node tests/integration/evidence.mjs
+docker compose exec -T redis sh -c 'redis-cli --user gateway -a "$RATE_LIMIT_REDIS_PASSWORD" --no-auth-warning --scan --pattern "rate:*" | while read -r key; do redis-cli --user gateway -a "$RATE_LIMIT_REDIS_PASSWORD" --no-auth-warning del "$key" >/dev/null; done'
+node tests/integration/attendance-submissions.mjs
 node tests/integration/session-lifecycle.mjs

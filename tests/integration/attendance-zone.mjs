@@ -103,9 +103,9 @@ try {
   await connection.execute("DELETE FROM attendance_entries WHERE employee_id = :employeeId", { employeeId });
   const insert = \`INSERT INTO attendance_entries
     (id, employee_id, work_date, clock_type, source, status, occurred_at, address,
-     latitude, longitude, decided_at, decided_by_employee_id)
+     latitude, longitude)
     VALUES (:id, :employeeId, :workDate, 'CLOCK_IN', 'REGULAR', 'RECORDED',
-      SYSTIMESTAMP, 'Test', 0, 0, SYSTIMESTAMP, :employeeId)\`;
+      SYSTIMESTAMP, 'Test', 0, 0)\`;
   await connection.execute(insert, { id: "00000000-0000-4000-8000-000000000091", employeeId, workDate });
   await connection.commit();
 
