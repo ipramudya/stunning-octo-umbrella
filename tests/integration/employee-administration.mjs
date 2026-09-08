@@ -1,15 +1,9 @@
 import assert from "node:assert/strict";
-import { cookieJar, origin, post } from "./auth-http.mjs";
+import { cookieHeader, cookieJar, origin, post } from "./auth-http.mjs";
 
 const base = "http://127.0.0.1:3000";
 const password = "EmployeeInitial1!";
 const nextPassword = "EmployeeChanged1!";
-
-function cookieHeader(jar) {
-  return Object.entries(jar)
-    .map(([name, value]) => `${name}=${value}`)
-    .join("; ");
-}
 
 function request(path, method, jar, body) {
   const options = {

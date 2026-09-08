@@ -142,8 +142,6 @@ export class EmployeeAdminService {
       ...(email(raw.email) ? { email: email(raw.email) } : {}),
       password: password(raw.password),
     };
-    const conflict = await this.employees.conflict(input);
-    if (conflict) fail(conflict, status.ALREADY_EXISTS);
     const id = randomUUID();
     try {
       await this.employees.create(
@@ -166,10 +164,6 @@ export class EmployeeAdminService {
     if (changes.fullName === undefined && changes.email === undefined) fail("VALIDATION_ERROR");
     const fullName = changes.fullName === undefined ? undefined : required(changes.fullName, 120);
     const normalizedEmail = changes.email === null ? null : email(changes.email);
-    if (normalizedEmail) {
-      const conflict = await this.employees.conflict({ email: normalizedEmail }, employeeId);
-      if (conflict) fail(conflict, status.ALREADY_EXISTS);
-    }
     try {
       if (!(await this.employees.updateProfile(employeeId, fullName, normalizedEmail, actor.id)))
         fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
@@ -182,8 +176,6 @@ export class EmployeeAdminService {
   async updatePhone(token: string, employeeId: string, rawPhone: string) {
     const actor = await this.authorize(token);
     const phoneNumber = phone(rawPhone);
-    const conflict = await this.employees.conflict({ phoneNumber }, employeeId);
-    if (conflict) fail(conflict, status.ALREADY_EXISTS);
     try {
       if (!(await this.employees.updatePhone(employeeId, phoneNumber, actor.id)))
         fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);

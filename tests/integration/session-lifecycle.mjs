@@ -107,29 +107,7 @@ assert.match(gatewayAcl, /NOPERM/);
 
 clearRateLimits();
 const logoutJar = await login();
-const identityToken = composeExec(
-  [
-    "gateway",
-    "node",
-    "/app/tests/integration/request-internal-token.mjs",
-    logoutJar.dexa_access,
-    "gateway",
-    "TOKEN_AUDIENCE_IDENTITY",
-  ],
-  { encoding: "utf8" },
-).trim();
 execFileSync("docker", ["compose", "stop", "redis"], { stdio: "pipe" });
-composeExec(
-  [
-    "gateway",
-    "node",
-    "/app/tests/integration/reset-employee-password.mjs",
-    identityToken,
-    "00000000-0000-4000-8000-000000000002",
-    "EmployeeWithoutRedis1!",
-  ],
-  { stdio: "pipe" },
-);
 const unavailable = await post("/api/v1/auth/login", {
   phoneNumber: "+6280000000001",
   password,

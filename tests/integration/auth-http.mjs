@@ -16,7 +16,7 @@ export function cookieJar(response) {
   );
 }
 
-function cookieHeader(jar) {
+export function cookieHeader(jar) {
   return Object.entries(jar)
     .map(([name, value]) => `${name}=${value}`)
     .join("; ");
