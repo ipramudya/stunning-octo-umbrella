@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { environmentSchema } from "./config.schema.js";
 import { GrpcHealthController } from "./grpc-health.controller.js";
+import { EmployeeAdminService } from "./employee-admin.service.js";
 import { EmployeeRepository } from "./employee.repository.js";
 import { HealthController } from "./health.controller.js";
 import { IdentityController } from "./identity.controller.js";
@@ -22,6 +23,7 @@ import { TokenService } from "./tokens.js";
   ],
   controllers: [GrpcHealthController, HealthController, IdentityController],
   providers: [
+    EmployeeAdminService,
     EmployeeRepository,
     IdentityAuthService,
     OracleDatabase,

@@ -5,15 +5,22 @@ export {
   type AudienceToken,
   type Authorization,
   type AuthorizeAccessRequest,
+  type CreateEmployeeRequest,
   type EmployeeProfile,
+  type GetEmployeeRequest,
   type IdentityServiceClient,
   IdentityServiceService,
+  type ListEmployeesRequest,
+  type ListEmployeesResponse,
   type LoginRequest,
   type LogoutSessionRequest,
   type RefreshSessionRequest,
+  type ResetEmployeePasswordRequest,
   Role,
   type SessionCredentials,
   TokenAudience,
+  type UpdateEmployeePhoneNumberRequest,
+  type UpdateEmployeeProfileRequest,
 } from "./generated/dexa/identity/v1/identity.js";
 export { type Empty } from "./generated/google/protobuf/empty.js";
 

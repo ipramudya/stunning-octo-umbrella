@@ -55,7 +55,7 @@ interface IdentityClient {
   ): Observable<Authorization>;
 }
 
-function cookies(request: FastifyRequest) {
+export function cookies(request: FastifyRequest) {
   return Object.fromEntries(
     (request.headers.cookie ?? "").split(";").flatMap((part) => {
       const index = part.indexOf("=");
@@ -64,7 +64,7 @@ function cookies(request: FastifyRequest) {
   );
 }
 
-function publicProfile(value: EmployeeProfile | undefined) {
+export function publicProfile(value: EmployeeProfile | undefined) {
   if (!value) throw new Error("missing profile");
   return {
     id: value.id,

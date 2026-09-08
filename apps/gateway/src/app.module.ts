@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule } from "@nestjs/microservices";
 import { AuthController } from "./auth.controller.js";
 import { environmentSchema, type Environment } from "./config.schema.js";
+import { EmployeeController } from "./employee.controller.js";
 import {
   ATTENDANCE_HEALTH_CLIENT,
   createHealthClientOptions,
@@ -44,7 +45,7 @@ import { ReadinessService } from "./readiness.js";
       },
     ]),
   ],
-  controllers: [AuthController, HealthController],
+  controllers: [AuthController, EmployeeController, HealthController],
   providers: [RateLimiter, ReadinessService],
 })
 export class AppModule {}

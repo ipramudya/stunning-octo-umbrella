@@ -13,6 +13,10 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
       status: 400,
       detail: "Request validation failed",
       code: "VALIDATION_ERROR",
+      errors: result.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      })),
     });
   }
 }

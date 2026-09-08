@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { EmployeeAdminService } from "./employee-admin.service.js";
 import { IdentityController } from "./identity.controller.js";
 import type { IdentityAuthService } from "./identity.service.js";
 
@@ -10,7 +11,10 @@ describe("IdentityController", () => {
       refreshToken: "refresh",
     };
     const auth = { login: vi.fn().mockResolvedValue(credentials) };
-    const controller = new IdentityController(auth as unknown as IdentityAuthService);
+    const controller = new IdentityController(
+      auth as unknown as IdentityAuthService,
+      {} as EmployeeAdminService,
+    );
 
     await expect(
       controller.login({ phoneNumber: "+6280000000002", password: "valid-password" }),

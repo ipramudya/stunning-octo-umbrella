@@ -1,0 +1,240 @@
+import { randomUUID } from "node:crypto";
+import { status } from "@grpc/grpc-js";
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { argon2id, hash } from "argon2";
+import { Role, type EmployeeProfile } from "@project/contracts";
+import { AuthError, type Employee } from "./auth.js";
+import type { Environment } from "./config.schema.js";
+import { EmployeeRepository, type EmployeeInput } from "./employee.repository.js";
+import { SessionStore } from "./session.store.js";
+import { TokenService } from "./tokens.js";
+
+const phonePattern = /^\+62[0-9]+$/;
+
+type Actor = { id: string };
+type Cursor = { v: 1; endpoint: "employees"; employeeNumber: string; id: string };
+
+function fail(code: string, grpcStatus = status.INVALID_ARGUMENT): never {
+  throw new AuthError(code, grpcStatus);
+}
+
+function required(value: string, maximum: number) {
+  const normalized = value.trim();
+  if (!normalized || [...normalized].length > maximum) fail("VALIDATION_ERROR");
+  return normalized;
+}
+
+function password(value: string) {
+  const length = [...value].length;
+  if (length < 12 || length > 128) fail("VALIDATION_ERROR");
+  return value;
+}
+
+function phone(value: string) {
+  const normalized = value.trim();
+  if (normalized.length > 16 || !phonePattern.test(normalized)) fail("VALIDATION_ERROR");
+  return normalized;
+}
+
+function email(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))
+    fail("VALIDATION_ERROR");
+  return normalized;
+}
+
+function profile(value: Employee): EmployeeProfile {
+  return {
+    id: value.id,
+    employeeNumber: value.employeeNumber,
+    fullName: value.fullName,
+    phoneNumber: value.phoneNumber,
+    ...(value.email ? { email: value.email } : {}),
+    roles: value.roles.map((role) => (role === "HRD" ? Role.ROLE_HRD : Role.ROLE_EMPLOYEE)),
+  };
+}
+
+function decodeCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<Cursor>;
+    if (
+      parsed.v !== 1 ||
+      parsed.endpoint !== "employees" ||
+      typeof parsed.employeeNumber !== "string" ||
+      typeof parsed.id !== "string" ||
+      Object.keys(parsed).sort().join(",") !== "employeeNumber,endpoint,id,v"
+    )
+      fail("INVALID_CURSOR");
+    return { employeeNumber: parsed.employeeNumber, id: parsed.id };
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    fail("INVALID_CURSOR");
+  }
+}
+
+function encodeCursor(value: Employee) {
+  return Buffer.from(
+    JSON.stringify({
+      v: 1,
+      endpoint: "employees",
+      employeeNumber: value.employeeNumber,
+      id: value.id,
+    }),
+  ).toString("base64url");
+}
+
+@Injectable()
+export class EmployeeAdminService {
+  constructor(
+    private readonly config: ConfigService<Environment, true>,
+    private readonly employees: EmployeeRepository,
+    private readonly sessions: SessionStore,
+    private readonly tokens: TokenService,
+  ) {}
+
+  async authorize(token: string): Promise<Actor> {
+    try {
+      const claims = await this.tokens.verify(token, "dexa-identity");
+      if (!claims.roles.includes("HRD")) fail("FORBIDDEN", status.PERMISSION_DENIED);
+      return { id: claims.sub };
+    } catch (error) {
+      if (error instanceof AuthError) throw error;
+      fail("AUTHENTICATION_REQUIRED", status.UNAUTHENTICATED);
+    }
+  }
+
+  async list(
+    token: string,
+    query: string | undefined,
+    cursor: string | undefined,
+    requestedLimit: number,
+  ) {
+    await this.authorize(token);
+    const limit = requestedLimit || 20;
+    if (limit < 1 || limit > 100) fail("VALIDATION_ERROR");
+    const q = query?.trim();
+    if (q && [...q].length > 120) fail("VALIDATION_ERROR");
+    const rows = await this.employees.list(q || undefined, decodeCursor(cursor), limit);
+    const hasNextPage = rows.length > limit;
+    const items = rows.slice(0, limit);
+    const last = items.at(-1);
+    return {
+      items: items.map(profile),
+      ...(hasNextPage && last ? { nextCursor: encodeCursor(last) } : {}),
+      hasNextPage,
+    };
+  }
+
+  async get(token: string, employeeId: string) {
+    await this.authorize(token);
+    return profile(await this.existing(employeeId));
+  }
+
+  async create(token: string, raw: Omit<EmployeeInput, "passwordHash"> & { password: string }) {
+    const actor = await this.authorize(token);
+    const input = {
+      employeeNumber: required(raw.employeeNumber, 32).toUpperCase(),
+      fullName: required(raw.fullName, 120),
+      phoneNumber: phone(raw.phoneNumber),
+      ...(email(raw.email) ? { email: email(raw.email) } : {}),
+      password: password(raw.password),
+    };
+    const conflict = await this.employees.conflict(input);
+    if (conflict) fail(conflict, status.ALREADY_EXISTS);
+    const id = randomUUID();
+    try {
+      await this.employees.create(
+        id,
+        { ...input, passwordHash: await this.passwordHash(input.password) },
+        actor.id,
+      );
+    } catch (error) {
+      await this.mapUnique(error, input);
+    }
+    return profile(await this.existing(id));
+  }
+
+  async updateProfile(
+    token: string,
+    employeeId: string,
+    changes: { fullName?: string; email?: string | null },
+  ) {
+    const actor = await this.authorize(token);
+    if (changes.fullName === undefined && changes.email === undefined) fail("VALIDATION_ERROR");
+    const fullName = changes.fullName === undefined ? undefined : required(changes.fullName, 120);
+    const normalizedEmail = changes.email === null ? null : email(changes.email);
+    if (normalizedEmail) {
+      const conflict = await this.employees.conflict({ email: normalizedEmail }, employeeId);
+      if (conflict) fail(conflict, status.ALREADY_EXISTS);
+    }
+    try {
+      if (!(await this.employees.updateProfile(employeeId, fullName, normalizedEmail, actor.id)))
+        fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    } catch (error) {
+      await this.mapUnique(error, normalizedEmail ? { email: normalizedEmail } : {}, employeeId);
+    }
+    return profile(await this.existing(employeeId));
+  }
+
+  async updatePhone(token: string, employeeId: string, rawPhone: string) {
+    const actor = await this.authorize(token);
+    const phoneNumber = phone(rawPhone);
+    const conflict = await this.employees.conflict({ phoneNumber }, employeeId);
+    if (conflict) fail(conflict, status.ALREADY_EXISTS);
+    try {
+      if (!(await this.employees.updatePhone(employeeId, phoneNumber, actor.id)))
+        fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    } catch (error) {
+      await this.mapUnique(error, { phoneNumber }, employeeId);
+    }
+    await this.cleanup(employeeId);
+    return profile(await this.existing(employeeId));
+  }
+
+  async resetPassword(token: string, employeeId: string, rawPassword: string) {
+    const actor = await this.authorize(token);
+    const passwordHash = await this.passwordHash(password(rawPassword));
+    if (!(await this.employees.updatePassword(employeeId, passwordHash, actor.id)))
+      fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    await this.cleanup(employeeId);
+  }
+
+  private async existing(id: string) {
+    const value = await this.employees.findById(id);
+    if (!value) fail("EMPLOYEE_NOT_FOUND", status.NOT_FOUND);
+    return value;
+  }
+
+  private passwordHash(value: string) {
+    return hash(value, {
+      type: argon2id,
+      memoryCost: this.config.get("ARGON2_MEMORY_COST", { infer: true }),
+      timeCost: this.config.get("ARGON2_TIME_COST", { infer: true }),
+      parallelism: this.config.get("ARGON2_PARALLELISM", { infer: true }),
+    });
+  }
+
+  private async cleanup(employeeId: string) {
+    try {
+      await this.sessions.revokeEmployee(employeeId);
+    } catch {
+      // The committed credential version remains authoritative when Redis is unavailable.
+    }
+  }
+
+  private async mapUnique(
+    error: unknown,
+    input: { employeeNumber?: string; phoneNumber?: string; email?: string },
+    excludeId?: string,
+  ): Promise<never> {
+    if (!String(error).includes("ORA-00001")) throw error;
+    const conflict = await this.employees.conflict(input, excludeId);
+    fail(
+      conflict ?? "VALIDATION_ERROR",
+      conflict ? status.ALREADY_EXISTS : status.INVALID_ARGUMENT,
+    );
+  }
+}

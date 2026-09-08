@@ -126,6 +126,47 @@ export interface EmployeeProfile {
   roles: Role[];
 }
 
+export interface ListEmployeesRequest {
+  query?: string | undefined;
+  cursor?: string | undefined;
+  limit: number;
+}
+
+export interface ListEmployeesResponse {
+  items: EmployeeProfile[];
+  nextCursor?: string | undefined;
+  hasNextPage: boolean;
+}
+
+export interface CreateEmployeeRequest {
+  employeeNumber: string;
+  fullName: string;
+  phoneNumber: string;
+  email?: string | undefined;
+  password: string;
+}
+
+export interface GetEmployeeRequest {
+  employeeId: string;
+}
+
+export interface UpdateEmployeeProfileRequest {
+  employeeId: string;
+  fullName?: string | undefined;
+  email?: string | undefined;
+  clearEmail: boolean;
+}
+
+export interface UpdateEmployeePhoneNumberRequest {
+  employeeId: string;
+  phoneNumber: string;
+}
+
+export interface ResetEmployeePasswordRequest {
+  employeeId: string;
+  password: string;
+}
+
 export interface SessionCredentials {
   profile: EmployeeProfile | undefined;
   accessToken: string;
@@ -636,6 +677,745 @@ export const EmployeeProfile: MessageFns<EmployeeProfile> = {
   },
 };
 
+function createBaseListEmployeesRequest(): ListEmployeesRequest {
+  return { query: undefined, cursor: undefined, limit: 0 };
+}
+
+export const ListEmployeesRequest: MessageFns<ListEmployeesRequest> = {
+  encode(message: ListEmployeesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== undefined) {
+      writer.uint32(10).string(message.query);
+    }
+    if (message.cursor !== undefined) {
+      writer.uint32(18).string(message.cursor);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(24).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListEmployeesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListEmployeesRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.query = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.cursor = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.limit = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListEmployeesRequest {
+    return {
+      query: isSet(object.query) ? globalThis.String(object.query) : undefined,
+      cursor: isSet(object.cursor) ? globalThis.String(object.cursor) : undefined,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: ListEmployeesRequest): unknown {
+    const obj: any = {};
+    if (message.query !== undefined) {
+      obj.query = message.query;
+    }
+    if (message.cursor !== undefined) {
+      obj.cursor = message.cursor;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListEmployeesRequest>): ListEmployeesRequest {
+    return ListEmployeesRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListEmployeesRequest>): ListEmployeesRequest {
+    const message = createBaseListEmployeesRequest();
+    message.query = object.query ?? undefined;
+    message.cursor = object.cursor ?? undefined;
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseListEmployeesResponse(): ListEmployeesResponse {
+  return { items: [], nextCursor: undefined, hasNextPage: false };
+}
+
+export const ListEmployeesResponse: MessageFns<ListEmployeesResponse> = {
+  encode(message: ListEmployeesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      EmployeeProfile.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.nextCursor !== undefined) {
+      writer.uint32(18).string(message.nextCursor);
+    }
+    if (message.hasNextPage !== false) {
+      writer.uint32(24).bool(message.hasNextPage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListEmployeesResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListEmployeesResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.items.push(EmployeeProfile.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.nextCursor = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.hasNextPage = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListEmployeesResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => EmployeeProfile.fromJSON(e)) : [],
+      nextCursor: isSet(object.nextCursor)
+        ? globalThis.String(object.nextCursor)
+        : isSet(object.next_cursor)
+        ? globalThis.String(object.next_cursor)
+        : undefined,
+      hasNextPage: isSet(object.hasNextPage)
+        ? globalThis.Boolean(object.hasNextPage)
+        : isSet(object.has_next_page)
+        ? globalThis.Boolean(object.has_next_page)
+        : false,
+    };
+  },
+
+  toJSON(message: ListEmployeesResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => EmployeeProfile.toJSON(e));
+    }
+    if (message.nextCursor !== undefined) {
+      obj.nextCursor = message.nextCursor;
+    }
+    if (message.hasNextPage !== false) {
+      obj.hasNextPage = message.hasNextPage;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListEmployeesResponse>): ListEmployeesResponse {
+    return ListEmployeesResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListEmployeesResponse>): ListEmployeesResponse {
+    const message = createBaseListEmployeesResponse();
+    message.items = object.items?.map((e) => EmployeeProfile.fromPartial(e)) || [];
+    message.nextCursor = object.nextCursor ?? undefined;
+    message.hasNextPage = object.hasNextPage ?? false;
+    return message;
+  },
+};
+
+function createBaseCreateEmployeeRequest(): CreateEmployeeRequest {
+  return { employeeNumber: "", fullName: "", phoneNumber: "", email: undefined, password: "" };
+}
+
+export const CreateEmployeeRequest: MessageFns<CreateEmployeeRequest> = {
+  encode(message: CreateEmployeeRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.employeeNumber !== "") {
+      writer.uint32(10).string(message.employeeNumber);
+    }
+    if (message.fullName !== "") {
+      writer.uint32(18).string(message.fullName);
+    }
+    if (message.phoneNumber !== "") {
+      writer.uint32(26).string(message.phoneNumber);
+    }
+    if (message.email !== undefined) {
+      writer.uint32(34).string(message.email);
+    }
+    if (message.password !== "") {
+      writer.uint32(42).string(message.password);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateEmployeeRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCreateEmployeeRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeNumber = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.fullName = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.phoneNumber = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.email = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.password = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): CreateEmployeeRequest {
+    return {
+      employeeNumber: isSet(object.employeeNumber)
+        ? globalThis.String(object.employeeNumber)
+        : isSet(object.employee_number)
+        ? globalThis.String(object.employee_number)
+        : "",
+      fullName: isSet(object.fullName)
+        ? globalThis.String(object.fullName)
+        : isSet(object.full_name)
+        ? globalThis.String(object.full_name)
+        : "",
+      phoneNumber: isSet(object.phoneNumber)
+        ? globalThis.String(object.phoneNumber)
+        : isSet(object.phone_number)
+        ? globalThis.String(object.phone_number)
+        : "",
+      email: isSet(object.email) ? globalThis.String(object.email) : undefined,
+      password: isSet(object.password) ? globalThis.String(object.password) : "",
+    };
+  },
+
+  toJSON(message: CreateEmployeeRequest): unknown {
+    const obj: any = {};
+    if (message.employeeNumber !== "") {
+      obj.employeeNumber = message.employeeNumber;
+    }
+    if (message.fullName !== "") {
+      obj.fullName = message.fullName;
+    }
+    if (message.phoneNumber !== "") {
+      obj.phoneNumber = message.phoneNumber;
+    }
+    if (message.email !== undefined) {
+      obj.email = message.email;
+    }
+    if (message.password !== "") {
+      obj.password = message.password;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreateEmployeeRequest>): CreateEmployeeRequest {
+    return CreateEmployeeRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreateEmployeeRequest>): CreateEmployeeRequest {
+    const message = createBaseCreateEmployeeRequest();
+    message.employeeNumber = object.employeeNumber ?? "";
+    message.fullName = object.fullName ?? "";
+    message.phoneNumber = object.phoneNumber ?? "";
+    message.email = object.email ?? undefined;
+    message.password = object.password ?? "";
+    return message;
+  },
+};
+
+function createBaseGetEmployeeRequest(): GetEmployeeRequest {
+  return { employeeId: "" };
+}
+
+export const GetEmployeeRequest: MessageFns<GetEmployeeRequest> = {
+  encode(message: GetEmployeeRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.employeeId !== "") {
+      writer.uint32(10).string(message.employeeId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetEmployeeRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetEmployeeRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): GetEmployeeRequest {
+    return {
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetEmployeeRequest): unknown {
+    const obj: any = {};
+    if (message.employeeId !== "") {
+      obj.employeeId = message.employeeId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetEmployeeRequest>): GetEmployeeRequest {
+    return GetEmployeeRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetEmployeeRequest>): GetEmployeeRequest {
+    const message = createBaseGetEmployeeRequest();
+    message.employeeId = object.employeeId ?? "";
+    return message;
+  },
+};
+
+function createBaseUpdateEmployeeProfileRequest(): UpdateEmployeeProfileRequest {
+  return { employeeId: "", fullName: undefined, email: undefined, clearEmail: false };
+}
+
+export const UpdateEmployeeProfileRequest: MessageFns<UpdateEmployeeProfileRequest> = {
+  encode(message: UpdateEmployeeProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.employeeId !== "") {
+      writer.uint32(10).string(message.employeeId);
+    }
+    if (message.fullName !== undefined) {
+      writer.uint32(18).string(message.fullName);
+    }
+    if (message.email !== undefined) {
+      writer.uint32(26).string(message.email);
+    }
+    if (message.clearEmail !== false) {
+      writer.uint32(32).bool(message.clearEmail);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdateEmployeeProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseUpdateEmployeeProfileRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.fullName = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.email = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.clearEmail = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): UpdateEmployeeProfileRequest {
+    return {
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : "",
+      fullName: isSet(object.fullName)
+        ? globalThis.String(object.fullName)
+        : isSet(object.full_name)
+        ? globalThis.String(object.full_name)
+        : undefined,
+      email: isSet(object.email) ? globalThis.String(object.email) : undefined,
+      clearEmail: isSet(object.clearEmail)
+        ? globalThis.Boolean(object.clearEmail)
+        : isSet(object.clear_email)
+        ? globalThis.Boolean(object.clear_email)
+        : false,
+    };
+  },
+
+  toJSON(message: UpdateEmployeeProfileRequest): unknown {
+    const obj: any = {};
+    if (message.employeeId !== "") {
+      obj.employeeId = message.employeeId;
+    }
+    if (message.fullName !== undefined) {
+      obj.fullName = message.fullName;
+    }
+    if (message.email !== undefined) {
+      obj.email = message.email;
+    }
+    if (message.clearEmail !== false) {
+      obj.clearEmail = message.clearEmail;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<UpdateEmployeeProfileRequest>): UpdateEmployeeProfileRequest {
+    return UpdateEmployeeProfileRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<UpdateEmployeeProfileRequest>): UpdateEmployeeProfileRequest {
+    const message = createBaseUpdateEmployeeProfileRequest();
+    message.employeeId = object.employeeId ?? "";
+    message.fullName = object.fullName ?? undefined;
+    message.email = object.email ?? undefined;
+    message.clearEmail = object.clearEmail ?? false;
+    return message;
+  },
+};
+
+function createBaseUpdateEmployeePhoneNumberRequest(): UpdateEmployeePhoneNumberRequest {
+  return { employeeId: "", phoneNumber: "" };
+}
+
+export const UpdateEmployeePhoneNumberRequest: MessageFns<UpdateEmployeePhoneNumberRequest> = {
+  encode(message: UpdateEmployeePhoneNumberRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.employeeId !== "") {
+      writer.uint32(10).string(message.employeeId);
+    }
+    if (message.phoneNumber !== "") {
+      writer.uint32(18).string(message.phoneNumber);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UpdateEmployeePhoneNumberRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseUpdateEmployeePhoneNumberRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.phoneNumber = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): UpdateEmployeePhoneNumberRequest {
+    return {
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : "",
+      phoneNumber: isSet(object.phoneNumber)
+        ? globalThis.String(object.phoneNumber)
+        : isSet(object.phone_number)
+        ? globalThis.String(object.phone_number)
+        : "",
+    };
+  },
+
+  toJSON(message: UpdateEmployeePhoneNumberRequest): unknown {
+    const obj: any = {};
+    if (message.employeeId !== "") {
+      obj.employeeId = message.employeeId;
+    }
+    if (message.phoneNumber !== "") {
+      obj.phoneNumber = message.phoneNumber;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<UpdateEmployeePhoneNumberRequest>): UpdateEmployeePhoneNumberRequest {
+    return UpdateEmployeePhoneNumberRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<UpdateEmployeePhoneNumberRequest>): UpdateEmployeePhoneNumberRequest {
+    const message = createBaseUpdateEmployeePhoneNumberRequest();
+    message.employeeId = object.employeeId ?? "";
+    message.phoneNumber = object.phoneNumber ?? "";
+    return message;
+  },
+};
+
+function createBaseResetEmployeePasswordRequest(): ResetEmployeePasswordRequest {
+  return { employeeId: "", password: "" };
+}
+
+export const ResetEmployeePasswordRequest: MessageFns<ResetEmployeePasswordRequest> = {
+  encode(message: ResetEmployeePasswordRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.employeeId !== "") {
+      writer.uint32(10).string(message.employeeId);
+    }
+    if (message.password !== "") {
+      writer.uint32(18).string(message.password);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ResetEmployeePasswordRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseResetEmployeePasswordRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.password = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ResetEmployeePasswordRequest {
+    return {
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : "",
+      password: isSet(object.password) ? globalThis.String(object.password) : "",
+    };
+  },
+
+  toJSON(message: ResetEmployeePasswordRequest): unknown {
+    const obj: any = {};
+    if (message.employeeId !== "") {
+      obj.employeeId = message.employeeId;
+    }
+    if (message.password !== "") {
+      obj.password = message.password;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ResetEmployeePasswordRequest>): ResetEmployeePasswordRequest {
+    return ResetEmployeePasswordRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ResetEmployeePasswordRequest>): ResetEmployeePasswordRequest {
+    const message = createBaseResetEmployeePasswordRequest();
+    message.employeeId = object.employeeId ?? "";
+    message.password = object.password ?? "";
+    return message;
+  },
+};
+
 function createBaseSessionCredentials(): SessionCredentials {
   return { profile: undefined, accessToken: "", refreshToken: "" };
 }
@@ -979,6 +1759,66 @@ export const IdentityServiceService = {
     responseSerialize: (value: Authorization): Buffer => Buffer.from(Authorization.encode(value).finish()),
     responseDeserialize: (value: Buffer): Authorization => Authorization.decode(value),
   },
+  listEmployees: {
+    path: "/dexa.identity.v1.IdentityService/ListEmployees" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ListEmployeesRequest): Buffer => Buffer.from(ListEmployeesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListEmployeesRequest => ListEmployeesRequest.decode(value),
+    responseSerialize: (value: ListEmployeesResponse): Buffer =>
+      Buffer.from(ListEmployeesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListEmployeesResponse => ListEmployeesResponse.decode(value),
+  },
+  createEmployee: {
+    path: "/dexa.identity.v1.IdentityService/CreateEmployee" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: CreateEmployeeRequest): Buffer =>
+      Buffer.from(CreateEmployeeRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CreateEmployeeRequest => CreateEmployeeRequest.decode(value),
+    responseSerialize: (value: EmployeeProfile): Buffer => Buffer.from(EmployeeProfile.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EmployeeProfile => EmployeeProfile.decode(value),
+  },
+  getEmployee: {
+    path: "/dexa.identity.v1.IdentityService/GetEmployee" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: GetEmployeeRequest): Buffer => Buffer.from(GetEmployeeRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetEmployeeRequest => GetEmployeeRequest.decode(value),
+    responseSerialize: (value: EmployeeProfile): Buffer => Buffer.from(EmployeeProfile.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EmployeeProfile => EmployeeProfile.decode(value),
+  },
+  updateEmployeeProfile: {
+    path: "/dexa.identity.v1.IdentityService/UpdateEmployeeProfile" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: UpdateEmployeeProfileRequest): Buffer =>
+      Buffer.from(UpdateEmployeeProfileRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): UpdateEmployeeProfileRequest => UpdateEmployeeProfileRequest.decode(value),
+    responseSerialize: (value: EmployeeProfile): Buffer => Buffer.from(EmployeeProfile.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EmployeeProfile => EmployeeProfile.decode(value),
+  },
+  updateEmployeePhoneNumber: {
+    path: "/dexa.identity.v1.IdentityService/UpdateEmployeePhoneNumber" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: UpdateEmployeePhoneNumberRequest): Buffer =>
+      Buffer.from(UpdateEmployeePhoneNumberRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): UpdateEmployeePhoneNumberRequest =>
+      UpdateEmployeePhoneNumberRequest.decode(value),
+    responseSerialize: (value: EmployeeProfile): Buffer => Buffer.from(EmployeeProfile.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EmployeeProfile => EmployeeProfile.decode(value),
+  },
+  resetEmployeePassword: {
+    path: "/dexa.identity.v1.IdentityService/ResetEmployeePassword" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ResetEmployeePasswordRequest): Buffer =>
+      Buffer.from(ResetEmployeePasswordRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ResetEmployeePasswordRequest => ResetEmployeePasswordRequest.decode(value),
+    responseSerialize: (value: Empty): Buffer => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer): Empty => Empty.decode(value),
+  },
 } as const;
 
 export interface IdentityServiceServer extends UntypedServiceImplementation {
@@ -986,6 +1826,12 @@ export interface IdentityServiceServer extends UntypedServiceImplementation {
   refreshSession: handleUnaryCall<RefreshSessionRequest, SessionCredentials>;
   logoutSession: handleUnaryCall<LogoutSessionRequest, Empty>;
   authorizeAccess: handleUnaryCall<AuthorizeAccessRequest, Authorization>;
+  listEmployees: handleUnaryCall<ListEmployeesRequest, ListEmployeesResponse>;
+  createEmployee: handleUnaryCall<CreateEmployeeRequest, EmployeeProfile>;
+  getEmployee: handleUnaryCall<GetEmployeeRequest, EmployeeProfile>;
+  updateEmployeeProfile: handleUnaryCall<UpdateEmployeeProfileRequest, EmployeeProfile>;
+  updateEmployeePhoneNumber: handleUnaryCall<UpdateEmployeePhoneNumberRequest, EmployeeProfile>;
+  resetEmployeePassword: handleUnaryCall<ResetEmployeePasswordRequest, Empty>;
 }
 
 export interface IdentityServiceClient extends Client {
@@ -1048,6 +1894,96 @@ export interface IdentityServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Authorization) => void,
+  ): ClientUnaryCall;
+  listEmployees(
+    request: ListEmployeesRequest,
+    callback: (error: ServiceError | null, response: ListEmployeesResponse) => void,
+  ): ClientUnaryCall;
+  listEmployees(
+    request: ListEmployeesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ListEmployeesResponse) => void,
+  ): ClientUnaryCall;
+  listEmployees(
+    request: ListEmployeesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ListEmployeesResponse) => void,
+  ): ClientUnaryCall;
+  createEmployee(
+    request: CreateEmployeeRequest,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  createEmployee(
+    request: CreateEmployeeRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  createEmployee(
+    request: CreateEmployeeRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  getEmployee(
+    request: GetEmployeeRequest,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  getEmployee(
+    request: GetEmployeeRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  getEmployee(
+    request: GetEmployeeRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeeProfile(
+    request: UpdateEmployeeProfileRequest,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeeProfile(
+    request: UpdateEmployeeProfileRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeeProfile(
+    request: UpdateEmployeeProfileRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeePhoneNumber(
+    request: UpdateEmployeePhoneNumberRequest,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeePhoneNumber(
+    request: UpdateEmployeePhoneNumberRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  updateEmployeePhoneNumber(
+    request: UpdateEmployeePhoneNumberRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  resetEmployeePassword(
+    request: ResetEmployeePasswordRequest,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  resetEmployeePassword(
+    request: ResetEmployeePasswordRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  resetEmployeePassword(
+    request: ResetEmployeePasswordRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
   ): ClientUnaryCall;
 }
 

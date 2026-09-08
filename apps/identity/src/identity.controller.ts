@@ -1,16 +1,25 @@
 import {
   type AuthorizeAccessRequest,
   type Authorization,
+  type CreateEmployeeRequest,
+  type EmployeeProfile,
   type Empty,
+  type GetEmployeeRequest,
+  type ListEmployeesRequest,
+  type ListEmployeesResponse,
   type LoginRequest,
   type LogoutSessionRequest,
   type RefreshSessionRequest,
+  type ResetEmployeePasswordRequest,
   type SessionCredentials,
+  type UpdateEmployeePhoneNumberRequest,
+  type UpdateEmployeeProfileRequest,
 } from "@project/contracts";
 import { status, Metadata } from "@grpc/grpc-js";
 import { Controller } from "@nestjs/common";
 import { GrpcMethod, RpcException } from "@nestjs/microservices";
 import { AuthError } from "./auth.js";
+import { EmployeeAdminService } from "./employee-admin.service.js";
 import { IdentityAuthService } from "./identity.service.js";
 
 function authorization(metadata: Metadata) {
@@ -30,7 +39,10 @@ function failure(error: unknown): never {
 
 @Controller()
 export class IdentityController {
-  constructor(private readonly auth: IdentityAuthService) {}
+  constructor(
+    private readonly auth: IdentityAuthService,
+    private readonly employees: EmployeeAdminService,
+  ) {}
 
   @GrpcMethod("IdentityService", "Login")
   async login(request: LoginRequest): Promise<SessionCredentials> {
@@ -54,6 +66,99 @@ export class IdentityController {
   async logoutSession(request: LogoutSessionRequest): Promise<Empty> {
     try {
       await this.auth.revoke(request.refreshToken);
+      return {};
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "ListEmployees")
+  async listEmployees(
+    request: ListEmployeesRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<ListEmployeesResponse> {
+    try {
+      return await this.employees.list(
+        authorization(metadata),
+        request.query,
+        request.cursor,
+        request.limit,
+      );
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "CreateEmployee")
+  async createEmployee(
+    request: CreateEmployeeRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<EmployeeProfile> {
+    try {
+      return await this.employees.create(authorization(metadata), request);
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "GetEmployee")
+  async getEmployee(
+    request: GetEmployeeRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<EmployeeProfile> {
+    try {
+      return await this.employees.get(authorization(metadata), request.employeeId);
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "UpdateEmployeeProfile")
+  async updateEmployeeProfile(
+    request: UpdateEmployeeProfileRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<EmployeeProfile> {
+    try {
+      return await this.employees.updateProfile(authorization(metadata), request.employeeId, {
+        ...(request.fullName !== undefined ? { fullName: request.fullName } : {}),
+        ...(request.clearEmail
+          ? { email: null }
+          : request.email !== undefined
+            ? { email: request.email }
+            : {}),
+      });
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "UpdateEmployeePhoneNumber")
+  async updateEmployeePhoneNumber(
+    request: UpdateEmployeePhoneNumberRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<EmployeeProfile> {
+    try {
+      return await this.employees.updatePhone(
+        authorization(metadata),
+        request.employeeId,
+        request.phoneNumber,
+      );
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod("IdentityService", "ResetEmployeePassword")
+  async resetEmployeePassword(
+    request: ResetEmployeePasswordRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<Empty> {
+    try {
+      await this.employees.resetPassword(
+        authorization(metadata),
+        request.employeeId,
+        request.password,
+      );
       return {};
     } catch (error) {
       failure(error);

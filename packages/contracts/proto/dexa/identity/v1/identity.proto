@@ -9,6 +9,12 @@ service IdentityService {
   rpc RefreshSession(RefreshSessionRequest) returns (SessionCredentials);
   rpc LogoutSession(LogoutSessionRequest) returns (google.protobuf.Empty);
   rpc AuthorizeAccess(AuthorizeAccessRequest) returns (Authorization);
+  rpc ListEmployees(ListEmployeesRequest) returns (ListEmployeesResponse);
+  rpc CreateEmployee(CreateEmployeeRequest) returns (EmployeeProfile);
+  rpc GetEmployee(GetEmployeeRequest) returns (EmployeeProfile);
+  rpc UpdateEmployeeProfile(UpdateEmployeeProfileRequest) returns (EmployeeProfile);
+  rpc UpdateEmployeePhoneNumber(UpdateEmployeePhoneNumberRequest) returns (EmployeeProfile);
+  rpc ResetEmployeePassword(ResetEmployeePasswordRequest) returns (google.protobuf.Empty);
 }
 
 enum Role {
@@ -47,6 +53,47 @@ message EmployeeProfile {
   string phone_number = 4;
   optional string email = 5;
   repeated Role roles = 6;
+}
+
+message ListEmployeesRequest {
+  optional string query = 1;
+  optional string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListEmployeesResponse {
+  repeated EmployeeProfile items = 1;
+  optional string next_cursor = 2;
+  bool has_next_page = 3;
+}
+
+message CreateEmployeeRequest {
+  string employee_number = 1;
+  string full_name = 2;
+  string phone_number = 3;
+  optional string email = 4;
+  string password = 5;
+}
+
+message GetEmployeeRequest {
+  string employee_id = 1;
+}
+
+message UpdateEmployeeProfileRequest {
+  string employee_id = 1;
+  optional string full_name = 2;
+  optional string email = 3;
+  bool clear_email = 4;
+}
+
+message UpdateEmployeePhoneNumberRequest {
+  string employee_id = 1;
+  string phone_number = 2;
+}
+
+message ResetEmployeePasswordRequest {
+  string employee_id = 1;
+  string password = 2;
 }
 
 message SessionCredentials {
