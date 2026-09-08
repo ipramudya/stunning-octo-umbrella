@@ -13,6 +13,13 @@ export const environmentSchema = z.object({
     .url()
     .refine((value) => ["http:", "https:"].includes(new URL(value).protocol))
     .default("http://localhost:9000"),
+  MINIO_PUBLIC_ENDPOINT: z
+    .url()
+    .refine((value) => ["http:", "https:"].includes(new URL(value).protocol))
+    .default("http://localhost:9000"),
+  MINIO_ACCESS_KEY: z.string().min(1).default("dexaadmin"),
+  MINIO_SECRET_KEY: z.string().min(8).default("DexaMinio1!"),
+  MINIO_EVIDENCE_BUCKET: z.string().min(3).default("attendance-evidence"),
   ORACLE_CALL_TIMEOUT_MS: positiveInteger.default(2_500),
   ORACLE_CONNECT_STRING: z.string().min(1).default("localhost:1521/FREEPDB1"),
   ORACLE_PASSWORD: z.string().min(1).default("DexaAttendance1!"),

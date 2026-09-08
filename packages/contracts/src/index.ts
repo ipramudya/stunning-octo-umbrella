@@ -5,6 +5,10 @@ export {
   type AttendanceServiceClient,
   AttendanceServiceService,
   type AttendanceZone,
+  type AuthorizeEvidenceAccessRequest,
+  type AuthorizeEvidenceUploadRequest,
+  type EvidenceAccessAuthorization,
+  type EvidenceUploadAuthorization,
   type UpdateAttendanceZoneRequest,
 } from "./generated/dexa/attendance/v1/attendance.js";
 export {

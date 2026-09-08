@@ -3,10 +3,35 @@ syntax = "proto3";
 package dexa.attendance.v1;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 service AttendanceService {
   rpc GetAttendanceZone(google.protobuf.Empty) returns (AttendanceZone);
   rpc UpdateAttendanceZone(UpdateAttendanceZoneRequest) returns (AttendanceZone);
+  rpc AuthorizeEvidenceUpload(AuthorizeEvidenceUploadRequest) returns (EvidenceUploadAuthorization);
+  rpc AuthorizeEvidenceAccess(AuthorizeEvidenceAccessRequest) returns (EvidenceAccessAuthorization);
+}
+
+message AuthorizeEvidenceUploadRequest {
+  string content_type = 1;
+  int32 size_bytes = 2;
+}
+
+message EvidenceUploadAuthorization {
+  string upload_id = 1;
+  string method = 2;
+  string url = 3;
+  map<string, string> headers = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+message AuthorizeEvidenceAccessRequest {
+  string evidence_id = 1;
+}
+
+message EvidenceAccessAuthorization {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
 }
 
 message AttendanceZone {

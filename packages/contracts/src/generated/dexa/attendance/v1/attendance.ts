@@ -19,8 +19,36 @@ import {
   type UntypedServiceImplementation,
 } from "@grpc/grpc-js";
 import { Empty } from "../../../google/protobuf/empty.js";
+import { Timestamp } from "../../../google/protobuf/timestamp.js";
 
 export const protobufPackage = "dexa.attendance.v1";
+
+export interface AuthorizeEvidenceUploadRequest {
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface EvidenceUploadAuthorization {
+  uploadId: string;
+  method: string;
+  url: string;
+  headers: { [key: string]: string };
+  expiresAt: Date | undefined;
+}
+
+export interface EvidenceUploadAuthorization_HeadersEntry {
+  key: string;
+  value: string;
+}
+
+export interface AuthorizeEvidenceAccessRequest {
+  evidenceId: string;
+}
+
+export interface EvidenceAccessAuthorization {
+  url: string;
+  expiresAt: Date | undefined;
+}
 
 export interface AttendanceZone {
   name: string;
@@ -39,6 +67,517 @@ export interface UpdateAttendanceZoneRequest {
   radiusMeters: number;
   active: boolean;
 }
+
+function createBaseAuthorizeEvidenceUploadRequest(): AuthorizeEvidenceUploadRequest {
+  return { contentType: "", sizeBytes: 0 };
+}
+
+export const AuthorizeEvidenceUploadRequest: MessageFns<AuthorizeEvidenceUploadRequest> = {
+  encode(message: AuthorizeEvidenceUploadRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.contentType !== "") {
+      writer.uint32(10).string(message.contentType);
+    }
+    if (message.sizeBytes !== 0) {
+      writer.uint32(16).int32(message.sizeBytes);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AuthorizeEvidenceUploadRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAuthorizeEvidenceUploadRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.contentType = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.sizeBytes = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AuthorizeEvidenceUploadRequest {
+    return {
+      contentType: isSet(object.contentType)
+        ? globalThis.String(object.contentType)
+        : isSet(object.content_type)
+        ? globalThis.String(object.content_type)
+        : "",
+      sizeBytes: isSet(object.sizeBytes)
+        ? globalThis.Number(object.sizeBytes)
+        : isSet(object.size_bytes)
+        ? globalThis.Number(object.size_bytes)
+        : 0,
+    };
+  },
+
+  toJSON(message: AuthorizeEvidenceUploadRequest): unknown {
+    const obj: any = {};
+    if (message.contentType !== "") {
+      obj.contentType = message.contentType;
+    }
+    if (message.sizeBytes !== 0) {
+      obj.sizeBytes = Math.round(message.sizeBytes);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AuthorizeEvidenceUploadRequest>): AuthorizeEvidenceUploadRequest {
+    return AuthorizeEvidenceUploadRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AuthorizeEvidenceUploadRequest>): AuthorizeEvidenceUploadRequest {
+    const message = createBaseAuthorizeEvidenceUploadRequest();
+    message.contentType = object.contentType ?? "";
+    message.sizeBytes = object.sizeBytes ?? 0;
+    return message;
+  },
+};
+
+function createBaseEvidenceUploadAuthorization(): EvidenceUploadAuthorization {
+  return { uploadId: "", method: "", url: "", headers: {}, expiresAt: undefined };
+}
+
+export const EvidenceUploadAuthorization: MessageFns<EvidenceUploadAuthorization> = {
+  encode(message: EvidenceUploadAuthorization, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.uploadId !== "") {
+      writer.uint32(10).string(message.uploadId);
+    }
+    if (message.method !== "") {
+      writer.uint32(18).string(message.method);
+    }
+    if (message.url !== "") {
+      writer.uint32(26).string(message.url);
+    }
+    globalThis.Object.entries(message.headers).forEach(([key, value]: [string, string]) => {
+      EvidenceUploadAuthorization_HeadersEntry.encode({ key: key as any, value }, writer.uint32(34).fork()).join();
+    });
+    if (message.expiresAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.expiresAt), writer.uint32(42).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EvidenceUploadAuthorization {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseEvidenceUploadAuthorization();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.uploadId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.method = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.url = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            const entry4 = EvidenceUploadAuthorization_HeadersEntry.decode(reader, reader.uint32());
+            if (entry4.value !== undefined) {
+              message.headers[entry4.key] = entry4.value;
+            }
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.expiresAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): EvidenceUploadAuthorization {
+    return {
+      uploadId: isSet(object.uploadId)
+        ? globalThis.String(object.uploadId)
+        : isSet(object.upload_id)
+        ? globalThis.String(object.upload_id)
+        : "",
+      method: isSet(object.method) ? globalThis.String(object.method) : "",
+      url: isSet(object.url) ? globalThis.String(object.url) : "",
+      headers: isObject(object.headers)
+        ? (globalThis.Object.entries(object.headers) as [string, any][]).reduce(
+          (acc: { [key: string]: string }, [key, value]: [string, any]) => {
+            globalThis.Object.defineProperty(acc, key, {
+              value: globalThis.String(value),
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            });
+            return acc;
+          },
+          {},
+        )
+        : {},
+      expiresAt: isSet(object.expiresAt)
+        ? fromJsonTimestamp(object.expiresAt)
+        : isSet(object.expires_at)
+        ? fromJsonTimestamp(object.expires_at)
+        : undefined,
+    };
+  },
+
+  toJSON(message: EvidenceUploadAuthorization): unknown {
+    const obj: any = {};
+    if (message.uploadId !== "") {
+      obj.uploadId = message.uploadId;
+    }
+    if (message.method !== "") {
+      obj.method = message.method;
+    }
+    if (message.url !== "") {
+      obj.url = message.url;
+    }
+    if (message.headers) {
+      const entries = globalThis.Object.entries(message.headers) as [string, string][];
+      if (entries.length > 0) {
+        obj.headers = {};
+        entries.forEach(([k, v]) => {
+          obj.headers[k] = v;
+        });
+      }
+    }
+    if (message.expiresAt !== undefined) {
+      obj.expiresAt = message.expiresAt.toISOString();
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<EvidenceUploadAuthorization>): EvidenceUploadAuthorization {
+    return EvidenceUploadAuthorization.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<EvidenceUploadAuthorization>): EvidenceUploadAuthorization {
+    const message = createBaseEvidenceUploadAuthorization();
+    message.uploadId = object.uploadId ?? "";
+    message.method = object.method ?? "";
+    message.url = object.url ?? "";
+    message.headers = (globalThis.Object.entries(object.headers ?? {}) as [string, string][]).reduce(
+      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
+        if (value !== undefined) {
+          acc[key] = globalThis.String(value);
+        }
+        return acc;
+      },
+      {},
+    );
+    message.expiresAt = object.expiresAt ?? undefined;
+    return message;
+  },
+};
+
+function createBaseEvidenceUploadAuthorization_HeadersEntry(): EvidenceUploadAuthorization_HeadersEntry {
+  return { key: "", value: "" };
+}
+
+export const EvidenceUploadAuthorization_HeadersEntry: MessageFns<EvidenceUploadAuthorization_HeadersEntry> = {
+  encode(message: EvidenceUploadAuthorization_HeadersEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.key !== "") {
+      writer.uint32(10).string(message.key);
+    }
+    if (message.value !== "") {
+      writer.uint32(18).string(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EvidenceUploadAuthorization_HeadersEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseEvidenceUploadAuthorization_HeadersEntry();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.key = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.value = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): EvidenceUploadAuthorization_HeadersEntry {
+    return {
+      key: isSet(object.key) ? globalThis.String(object.key) : "",
+      value: isSet(object.value) ? globalThis.String(object.value) : "",
+    };
+  },
+
+  toJSON(message: EvidenceUploadAuthorization_HeadersEntry): unknown {
+    const obj: any = {};
+    if (message.key !== "") {
+      obj.key = message.key;
+    }
+    if (message.value !== "") {
+      obj.value = message.value;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<EvidenceUploadAuthorization_HeadersEntry>): EvidenceUploadAuthorization_HeadersEntry {
+    return EvidenceUploadAuthorization_HeadersEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<EvidenceUploadAuthorization_HeadersEntry>): EvidenceUploadAuthorization_HeadersEntry {
+    const message = createBaseEvidenceUploadAuthorization_HeadersEntry();
+    message.key = object.key ?? "";
+    message.value = object.value ?? "";
+    return message;
+  },
+};
+
+function createBaseAuthorizeEvidenceAccessRequest(): AuthorizeEvidenceAccessRequest {
+  return { evidenceId: "" };
+}
+
+export const AuthorizeEvidenceAccessRequest: MessageFns<AuthorizeEvidenceAccessRequest> = {
+  encode(message: AuthorizeEvidenceAccessRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.evidenceId !== "") {
+      writer.uint32(10).string(message.evidenceId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AuthorizeEvidenceAccessRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseAuthorizeEvidenceAccessRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.evidenceId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): AuthorizeEvidenceAccessRequest {
+    return {
+      evidenceId: isSet(object.evidenceId)
+        ? globalThis.String(object.evidenceId)
+        : isSet(object.evidence_id)
+        ? globalThis.String(object.evidence_id)
+        : "",
+    };
+  },
+
+  toJSON(message: AuthorizeEvidenceAccessRequest): unknown {
+    const obj: any = {};
+    if (message.evidenceId !== "") {
+      obj.evidenceId = message.evidenceId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AuthorizeEvidenceAccessRequest>): AuthorizeEvidenceAccessRequest {
+    return AuthorizeEvidenceAccessRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AuthorizeEvidenceAccessRequest>): AuthorizeEvidenceAccessRequest {
+    const message = createBaseAuthorizeEvidenceAccessRequest();
+    message.evidenceId = object.evidenceId ?? "";
+    return message;
+  },
+};
+
+function createBaseEvidenceAccessAuthorization(): EvidenceAccessAuthorization {
+  return { url: "", expiresAt: undefined };
+}
+
+export const EvidenceAccessAuthorization: MessageFns<EvidenceAccessAuthorization> = {
+  encode(message: EvidenceAccessAuthorization, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.url !== "") {
+      writer.uint32(10).string(message.url);
+    }
+    if (message.expiresAt !== undefined) {
+      Timestamp.encode(toTimestamp(message.expiresAt), writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): EvidenceAccessAuthorization {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseEvidenceAccessAuthorization();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.url = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.expiresAt = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): EvidenceAccessAuthorization {
+    return {
+      url: isSet(object.url) ? globalThis.String(object.url) : "",
+      expiresAt: isSet(object.expiresAt)
+        ? fromJsonTimestamp(object.expiresAt)
+        : isSet(object.expires_at)
+        ? fromJsonTimestamp(object.expires_at)
+        : undefined,
+    };
+  },
+
+  toJSON(message: EvidenceAccessAuthorization): unknown {
+    const obj: any = {};
+    if (message.url !== "") {
+      obj.url = message.url;
+    }
+    if (message.expiresAt !== undefined) {
+      obj.expiresAt = message.expiresAt.toISOString();
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<EvidenceAccessAuthorization>): EvidenceAccessAuthorization {
+    return EvidenceAccessAuthorization.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<EvidenceAccessAuthorization>): EvidenceAccessAuthorization {
+    const message = createBaseEvidenceAccessAuthorization();
+    message.url = object.url ?? "";
+    message.expiresAt = object.expiresAt ?? undefined;
+    return message;
+  },
+};
 
 function createBaseAttendanceZone(): AttendanceZone {
   return { name: "", address: "", latitude: 0, longitude: 0, radiusMeters: 0, active: false };
@@ -367,11 +906,35 @@ export const AttendanceServiceService = {
     responseSerialize: (value: AttendanceZone): Buffer => Buffer.from(AttendanceZone.encode(value).finish()),
     responseDeserialize: (value: Buffer): AttendanceZone => AttendanceZone.decode(value),
   },
+  authorizeEvidenceUpload: {
+    path: "/dexa.attendance.v1.AttendanceService/AuthorizeEvidenceUpload" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: AuthorizeEvidenceUploadRequest): Buffer =>
+      Buffer.from(AuthorizeEvidenceUploadRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AuthorizeEvidenceUploadRequest => AuthorizeEvidenceUploadRequest.decode(value),
+    responseSerialize: (value: EvidenceUploadAuthorization): Buffer =>
+      Buffer.from(EvidenceUploadAuthorization.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EvidenceUploadAuthorization => EvidenceUploadAuthorization.decode(value),
+  },
+  authorizeEvidenceAccess: {
+    path: "/dexa.attendance.v1.AttendanceService/AuthorizeEvidenceAccess" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: AuthorizeEvidenceAccessRequest): Buffer =>
+      Buffer.from(AuthorizeEvidenceAccessRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): AuthorizeEvidenceAccessRequest => AuthorizeEvidenceAccessRequest.decode(value),
+    responseSerialize: (value: EvidenceAccessAuthorization): Buffer =>
+      Buffer.from(EvidenceAccessAuthorization.encode(value).finish()),
+    responseDeserialize: (value: Buffer): EvidenceAccessAuthorization => EvidenceAccessAuthorization.decode(value),
+  },
 } as const;
 
 export interface AttendanceServiceServer extends UntypedServiceImplementation {
   getAttendanceZone: handleUnaryCall<Empty, AttendanceZone>;
   updateAttendanceZone: handleUnaryCall<UpdateAttendanceZoneRequest, AttendanceZone>;
+  authorizeEvidenceUpload: handleUnaryCall<AuthorizeEvidenceUploadRequest, EvidenceUploadAuthorization>;
+  authorizeEvidenceAccess: handleUnaryCall<AuthorizeEvidenceAccessRequest, EvidenceAccessAuthorization>;
 }
 
 export interface AttendanceServiceClient extends Client {
@@ -405,6 +968,36 @@ export interface AttendanceServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: AttendanceZone) => void,
   ): ClientUnaryCall;
+  authorizeEvidenceUpload(
+    request: AuthorizeEvidenceUploadRequest,
+    callback: (error: ServiceError | null, response: EvidenceUploadAuthorization) => void,
+  ): ClientUnaryCall;
+  authorizeEvidenceUpload(
+    request: AuthorizeEvidenceUploadRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EvidenceUploadAuthorization) => void,
+  ): ClientUnaryCall;
+  authorizeEvidenceUpload(
+    request: AuthorizeEvidenceUploadRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EvidenceUploadAuthorization) => void,
+  ): ClientUnaryCall;
+  authorizeEvidenceAccess(
+    request: AuthorizeEvidenceAccessRequest,
+    callback: (error: ServiceError | null, response: EvidenceAccessAuthorization) => void,
+  ): ClientUnaryCall;
+  authorizeEvidenceAccess(
+    request: AuthorizeEvidenceAccessRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: EvidenceAccessAuthorization) => void,
+  ): ClientUnaryCall;
+  authorizeEvidenceAccess(
+    request: AuthorizeEvidenceAccessRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: EvidenceAccessAuthorization) => void,
+  ): ClientUnaryCall;
 }
 
 export const AttendanceServiceClient = makeGenericClientConstructor(
@@ -423,6 +1016,32 @@ export type DeepPartial<T> = T extends Builtin ? T
   : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
   : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+function toTimestamp(date: Date): Timestamp {
+  const seconds = Math.trunc(date.getTime() / 1_000);
+  const nanos = (date.getTime() % 1_000) * 1_000_000;
+  return { seconds, nanos };
+}
+
+function fromTimestamp(t: Timestamp): Date {
+  let millis = (t.seconds || 0) * 1_000;
+  millis += (t.nanos || 0) / 1_000_000;
+  return new globalThis.Date(millis);
+}
+
+function fromJsonTimestamp(o: any): Date {
+  if (o instanceof globalThis.Date) {
+    return o;
+  } else if (typeof o === "string") {
+    return new globalThis.Date(o);
+  } else {
+    return fromTimestamp(Timestamp.fromJSON(o));
+  }
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

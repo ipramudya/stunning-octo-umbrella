@@ -10,6 +10,9 @@ x-attendance-environment: &attendance-environment
   ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:-DexaAttendance1!}
   ORACLE_USER: DEXA_ATTENDANCE
   PKI_DIR: /app/.local/pki
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-dexaadmin}
+  MINIO_EVIDENCE_BUCKET: attendance-evidence
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
 
 x-identity-environment: &identity-environment
   ARGON2_MEMORY_COST: ${ARGON2_MEMORY_COST:-19456}
@@ -164,8 +167,11 @@ services:
     command: ["server", "/data", "--console-address", ":9001"]
     restart: unless-stopped
     environment:
+      MINIO_API_CORS_ALLOW_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
     volumes:
       - minio-data:/data
 
@@ -218,6 +224,7 @@ services:
       HOST: 0.0.0.0
       HTTP_PORT: 3002
       MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:${MINIO_PORT:-9000}
     volumes:
       - attendance-pki:/app/.local/pki:ro
     healthcheck:
