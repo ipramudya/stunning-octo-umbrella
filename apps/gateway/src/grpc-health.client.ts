@@ -1,3 +1,4 @@
+import { HEALTH_PROTO_PATH } from "@dexa/contracts";
 import { ChannelCredentials } from "@grpc/grpc-js";
 import { Transport, type GrpcOptions } from "@nestjs/microservices";
 import { readFileSync } from "node:fs";
@@ -24,10 +25,7 @@ export function createHealthClientOptions(
         readFileSync(join(pkiDir, "gateway.crt")),
       ),
       package: "grpc.health.v1",
-      protoPath: join(
-        import.meta.dirname,
-        "../../../packages/contracts/proto/grpc/health/v1/health.proto",
-      ),
+      protoPath: HEALTH_PROTO_PATH,
       url: address,
     },
   };
