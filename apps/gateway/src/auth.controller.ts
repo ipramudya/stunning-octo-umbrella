@@ -26,10 +26,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { randomUUID } from "node:crypto";
 import { STATUS_CODES } from "node:http";
 import { firstValueFrom, fromEvent, type Observable, takeUntil } from "rxjs";
-import { z } from "zod";
+import { loginSchema, type LoginDto } from "./auth.contract.js";
 import type { Environment } from "./config.schema.js";
 import { IDENTITY_HEALTH_CLIENT } from "./grpc-health.client.js";
 import { RateLimiter, RateLimitError, rateKey } from "./rate-limiter.js";
+import { ZodValidationPipe } from "./zod-validation.pipe.js";
 
 interface IdentityClient {
   login(
@@ -53,16 +54,6 @@ interface IdentityClient {
     options: Partial<CallOptions>,
   ): Observable<Authorization>;
 }
-
-const loginSchema = z
-  .object({
-    phoneNumber: z.string(),
-    password: z.string().refine((value) => {
-      const length = [...value].length;
-      return length >= 12 && length <= 128;
-    }),
-  })
-  .strict();
 
 function cookies(request: FastifyRequest) {
   return Object.fromEntries(
@@ -103,17 +94,14 @@ export class AuthController implements OnModuleInit {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body() body: unknown,
+    @Body(new ZodValidationPipe(loginSchema)) body: LoginDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const context = this.context(request, reply, true);
-    const parsed = loginSchema.safeParse(body);
-    if (!parsed.success)
-      this.fail(400, "VALIDATION_ERROR", "Request validation failed", request, context.traceId);
     await this.limit(
       "login:phone",
-      rateKey(parsed.data.phoneNumber.trim()),
+      rateKey(body.phoneNumber.trim()),
       5,
       900,
       request,
@@ -124,7 +112,7 @@ export class AuthController implements OnModuleInit {
     try {
       const result = await firstValueFrom(
         this.identity
-          .login(parsed.data, context.metadata, context.options)
+          .login(body, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
       this.setCredentials(reply, result);
