@@ -5,7 +5,6 @@ import {
   type AttendanceEntry,
   type ListAttendanceRequest,
 } from '@project/contracts';
-import { z } from 'zod';
 
 import {
   attendanceSourceNames,
@@ -15,25 +14,19 @@ import {
   monthPattern,
 } from './attendance-query.constant.js';
 import type { AttendanceCursor } from './attendance-query.entity.js';
+import {
+  AttendanceQueryError,
+  type AttendanceQueryErrorCode,
+} from './attendance-query.error.js';
 import { AttendanceQueryRepository } from './attendance-query.repository.js';
+import { attendanceCursorSchema } from './attendance-query.schema.js';
 
-export class AttendanceQueryError extends Error {
-  constructor(
-    readonly code: string,
-    readonly grpcStatus = status.INVALID_ARGUMENT,
-  ) {
-    super(code);
-  }
-}
-
-const cursorSchema = z.object({
-  workDate: z.string().regex(datePattern),
-  submittedAt: z.iso.datetime(),
-  id: z.string().min(1),
-});
 @Injectable()
 export class AttendanceQueryService {
-  private fail(code: string, grpcStatus = status.INVALID_ARGUMENT): never {
+  private fail(
+    code: AttendanceQueryErrorCode,
+    grpcStatus = status.INVALID_ARGUMENT,
+  ): never {
     throw new AttendanceQueryError(code, grpcStatus);
   }
 
@@ -48,7 +41,7 @@ export class AttendanceQueryService {
       return undefined;
     }
     try {
-      const cursor = cursorSchema.parse(
+      const cursor = attendanceCursorSchema.parse(
         JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
       );
       return { ...cursor, submittedAt: new Date(cursor.submittedAt) };

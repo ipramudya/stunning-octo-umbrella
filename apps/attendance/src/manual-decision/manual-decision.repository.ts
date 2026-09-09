@@ -16,6 +16,19 @@ import type {
 } from './manual-decision.entity.js';
 
 const operation = 'DECIDE_MANUAL_ATTENDANCE';
+
+type ManualDecisionPersistenceErrorCode =
+  | 'ATTENDANCE_ENTRY_NOT_FOUND'
+  | 'CLOCK_IN_REQUIRED'
+  | 'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN'
+  | 'ENTRY_NOT_PENDING_REVIEW'
+  | 'SELF_APPROVAL_FORBIDDEN';
+
+export class ManualDecisionPersistenceError extends Error {
+  constructor(readonly code: ManualDecisionPersistenceErrorCode) {
+    super(code);
+  }
+}
 export const attendanceColumns = `id, employee_id, work_date, clock_type, source, status,
   occurred_at, claimed_at, submitted_at, address, latitude, longitude,
   accuracy_meters, distance_meters, reason, evidence_id, decided_at,
@@ -202,7 +215,7 @@ export class ManualDecisionRepository {
       );
       const target = await this.selectEntry(connection, input.entryId);
       if (!target) {
-        throw new Error('ATTENDANCE_ENTRY_NOT_FOUND');
+        throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
       await connection.execute(
         `SELECT id FROM attendance_entries
@@ -219,16 +232,16 @@ export class ManualDecisionRepository {
       );
       const locked = await this.selectEntry(connection, input.entryId);
       if (!locked) {
-        throw new Error('ATTENDANCE_ENTRY_NOT_FOUND');
+        throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
       if (locked.employeeId === input.reviewerId) {
-        throw new Error('SELF_APPROVAL_FORBIDDEN');
+        throw new ManualDecisionPersistenceError('SELF_APPROVAL_FORBIDDEN');
       }
       if (
         locked.source !== AttendanceSource.ATTENDANCE_SOURCE_MANUAL ||
         locked.status !== AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW
       ) {
-        throw new Error('ENTRY_NOT_PENDING_REVIEW');
+        throw new ManualDecisionPersistenceError('ENTRY_NOT_PENDING_REVIEW');
       }
       if (
         input.decision ===
@@ -260,7 +273,7 @@ export class ManualDecisionRepository {
       );
       const updated = await this.selectEntry(connection, input.entryId);
       if (!updated) {
-        throw new Error('ATTENDANCE_ENTRY_NOT_FOUND');
+        throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
       const completed = await connection.execute(
         `UPDATE idempotency_records
@@ -306,10 +319,12 @@ export class ManualDecisionRepository {
     );
     const occurredAt = result.rows?.[0]?.OCCURRED_AT;
     if (!occurredAt) {
-      throw new Error('CLOCK_IN_REQUIRED');
+      throw new ManualDecisionPersistenceError('CLOCK_IN_REQUIRED');
     }
     if (!clockOut.claimedAt || clockOut.claimedAt <= occurredAt) {
-      throw new Error('CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN');
+      throw new ManualDecisionPersistenceError(
+        'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN',
+      );
     }
   }
 

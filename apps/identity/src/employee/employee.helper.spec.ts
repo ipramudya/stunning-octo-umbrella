@@ -14,8 +14,8 @@ import {
 
 describe('employee helpers', () => {
   it('throws typed auth errors', () => {
-    expect(() => fail('NOT_FOUND', status.NOT_FOUND)).toThrow(
-      new AuthError('NOT_FOUND', status.NOT_FOUND),
+    expect(() => fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND)).toThrow(
+      new AuthError('EMPLOYEE_NOT_FOUND', status.NOT_FOUND),
     );
   });
 

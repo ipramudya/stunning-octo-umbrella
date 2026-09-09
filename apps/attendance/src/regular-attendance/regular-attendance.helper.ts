@@ -1,3 +1,6 @@
+import { status } from '@grpc/grpc-js';
+
+import { AttendanceError } from '../attendance/attendance.error.js';
 import type { ClockType } from './regular-attendance.entity.js';
 
 const jakartaFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -11,9 +14,30 @@ const jakartaFormatter = new Intl.DateTimeFormat('en-CA', {
   hourCycle: 'h23',
 });
 
-export class RegularAttendanceError extends Error {
-  constructor(readonly code: string) {
-    super(code);
+export type RegularAttendanceErrorCode =
+  | 'ATTENDANCE_ALREADY_EXISTS'
+  | 'ATTENDANCE_WINDOW_CLOSED'
+  | 'ATTENDANCE_ZONE_INACTIVE'
+  | 'CLOCK_IN_REQUIRED'
+  | 'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN'
+  | 'DEPENDENCY_UNAVAILABLE'
+  | 'GPS_ACCURACY_EXCEEDS_LIMIT'
+  | 'OUTSIDE_ATTENDANCE_ZONE';
+
+const regularAttendanceStatus: Record<RegularAttendanceErrorCode, status> = {
+  ATTENDANCE_ALREADY_EXISTS: status.ALREADY_EXISTS,
+  ATTENDANCE_WINDOW_CLOSED: status.FAILED_PRECONDITION,
+  ATTENDANCE_ZONE_INACTIVE: status.FAILED_PRECONDITION,
+  CLOCK_IN_REQUIRED: status.FAILED_PRECONDITION,
+  CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN: status.FAILED_PRECONDITION,
+  DEPENDENCY_UNAVAILABLE: status.UNAVAILABLE,
+  GPS_ACCURACY_EXCEEDS_LIMIT: status.FAILED_PRECONDITION,
+  OUTSIDE_ATTENDANCE_ZONE: status.FAILED_PRECONDITION,
+};
+
+export class RegularAttendanceError extends AttendanceError {
+  constructor(code: RegularAttendanceErrorCode) {
+    super(code, regularAttendanceStatus[code]);
   }
 }
 

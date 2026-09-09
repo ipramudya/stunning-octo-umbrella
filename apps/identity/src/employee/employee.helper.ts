@@ -1,6 +1,6 @@
 import { status } from '@grpc/grpc-js';
 
-import { AuthError } from '../auth/auth-error.js';
+import { AuthError, type AuthErrorCode } from '../auth/auth-error.js';
 import type { Employee } from './employee.entity.js';
 
 const phonePattern = /^\+62[0-9]+$/;
@@ -10,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function fail(
-  code: string,
+  code: AuthErrorCode,
   grpcStatus = status.INVALID_ARGUMENT,
 ): never {
   throw new AuthError(code, grpcStatus);

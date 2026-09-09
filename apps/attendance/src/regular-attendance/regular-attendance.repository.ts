@@ -1,6 +1,8 @@
+import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import oracledb, { type Connection } from 'oracledb';
 
+import { AttendanceError } from '../attendance/attendance.error.js';
 import { OracleDatabase } from '../oracle.js';
 import type {
   AttemptRow,
@@ -9,9 +11,13 @@ import type {
   ZoneRow,
 } from './regular-attendance.entity.js';
 
-export class RegularAttendancePersistenceError extends Error {
-  constructor(readonly code: 'IDEMPOTENCY_KEY_REUSED' | 'REQUEST_IN_PROGRESS') {
-    super(code);
+type RegularAttendancePersistenceErrorCode =
+  | 'IDEMPOTENCY_KEY_REUSED'
+  | 'REQUEST_IN_PROGRESS';
+
+export class RegularAttendancePersistenceError extends AttendanceError {
+  constructor(code: RegularAttendancePersistenceErrorCode) {
+    super(code, status.ALREADY_EXISTS);
   }
 }
 

@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
+export { ATTENDANCE_ZONE_LIMITS } from './attendance-zone.js';
 export * from './generated/grpc/health/v1/health.js';
 export {
   type AttendanceDecision,

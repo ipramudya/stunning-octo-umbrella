@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { status } from '@grpc/grpc-js';
 import type {
   OnApplicationBootstrap,
   OnApplicationShutdown,
@@ -7,6 +8,7 @@ import type {
 import { Injectable, Logger } from '@nestjs/common';
 import type { Connection } from 'oracledb';
 
+import { AttendanceError } from '../attendance/attendance.error.js';
 import { RegularAttendanceRepository } from '../regular-attendance/regular-attendance.repository.js';
 import { EvidenceStore } from './evidence-store.js';
 import {
@@ -17,9 +19,26 @@ import {
 import type { EvidenceUpload } from './evidence.entity.js';
 import { EvidenceRepository } from './evidence.repository.js';
 
-export class EvidenceError extends Error {
-  constructor(readonly code: string) {
-    super(code);
+export type EvidenceErrorCode =
+  | 'EVIDENCE_ALREADY_ATTACHED'
+  | 'EVIDENCE_EXPIRED'
+  | 'EVIDENCE_FINALIZATION_FAILED'
+  | 'EVIDENCE_INVALID'
+  | 'EVIDENCE_NOT_FOUND'
+  | 'EVIDENCE_NOT_UPLOADED';
+
+const evidenceStatus: Record<EvidenceErrorCode, status> = {
+  EVIDENCE_ALREADY_ATTACHED: status.ALREADY_EXISTS,
+  EVIDENCE_EXPIRED: status.FAILED_PRECONDITION,
+  EVIDENCE_FINALIZATION_FAILED: status.UNAVAILABLE,
+  EVIDENCE_INVALID: status.FAILED_PRECONDITION,
+  EVIDENCE_NOT_FOUND: status.NOT_FOUND,
+  EVIDENCE_NOT_UPLOADED: status.FAILED_PRECONDITION,
+};
+
+export class EvidenceError extends AttendanceError {
+  constructor(code: EvidenceErrorCode) {
+    super(code, evidenceStatus[code]);
   }
 }
 

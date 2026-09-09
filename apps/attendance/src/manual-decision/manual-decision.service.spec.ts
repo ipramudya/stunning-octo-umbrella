@@ -1,6 +1,7 @@
 import { ManualAttendanceDecision } from '@project/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ManualDecisionPersistenceError } from './manual-decision.repository.js';
 import { ManualDecisionError } from './manual-decision.service.js';
 import { ManualDecisionService } from './manual-decision.service.js';
 
@@ -42,7 +43,9 @@ describe('manual attendance decisions', () => {
 
   it('releases failed claims and preserves the domain error', async () => {
     const { repository, service } = subject();
-    repository.decide.mockRejectedValue(new Error('SELF_APPROVAL_FORBIDDEN'));
+    repository.decide.mockRejectedValue(
+      new ManualDecisionPersistenceError('SELF_APPROVAL_FORBIDDEN'),
+    );
 
     await expect(
       service.decide('reviewer-1', 'key-1', approve),

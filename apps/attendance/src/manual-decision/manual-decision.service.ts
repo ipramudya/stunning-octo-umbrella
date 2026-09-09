@@ -1,16 +1,48 @@
 import { createHash } from 'node:crypto';
 
+import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import {
   ManualAttendanceDecision,
   type DecideManualAttendanceRequest,
 } from '@project/contracts';
 
-import { ManualDecisionRepository } from './manual-decision.repository.js';
+import { AttendanceError } from '../attendance/attendance.error.js';
+import {
+  ManualDecisionPersistenceError,
+  ManualDecisionRepository,
+} from './manual-decision.repository.js';
 
-export class ManualDecisionError extends Error {
-  constructor(readonly code: string) {
-    super(code);
+export type ManualDecisionErrorCode =
+  | 'ATTENDANCE_ENTRY_NOT_FOUND'
+  | 'CLOCK_IN_REQUIRED'
+  | 'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN'
+  | 'ENTRY_NOT_PENDING_REVIEW'
+  | 'IDEMPOTENCY_KEY_REUSED'
+  | 'INVALID_CURSOR'
+  | 'REQUEST_IN_PROGRESS'
+  | 'SELF_APPROVAL_FORBIDDEN'
+  | 'VALIDATION_ERROR';
+
+const manualDecisionStatus: Record<ManualDecisionErrorCode, status> = {
+  ATTENDANCE_ENTRY_NOT_FOUND: status.NOT_FOUND,
+  CLOCK_IN_REQUIRED: status.FAILED_PRECONDITION,
+  CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN: status.FAILED_PRECONDITION,
+  ENTRY_NOT_PENDING_REVIEW: status.ALREADY_EXISTS,
+  IDEMPOTENCY_KEY_REUSED: status.ALREADY_EXISTS,
+  INVALID_CURSOR: status.INVALID_ARGUMENT,
+  REQUEST_IN_PROGRESS: status.ABORTED,
+  SELF_APPROVAL_FORBIDDEN: status.PERMISSION_DENIED,
+  VALIDATION_ERROR: status.INVALID_ARGUMENT,
+};
+
+export class ManualDecisionError extends AttendanceError {
+  constructor(code: ManualDecisionErrorCode) {
+    super(
+      code,
+      manualDecisionStatus[code],
+      code === 'REQUEST_IN_PROGRESS' ? 1 : undefined,
+    );
   }
 }
 
@@ -153,17 +185,8 @@ export class ManualDecisionService {
       return { entry: decided, replay: false };
     } catch (error) {
       await this.repository.release(reviewerId, key, hash);
-      const code = error instanceof Error ? error.message : '';
-      if (
-        [
-          'ATTENDANCE_ENTRY_NOT_FOUND',
-          'SELF_APPROVAL_FORBIDDEN',
-          'ENTRY_NOT_PENDING_REVIEW',
-          'CLOCK_IN_REQUIRED',
-          'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN',
-        ].includes(code)
-      ) {
-        throw new ManualDecisionError(code);
+      if (error instanceof ManualDecisionPersistenceError) {
+        throw new ManualDecisionError(error.code);
       }
       throw error;
     }

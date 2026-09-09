@@ -1,7 +1,10 @@
+import { status } from '@grpc/grpc-js';
 import {
   ClockType,
   type CreateManualAttendanceRequest,
 } from '@project/contracts';
+
+import { AttendanceError } from '../attendance/attendance.error.js';
 
 const jakartaDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
@@ -24,9 +27,32 @@ function utcDateValue(value: string) {
   return Date.UTC(year, month - 1, day);
 }
 
-export class ManualAttendanceError extends Error {
-  constructor(readonly code: string) {
-    super(code);
+export type ManualAttendanceErrorCode =
+  | 'ATTENDANCE_ALREADY_EXISTS'
+  | 'CLAIMED_AT_DATE_MISMATCH'
+  | 'FUTURE_CLAIMED_AT'
+  | 'IDEMPOTENCY_KEY_REUSED'
+  | 'MANUAL_DATE_OUT_OF_RANGE'
+  | 'REQUEST_IN_PROGRESS'
+  | 'VALIDATION_ERROR';
+
+const manualAttendanceStatus: Record<ManualAttendanceErrorCode, status> = {
+  ATTENDANCE_ALREADY_EXISTS: status.ALREADY_EXISTS,
+  CLAIMED_AT_DATE_MISMATCH: status.FAILED_PRECONDITION,
+  FUTURE_CLAIMED_AT: status.FAILED_PRECONDITION,
+  IDEMPOTENCY_KEY_REUSED: status.ALREADY_EXISTS,
+  MANUAL_DATE_OUT_OF_RANGE: status.FAILED_PRECONDITION,
+  REQUEST_IN_PROGRESS: status.ABORTED,
+  VALIDATION_ERROR: status.INVALID_ARGUMENT,
+};
+
+export class ManualAttendanceError extends AttendanceError {
+  constructor(code: ManualAttendanceErrorCode) {
+    super(
+      code,
+      manualAttendanceStatus[code],
+      code === 'REQUEST_IN_PROGRESS' ? 1 : undefined,
+    );
   }
 }
 
