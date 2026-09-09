@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 import { composeExec, cookieJar, me, post } from './auth-http.mjs';
 
@@ -14,6 +15,26 @@ async function login() {
   assert.equal(response.status, 200);
 
   return cookieJar(response);
+}
+
+function identityRedis(...arguments_) {
+  return composeExec(
+    [
+      'redis',
+      'redis-cli',
+      '--user',
+      'identity',
+      '-a',
+      process.env.REDIS_PASSWORD ?? 'DexaRedis1!',
+      '--no-auth-warning',
+      ...arguments_,
+    ],
+    { encoding: 'utf8' },
+  ).trim();
+}
+
+function refreshDigest(token) {
+  return createHash('sha256').update(token).digest('base64url');
 }
 
 function clearRateLimits() {
@@ -41,6 +62,12 @@ assert.equal(refreshed.status, 204);
 const rotated = { ...first, ...cookieJar(refreshed) };
 
 assert.notEqual(rotated.dexa_refresh, originalRefresh);
+
+const originalTombstone = `identity:refresh:used:${refreshDigest(originalRefresh)}`;
+const tombstoneTtl = Number(identityRedis('TTL', originalTombstone));
+
+assert.ok(tombstoneTtl > 0 && tombstoneTtl <= 604_800);
+
 await post('/api/v1/auth/refresh', undefined, {
   dexa_refresh: originalRefresh,
 });
@@ -67,6 +94,27 @@ const invalid = await post('/api/v1/auth/refresh', undefined, {
 });
 
 assert.equal(invalid.status, 401);
+
+const expiring = await login();
+
+const expiringDigest = refreshDigest(expiring.dexa_refresh);
+const expiringActiveKey = `identity:refresh:active:${expiringDigest}`;
+const expiringSid = identityRedis('GET', expiringActiveKey);
+
+identityRedis('EXPIRE', `identity:session:${expiringSid}`, '5');
+identityRedis('EXPIRE', expiringActiveKey, '5');
+
+const expiringRefresh = await post('/api/v1/auth/refresh', undefined, expiring);
+
+assert.equal(expiringRefresh.status, 204);
+
+const expiringTombstone = `identity:refresh:used:${expiringDigest}`;
+
+assert.ok(Number(identityRedis('TTL', expiringTombstone)) > 0);
+
+await new Promise((resolve) => setTimeout(resolve, 5_100));
+
+assert.equal(identityRedis('EXISTS', expiringTombstone), '0');
 
 clearRateLimits();
 
