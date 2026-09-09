@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import React from 'react';
 
+import { CenteredPage } from '@/components/layout/centered-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -45,8 +46,8 @@ export const LoginForm = () => {
   };
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-background px-6 py-12 text-foreground">
-      <section className="w-full max-w-xs" aria-labelledby="login-title">
+    <CenteredPage>
+      <section className="max-w-xs" aria-labelledby="login-title">
         <h1
           id="login-title"
           className="text-2xl leading-tight font-semibold tracking-tight text-balance"
@@ -77,7 +78,7 @@ export const LoginForm = () => {
               <div className="relative">
                 <HugeiconsIcon
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 start-3 size-5 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
                   icon={SmartPhone01Icon}
                 />
                 <Input
@@ -117,7 +118,7 @@ export const LoginForm = () => {
               <div className="relative">
                 <HugeiconsIcon
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 start-3 size-5 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
                   icon={LockKeyIcon}
                 />
                 <Input
@@ -126,7 +127,7 @@ export const LoginForm = () => {
                   }
                   aria-invalid={Boolean(errors.password)}
                   autoComplete="current-password"
-                  className="pe-12 ps-11 aria-invalid:!border-destructive aria-invalid:!ring-destructive/20"
+                  className="ps-11 pe-12 aria-invalid:!border-destructive aria-invalid:!ring-destructive/20"
                   id="password"
                   name="password"
                   placeholder="Masukkan kata sandi"
@@ -170,6 +171,6 @@ export const LoginForm = () => {
           Butuh bantuan akses? Hubungi administrator HRD Anda.
         </p>
       </section>
-    </main>
+    </CenteredPage>
   );
 };
