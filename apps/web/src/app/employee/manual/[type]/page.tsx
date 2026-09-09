@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { ManualAttendanceForm } from '../../manual-attendance-form';
+import { ManualAttendanceForm } from './manual-attendance-form';
 
 export default async function ManualAttendancePage({
   params,

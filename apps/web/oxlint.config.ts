@@ -8,6 +8,8 @@ export default defineConfig({
   ignorePatterns: [
     ...(core.ignorePatterns ?? []),
     'src/components/ui/calendar.tsx',
+    'src/components/ui/drawer.tsx',
+    'src/components/ui/dropdown-menu.tsx',
     'src/components/ui/map.tsx',
     'src/components/ui/popover.tsx',
   ],

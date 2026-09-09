@@ -12,6 +12,19 @@ import Link from 'next/link';
 
 import { CenteredPage } from '@/components/layout/centered-page';
 import { Button, buttonVariants } from '@/components/ui/button';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 const today = new Intl.DateTimeFormat('id-ID', {
@@ -34,30 +47,65 @@ export const EmployeeLanding = () => (
             Selamat pagi, Rina
           </h1>
         </div>
-        <details className="group relative">
-          <summary
-            aria-label="Buka menu akun"
-            className="grid size-10 cursor-pointer list-none place-items-center border border-border text-muted-foreground marker:content-none hover:text-foreground"
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                aria-label="Buka menu akun"
+                className="hidden md:inline-flex"
+                size="icon"
+                type="button"
+                variant="outline"
+              />
+            }
           >
             <HugeiconsIcon aria-hidden="true" icon={MoreVerticalIcon} />
-          </summary>
-          <div className="absolute end-0 z-10 mt-2 w-48 border border-border bg-card p-1 shadow-sm">
-            <button
-              className="flex min-h-10 w-full items-center gap-2 px-3 text-start text-sm hover:bg-muted"
-              type="button"
-            >
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36">
+            <DropdownMenuItem>
               <HugeiconsIcon aria-hidden="true" icon={UserEdit01Icon} />
               Perbarui profil
-            </button>
-            <button
-              className="flex min-h-10 w-full items-center gap-2 px-3 text-start text-sm text-destructive hover:bg-destructive/10"
-              type="button"
-            >
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive">
               <HugeiconsIcon aria-hidden="true" icon={Logout01Icon} />
               Keluar
-            </button>
-          </div>
-        </details>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Drawer>
+          <DrawerTrigger
+            render={
+              <Button
+                aria-label="Buka menu akun"
+                className="md:hidden"
+                size="icon"
+                type="button"
+                variant="outline"
+              />
+            }
+          >
+            <HugeiconsIcon aria-hidden="true" icon={MoreVerticalIcon} />
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Menu akun</DrawerTitle>
+            </DrawerHeader>
+            <div className="grid gap-2 p-4 pt-0">
+              <Button className="justify-start" type="button" variant="outline">
+                <HugeiconsIcon aria-hidden="true" icon={UserEdit01Icon} />
+                Perbarui profil
+              </Button>
+              <Button
+                className="justify-start"
+                type="button"
+                variant="destructive"
+              >
+                <HugeiconsIcon aria-hidden="true" icon={Logout01Icon} />
+                Keluar
+              </Button>
+            </div>
+          </DrawerContent>
+        </Drawer>
       </header>
 
       <section

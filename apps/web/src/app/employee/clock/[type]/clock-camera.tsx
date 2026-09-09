@@ -9,6 +9,8 @@ export const ClockCamera = () => {
   const [cameraError, setCameraError] = React.useState<string>();
   const streamRef = React.useRef<MediaStream | null>(null);
   const [stream, setStream] = React.useState<MediaStream>();
+  const hasCameraError =
+    typeof cameraError === 'string' && cameraError.length > 0;
 
   React.useEffect(() => {
     let disposed = false;
@@ -61,12 +63,12 @@ export const ClockCamera = () => {
         playsInline
         ref={videoRef}
       />
-      {cameraError && (
+      {hasCameraError && (
         <p className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground">
           {cameraError}
         </p>
       )}
-      {!cameraError && !stream && (
+      {!hasCameraError && !stream && (
         <div className="absolute inset-0 grid place-items-center text-muted-foreground">
           <HugeiconsIcon
             aria-hidden="true"

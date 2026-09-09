@@ -21,13 +21,19 @@ const initialCoordinate: Coordinate = {
   longitude: 106.8456,
 };
 
-const locationName = (value: unknown) => {
-  if (typeof value !== 'object' || value === null) {
+const locationName = (responseBody: string) => {
+  try {
+    const value = JSON.parse(responseBody) as unknown;
+
+    if (typeof value !== 'object' || value === null) {
+      return null;
+    }
+
+    const displayName = Reflect.get(value, 'display_name');
+    return typeof displayName === 'string' ? displayName : null;
+  } catch {
     return null;
   }
-
-  const displayName = Reflect.get(value, 'display_name');
-  return typeof displayName === 'string' ? displayName : null;
 };
 
 export const ManualMapPicker = ({ type }: { type: ClockType }) => {
@@ -46,8 +52,13 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
           );
 
           if (response.ok) {
-            const name = locationName(await response.json());
-            setAddress(name ?? 'Alamat tidak tersedia.');
+            const name = locationName(await response.text());
+
+            if (name === null || name.length === 0) {
+              setAddress('Alamat tidak tersedia.');
+            } else {
+              setAddress(name);
+            }
           } else {
             setAddress('Alamat tidak tersedia.');
           }

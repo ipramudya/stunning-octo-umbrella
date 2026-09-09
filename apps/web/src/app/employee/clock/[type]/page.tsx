@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { ClockSubmission } from '../../clock-submission';
+import { ClockSubmission } from './clock-submission';
 
 export default async function ClockSubmissionPage({
   params,
