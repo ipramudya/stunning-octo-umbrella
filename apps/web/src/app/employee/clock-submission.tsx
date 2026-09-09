@@ -5,7 +5,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 
 import { CenteredPage } from '@/components/layout/centered-page';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 import { ClockCamera } from './clock-camera';
 import { ClockLocation } from './clock-location';
@@ -53,9 +54,12 @@ export const ClockSubmission = ({ type }: { type: ClockType }) => {
           <ClockTimeAction action={action} />
         </section>
 
-        <Button className="mt-4 w-full" type="button" variant="outline">
+        <Link
+          className={cn(buttonVariants({ variant: 'outline' }), 'mt-4 w-full')}
+          href={`/employee/manual/${type}`}
+        >
           Ajukan {action.toLowerCase()} manual
-        </Button>
+        </Link>
       </div>
     </CenteredPage>
   );
