@@ -1,7 +1,7 @@
 import { ClockType } from '@project/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { manualAttendanceRequest } from './manual-attendance.contract.js';
+import { manualAttendanceRequest } from './manual-attendance.dto.js';
 
 describe('manual attendance contract', () => {
   it('maps the public request to the protobuf wire shape', () => {

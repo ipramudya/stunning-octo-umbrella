@@ -146,6 +146,45 @@ export function attendanceStatusToJSON(object: AttendanceStatus): string {
   }
 }
 
+export enum AttendanceOrder {
+  ATTENDANCE_ORDER_UNSPECIFIED = 0,
+  ATTENDANCE_ORDER_ASC = 1,
+  ATTENDANCE_ORDER_DESC = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function attendanceOrderFromJSON(object: any): AttendanceOrder {
+  switch (object) {
+    case 0:
+    case "ATTENDANCE_ORDER_UNSPECIFIED":
+      return AttendanceOrder.ATTENDANCE_ORDER_UNSPECIFIED;
+    case 1:
+    case "ATTENDANCE_ORDER_ASC":
+      return AttendanceOrder.ATTENDANCE_ORDER_ASC;
+    case 2:
+    case "ATTENDANCE_ORDER_DESC":
+      return AttendanceOrder.ATTENDANCE_ORDER_DESC;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return AttendanceOrder.UNRECOGNIZED;
+  }
+}
+
+export function attendanceOrderToJSON(object: AttendanceOrder): string {
+  switch (object) {
+    case AttendanceOrder.ATTENDANCE_ORDER_UNSPECIFIED:
+      return "ATTENDANCE_ORDER_UNSPECIFIED";
+    case AttendanceOrder.ATTENDANCE_ORDER_ASC:
+      return "ATTENDANCE_ORDER_ASC";
+    case AttendanceOrder.ATTENDANCE_ORDER_DESC:
+      return "ATTENDANCE_ORDER_DESC";
+    case AttendanceOrder.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export enum ManualAttendanceDecision {
   MANUAL_ATTENDANCE_DECISION_UNSPECIFIED = 0,
   MANUAL_ATTENDANCE_DECISION_APPROVE = 1,
@@ -275,6 +314,32 @@ export interface ListPendingManualAttendanceResponse {
 
 export interface GetManualAttendanceRequest {
   entryId: string;
+}
+
+export interface ListEmployeeAttendanceRequest {
+  month: string;
+}
+
+export interface GetAttendanceRequest {
+  entryId: string;
+}
+
+export interface ListAttendanceRequest {
+  dateFrom: string;
+  dateTo: string;
+  employeeId?: string | undefined;
+  source?: AttendanceSource | undefined;
+  status?: AttendanceStatus | undefined;
+  clockType?: ClockType | undefined;
+  order: AttendanceOrder;
+  cursor?: string | undefined;
+  limit: number;
+}
+
+export interface ListAttendanceResponse {
+  items: AttendanceEntry[];
+  nextCursor?: string | undefined;
+  hasNextPage: boolean;
 }
 
 export interface DecideManualAttendanceRequest {
@@ -2008,6 +2073,478 @@ export const GetManualAttendanceRequest: MessageFns<GetManualAttendanceRequest> 
   },
 };
 
+function createBaseListEmployeeAttendanceRequest(): ListEmployeeAttendanceRequest {
+  return { month: "" };
+}
+
+export const ListEmployeeAttendanceRequest: MessageFns<ListEmployeeAttendanceRequest> = {
+  encode(message: ListEmployeeAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.month !== "") {
+      writer.uint32(10).string(message.month);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListEmployeeAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListEmployeeAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.month = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListEmployeeAttendanceRequest {
+    return { month: isSet(object.month) ? globalThis.String(object.month) : "" };
+  },
+
+  toJSON(message: ListEmployeeAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.month !== "") {
+      obj.month = message.month;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListEmployeeAttendanceRequest>): ListEmployeeAttendanceRequest {
+    return ListEmployeeAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListEmployeeAttendanceRequest>): ListEmployeeAttendanceRequest {
+    const message = createBaseListEmployeeAttendanceRequest();
+    message.month = object.month ?? "";
+    return message;
+  },
+};
+
+function createBaseGetAttendanceRequest(): GetAttendanceRequest {
+  return { entryId: "" };
+}
+
+export const GetAttendanceRequest: MessageFns<GetAttendanceRequest> = {
+  encode(message: GetAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.entryId !== "") {
+      writer.uint32(10).string(message.entryId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.entryId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): GetAttendanceRequest {
+    return {
+      entryId: isSet(object.entryId)
+        ? globalThis.String(object.entryId)
+        : isSet(object.entry_id)
+        ? globalThis.String(object.entry_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.entryId !== "") {
+      obj.entryId = message.entryId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetAttendanceRequest>): GetAttendanceRequest {
+    return GetAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetAttendanceRequest>): GetAttendanceRequest {
+    const message = createBaseGetAttendanceRequest();
+    message.entryId = object.entryId ?? "";
+    return message;
+  },
+};
+
+function createBaseListAttendanceRequest(): ListAttendanceRequest {
+  return {
+    dateFrom: "",
+    dateTo: "",
+    employeeId: undefined,
+    source: undefined,
+    status: undefined,
+    clockType: undefined,
+    order: 0,
+    cursor: undefined,
+    limit: 0,
+  };
+}
+
+export const ListAttendanceRequest: MessageFns<ListAttendanceRequest> = {
+  encode(message: ListAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.dateFrom !== "") {
+      writer.uint32(10).string(message.dateFrom);
+    }
+    if (message.dateTo !== "") {
+      writer.uint32(18).string(message.dateTo);
+    }
+    if (message.employeeId !== undefined) {
+      writer.uint32(26).string(message.employeeId);
+    }
+    if (message.source !== undefined) {
+      writer.uint32(32).int32(message.source);
+    }
+    if (message.status !== undefined) {
+      writer.uint32(40).int32(message.status);
+    }
+    if (message.clockType !== undefined) {
+      writer.uint32(48).int32(message.clockType);
+    }
+    if (message.order !== 0) {
+      writer.uint32(56).int32(message.order);
+    }
+    if (message.cursor !== undefined) {
+      writer.uint32(66).string(message.cursor);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(72).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.dateFrom = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.dateTo = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.employeeId = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.source = reader.int32() as any;
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.status = reader.int32() as any;
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.clockType = reader.int32() as any;
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.order = reader.int32() as any;
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.cursor = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.limit = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListAttendanceRequest {
+    return {
+      dateFrom: isSet(object.dateFrom)
+        ? globalThis.String(object.dateFrom)
+        : isSet(object.date_from)
+        ? globalThis.String(object.date_from)
+        : "",
+      dateTo: isSet(object.dateTo)
+        ? globalThis.String(object.dateTo)
+        : isSet(object.date_to)
+        ? globalThis.String(object.date_to)
+        : "",
+      employeeId: isSet(object.employeeId)
+        ? globalThis.String(object.employeeId)
+        : isSet(object.employee_id)
+        ? globalThis.String(object.employee_id)
+        : undefined,
+      source: isSet(object.source) ? attendanceSourceFromJSON(object.source) : undefined,
+      status: isSet(object.status) ? attendanceStatusFromJSON(object.status) : undefined,
+      clockType: isSet(object.clockType)
+        ? clockTypeFromJSON(object.clockType)
+        : isSet(object.clock_type)
+        ? clockTypeFromJSON(object.clock_type)
+        : undefined,
+      order: isSet(object.order) ? attendanceOrderFromJSON(object.order) : 0,
+      cursor: isSet(object.cursor) ? globalThis.String(object.cursor) : undefined,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: ListAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.dateFrom !== "") {
+      obj.dateFrom = message.dateFrom;
+    }
+    if (message.dateTo !== "") {
+      obj.dateTo = message.dateTo;
+    }
+    if (message.employeeId !== undefined) {
+      obj.employeeId = message.employeeId;
+    }
+    if (message.source !== undefined) {
+      obj.source = attendanceSourceToJSON(message.source);
+    }
+    if (message.status !== undefined) {
+      obj.status = attendanceStatusToJSON(message.status);
+    }
+    if (message.clockType !== undefined) {
+      obj.clockType = clockTypeToJSON(message.clockType);
+    }
+    if (message.order !== 0) {
+      obj.order = attendanceOrderToJSON(message.order);
+    }
+    if (message.cursor !== undefined) {
+      obj.cursor = message.cursor;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListAttendanceRequest>): ListAttendanceRequest {
+    return ListAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListAttendanceRequest>): ListAttendanceRequest {
+    const message = createBaseListAttendanceRequest();
+    message.dateFrom = object.dateFrom ?? "";
+    message.dateTo = object.dateTo ?? "";
+    message.employeeId = object.employeeId ?? undefined;
+    message.source = object.source ?? undefined;
+    message.status = object.status ?? undefined;
+    message.clockType = object.clockType ?? undefined;
+    message.order = object.order ?? 0;
+    message.cursor = object.cursor ?? undefined;
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseListAttendanceResponse(): ListAttendanceResponse {
+  return { items: [], nextCursor: undefined, hasNextPage: false };
+}
+
+export const ListAttendanceResponse: MessageFns<ListAttendanceResponse> = {
+  encode(message: ListAttendanceResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      AttendanceEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.nextCursor !== undefined) {
+      writer.uint32(18).string(message.nextCursor);
+    }
+    if (message.hasNextPage !== false) {
+      writer.uint32(24).bool(message.hasNextPage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListAttendanceResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListAttendanceResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.items.push(AttendanceEntry.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.nextCursor = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.hasNextPage = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListAttendanceResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => AttendanceEntry.fromJSON(e)) : [],
+      nextCursor: isSet(object.nextCursor)
+        ? globalThis.String(object.nextCursor)
+        : isSet(object.next_cursor)
+        ? globalThis.String(object.next_cursor)
+        : undefined,
+      hasNextPage: isSet(object.hasNextPage)
+        ? globalThis.Boolean(object.hasNextPage)
+        : isSet(object.has_next_page)
+        ? globalThis.Boolean(object.has_next_page)
+        : false,
+    };
+  },
+
+  toJSON(message: ListAttendanceResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => AttendanceEntry.toJSON(e));
+    }
+    if (message.nextCursor !== undefined) {
+      obj.nextCursor = message.nextCursor;
+    }
+    if (message.hasNextPage !== false) {
+      obj.hasNextPage = message.hasNextPage;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListAttendanceResponse>): ListAttendanceResponse {
+    return ListAttendanceResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListAttendanceResponse>): ListAttendanceResponse {
+    const message = createBaseListAttendanceResponse();
+    message.items = object.items?.map((e) => AttendanceEntry.fromPartial(e)) || [];
+    message.nextCursor = object.nextCursor ?? undefined;
+    message.hasNextPage = object.hasNextPage ?? false;
+    return message;
+  },
+};
+
 function createBaseDecideManualAttendanceRequest(): DecideManualAttendanceRequest {
   return { entryId: "", decision: 0, reason: undefined };
 }
@@ -2515,6 +3052,46 @@ export const AttendanceServiceService = {
     responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
     responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
   },
+  listEmployeeAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/ListEmployeeAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ListEmployeeAttendanceRequest): Buffer =>
+      Buffer.from(ListEmployeeAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListEmployeeAttendanceRequest => ListEmployeeAttendanceRequest.decode(value),
+    responseSerialize: (value: ListAttendanceResponse): Buffer =>
+      Buffer.from(ListAttendanceResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListAttendanceResponse => ListAttendanceResponse.decode(value),
+  },
+  getEmployeeAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/GetEmployeeAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: GetAttendanceRequest): Buffer => Buffer.from(GetAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetAttendanceRequest => GetAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
+  listAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/ListAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ListAttendanceRequest): Buffer =>
+      Buffer.from(ListAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListAttendanceRequest => ListAttendanceRequest.decode(value),
+    responseSerialize: (value: ListAttendanceResponse): Buffer =>
+      Buffer.from(ListAttendanceResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListAttendanceResponse => ListAttendanceResponse.decode(value),
+  },
+  getAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/GetAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: GetAttendanceRequest): Buffer => Buffer.from(GetAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetAttendanceRequest => GetAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
 } as const;
 
 export interface AttendanceServiceServer extends UntypedServiceImplementation {
@@ -2527,6 +3104,10 @@ export interface AttendanceServiceServer extends UntypedServiceImplementation {
   listPendingManualAttendance: handleUnaryCall<ListPendingManualAttendanceRequest, ListPendingManualAttendanceResponse>;
   getManualAttendance: handleUnaryCall<GetManualAttendanceRequest, AttendanceEntry>;
   decideManualAttendance: handleUnaryCall<DecideManualAttendanceRequest, AttendanceEntry>;
+  listEmployeeAttendance: handleUnaryCall<ListEmployeeAttendanceRequest, ListAttendanceResponse>;
+  getEmployeeAttendance: handleUnaryCall<GetAttendanceRequest, AttendanceEntry>;
+  listAttendance: handleUnaryCall<ListAttendanceRequest, ListAttendanceResponse>;
+  getAttendance: handleUnaryCall<GetAttendanceRequest, AttendanceEntry>;
 }
 
 export interface AttendanceServiceClient extends Client {
@@ -2661,6 +3242,66 @@ export interface AttendanceServiceClient extends Client {
   ): ClientUnaryCall;
   decideManualAttendance(
     request: DecideManualAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  listEmployeeAttendance(
+    request: ListEmployeeAttendanceRequest,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listEmployeeAttendance(
+    request: ListEmployeeAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listEmployeeAttendance(
+    request: ListEmployeeAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  getEmployeeAttendance(
+    request: GetAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getEmployeeAttendance(
+    request: GetAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getEmployeeAttendance(
+    request: GetAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  listAttendance(
+    request: ListAttendanceRequest,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listAttendance(
+    request: ListAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listAttendance(
+    request: ListAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ListAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  getAttendance(
+    request: GetAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getAttendance(
+    request: GetAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getAttendance(
+    request: GetAttendanceRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: AttendanceEntry) => void,

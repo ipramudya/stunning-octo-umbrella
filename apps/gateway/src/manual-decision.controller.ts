@@ -21,11 +21,15 @@ import { ConfigService } from '@nestjs/config';
 import type { ClientGrpc } from '@nestjs/microservices';
 import {
   type AttendanceEntry,
+  AttendanceOrder,
   AttendanceSource,
   AttendanceStatus,
   type Authorization,
+  type BatchGetEmployeesResponse,
   ClockType,
   type EmployeeProfile,
+  type EvidenceAccessAuthorization,
+  type ListAttendanceResponse,
   type ListPendingManualAttendanceResponse,
   ManualAttendanceDecision,
   TokenAudience,
@@ -42,11 +46,13 @@ import {
 } from './grpc-health.client.js';
 import {
   attendanceEntryIdSchema,
+  attendanceListSchema,
+  type AttendanceListDto,
   pendingManualListSchema,
   type PendingManualListDto,
   rejectManualAttendanceSchema,
   type RejectManualAttendanceDto,
-} from './manual-decision.contract.js';
+} from './manual-decision.dto.js';
 import { RateLimiter, RateLimitError } from './rate-limiter.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
@@ -56,20 +62,45 @@ type IdentityClient = {
     metadata: Metadata,
     options: Partial<CallOptions>,
   ): Observable<Authorization>;
-  getEmployee(
-    request: { employeeId: string },
+  batchGetEmployees(
+    request: { employeeIds: string[] },
     metadata: Metadata,
     options: Partial<CallOptions>,
-  ): Observable<EmployeeProfile>;
+  ): Observable<BatchGetEmployeesResponse>;
 };
 
 type AttendanceClient = {
+  authorizeEvidenceAccess(
+    request: { evidenceId: string },
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+  ): Observable<EvidenceAccessAuthorization>;
   listPendingManualAttendance(
     request: { cursor?: string; limit: number },
     metadata: Metadata,
     options: Partial<CallOptions>,
   ): Observable<ListPendingManualAttendanceResponse>;
+  listAttendance(
+    request: {
+      dateFrom: string;
+      dateTo: string;
+      employeeId?: string;
+      source?: AttendanceSource;
+      status?: AttendanceStatus;
+      clockType?: ClockType;
+      order: AttendanceOrder;
+      cursor?: string;
+      limit: number;
+    },
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+  ): Observable<ListAttendanceResponse>;
   getManualAttendance(
+    request: { entryId: string },
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+  ): Observable<AttendanceEntry>;
+  getAttendance(
     request: { entryId: string },
     metadata: Metadata,
     options: Partial<CallOptions>,
@@ -207,6 +238,74 @@ export class ManualDecisionController implements OnModuleInit {
 
   @Get()
   async list(
+    @Query(new ZodValidationPipe(attendanceListSchema))
+    query: AttendanceListDto,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.call(request, reply, false, async (context) => {
+      const result = await firstValueFrom(
+        this.attendance
+          .listAttendance(
+            {
+              ...query,
+              source:
+                query.source === 'REGULAR'
+                  ? AttendanceSource.ATTENDANCE_SOURCE_REGULAR
+                  : query.source === 'MANUAL'
+                    ? AttendanceSource.ATTENDANCE_SOURCE_MANUAL
+                    : undefined,
+              status:
+                query.status === 'PENDING_REVIEW'
+                  ? AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW
+                  : query.status === 'RECORDED'
+                    ? AttendanceStatus.ATTENDANCE_STATUS_RECORDED
+                    : query.status === 'REJECTED'
+                      ? AttendanceStatus.ATTENDANCE_STATUS_REJECTED
+                      : undefined,
+              clockType:
+                query.clockType === 'CLOCK_IN'
+                  ? ClockType.CLOCK_TYPE_CLOCK_IN
+                  : query.clockType === 'CLOCK_OUT'
+                    ? ClockType.CLOCK_TYPE_CLOCK_OUT
+                    : undefined,
+              order:
+                query.order === 'asc'
+                  ? AttendanceOrder.ATTENDANCE_ORDER_ASC
+                  : AttendanceOrder.ATTENDANCE_ORDER_DESC,
+            },
+            context.attendance,
+            context.options,
+          )
+          .pipe(takeUntil(context.cancelled)),
+      );
+      const profiles = await this.profiles(
+        result.items.flatMap((entry) => [
+          entry.employeeId,
+          entry.decision?.decidedByEmployeeId ?? '',
+        ]),
+        context,
+      );
+      return {
+        items: result.items.map((entry) =>
+          entryResponse(
+            entry,
+            requireProfile(profiles, entry.employeeId),
+            entry.decision?.decidedByEmployeeId
+              ? profiles.get(entry.decision.decidedByEmployeeId)
+              : undefined,
+          ),
+        ),
+        pageInfo: {
+          ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+          hasNextPage: result.hasNextPage,
+        },
+      };
+    });
+  }
+
+  @Get('manual')
+  async listPending(
     @Query(new ZodValidationPipe(pendingManualListSchema))
     query: PendingManualListDto,
     @Req() request: FastifyRequest,
@@ -238,6 +337,24 @@ export class ManualDecisionController implements OnModuleInit {
     });
   }
 
+  @Get('manual/:entryId')
+  async getManual(
+    @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
+    entryId: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.call(request, reply, false, async (context) => {
+      const entry = await firstValueFrom(
+        this.attendance
+          .getManualAttendance({ entryId }, context.attendance, context.options)
+          .pipe(takeUntil(context.cancelled)),
+      );
+      const profiles = await this.profiles([entry.employeeId], context);
+      return entryResponse(entry, requireProfile(profiles, entry.employeeId));
+    });
+  }
+
   @Get(':entryId')
   async get(
     @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
@@ -261,7 +378,48 @@ export class ManualDecisionController implements OnModuleInit {
     });
   }
 
-  @Post(':entryId/approve')
+  @Post(':entryId/evidence/access')
+  @HttpCode(200)
+  async evidenceAccess(
+    @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
+    entryId: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    if (
+      request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
+    )
+      this.fail(
+        403,
+        'FORBIDDEN',
+        'Request origin is not allowed',
+        request,
+        randomUUID(),
+      );
+    return this.call(request, reply, false, async (context) => {
+      const entry = await this.getEntry(entryId, context);
+      if (!entry.evidenceId)
+        this.fail(
+          404,
+          'EVIDENCE_NOT_FOUND',
+          'Evidence was not found',
+          request,
+          randomUUID(),
+        );
+      const result = await firstValueFrom(
+        this.attendance
+          .authorizeEvidenceAccess(
+            { evidenceId: entry.evidenceId },
+            context.attendance,
+            context.options,
+          )
+          .pipe(takeUntil(context.cancelled)),
+      );
+      return { ...result, expiresAt: timestampIso(result.expiresAt) };
+    });
+  }
+
+  @Post('manual/:entryId/approve')
   @HttpCode(200)
   approve(
     @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
@@ -278,7 +436,7 @@ export class ManualDecisionController implements OnModuleInit {
     );
   }
 
-  @Post(':entryId/reject')
+  @Post('manual/:entryId/reject')
   @HttpCode(200)
   reject(
     @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
@@ -330,21 +488,27 @@ export class ManualDecisionController implements OnModuleInit {
   private getEntry(entryId: string, context: CallContext) {
     return firstValueFrom(
       this.attendance
-        .getManualAttendance({ entryId }, context.attendance, context.options)
+        .getAttendance({ entryId }, context.attendance, context.options)
         .pipe(takeUntil(context.cancelled)),
     );
   }
 
   private async profiles(employeeIds: string[], context: CallContext) {
-    const profiles = await Promise.all(
-      [...new Set(employeeIds.filter(Boolean))].map((employeeId) =>
+    const ids = [...new Set(employeeIds.filter(Boolean))];
+    const responses = await Promise.all(
+      Array.from({ length: Math.ceil(ids.length / 100) }, (_, index) =>
         firstValueFrom(
           this.identity
-            .getEmployee({ employeeId }, context.identity, context.options)
+            .batchGetEmployees(
+              { employeeIds: ids.slice(index * 100, index * 100 + 100) },
+              context.identity,
+              context.options,
+            )
             .pipe(takeUntil(context.cancelled)),
         ),
       ),
     );
+    const profiles = responses.flatMap((response) => response.items);
     return new Map(profiles.map((profile) => [profile.id, profile]));
   }
 

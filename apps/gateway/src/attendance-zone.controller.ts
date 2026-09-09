@@ -38,20 +38,20 @@ import { firstValueFrom, fromEvent, type Observable, takeUntil } from 'rxjs';
 import {
   attendanceZoneSchema,
   type AttendanceZoneDto,
-} from './attendance-zone.contract.js';
+} from './attendance-zone.dto.js';
 import { cookies } from './auth.controller.js';
 import type { Environment } from './config.schema.js';
 import {
   evidenceUploadSchema,
   type EvidenceUploadDto,
-} from './evidence.contract.js';
+} from './evidence.dto.js';
 import { grpcCode, grpcErrorCode } from './grpc-error.js';
 import {
   ATTENDANCE_HEALTH_CLIENT,
   IDENTITY_HEALTH_CLIENT,
 } from './grpc-health.client.js';
 import { RateLimiter, RateLimitError } from './rate-limiter.js';
-import { regularAttendanceSchema } from './regular-attendance.contract.js';
+import { regularAttendanceSchema } from './regular-attendance.dto.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
 type IdentityClient = {

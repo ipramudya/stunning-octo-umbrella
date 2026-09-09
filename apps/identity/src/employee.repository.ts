@@ -59,6 +59,22 @@ export class EmployeeRepository {
     return this.find('e.id = :value', id);
   }
 
+  async findByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const binds = Object.fromEntries(
+      ids.map((id, index) => [`id${index}`, id]),
+    );
+    return this.database.withConnection(async (connection) => {
+      const result = await connection.execute<EmployeeRow>(
+        `SELECT ${employeeColumns} FROM employees e
+         WHERE e.id IN (${ids.map((_, index) => `:id${index}`).join(', ')})`,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+      return (result.rows ?? []).map(employee);
+    });
+  }
+
   async list(
     query: string | undefined,
     after: { employeeNumber: string; id: string } | undefined,

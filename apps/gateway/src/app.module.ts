@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule } from '@nestjs/microservices';
 
+import { AttendanceHistoryController } from './attendance-history.controller.js';
 import { AttendanceZoneController } from './attendance-zone.controller.js';
 import { AuthController } from './auth.controller.js';
 import { environmentSchema, type Environment } from './config.schema.js';
@@ -55,6 +56,7 @@ import { ReadinessService } from './readiness.js';
     ]),
   ],
   controllers: [
+    AttendanceHistoryController,
     AttendanceZoneController,
     AuthController,
     EmployeeController,

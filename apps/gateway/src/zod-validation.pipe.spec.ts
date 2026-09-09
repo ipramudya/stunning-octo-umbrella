@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { loginSchema } from './auth.contract.js';
+import { loginSchema } from './auth.dto.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
 describe('ZodValidationPipe', () => {

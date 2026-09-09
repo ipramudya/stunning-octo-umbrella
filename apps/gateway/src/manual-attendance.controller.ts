@@ -38,7 +38,7 @@ import {
   manualAttendanceSchema,
   type ManualAttendanceDto,
   type ManualAttendanceRpcRequest,
-} from './manual-attendance.contract.js';
+} from './manual-attendance.dto.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
 type IdentityClient = {

@@ -4,6 +4,8 @@ import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import {
   type AuthorizeAccessRequest,
   type Authorization,
+  type BatchGetEmployeesRequest,
+  type BatchGetEmployeesResponse,
   type CreateEmployeeRequest,
   type EmployeeProfile,
   type Empty,
@@ -120,6 +122,23 @@ export class IdentityController {
         authorization(metadata),
         request.employeeId,
       );
+    } catch (error) {
+      failure(error);
+    }
+  }
+
+  @GrpcMethod('IdentityService', 'BatchGetEmployees')
+  async batchGetEmployees(
+    request: BatchGetEmployeesRequest,
+    metadata: Metadata = new Metadata(),
+  ): Promise<BatchGetEmployeesResponse> {
+    try {
+      return {
+        items: await this.employees.batchGet(
+          authorization(metadata),
+          request.employeeIds,
+        ),
+      };
     } catch (error) {
       failure(error);
     }

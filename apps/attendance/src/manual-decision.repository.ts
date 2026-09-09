@@ -10,7 +10,7 @@ import oracledb, { type Connection } from 'oracledb';
 
 import { OracleDatabase } from './oracle.js';
 
-type EntryRow = {
+export type AttendanceEntryRow = {
   ID: string;
   EMPLOYEE_ID: string;
   WORK_DATE: Date;
@@ -45,7 +45,7 @@ export type DecisionClaim =
   | { kind: 'completed'; response: AttendanceEntry };
 
 const operation = 'DECIDE_MANUAL_ATTENDANCE';
-const columns = `id, employee_id, work_date, clock_type, source, status,
+export const attendanceColumns = `id, employee_id, work_date, clock_type, source, status,
   occurred_at, claimed_at, submitted_at, address, latitude, longitude,
   accuracy_meters, distance_meters, reason, evidence_id, decided_at,
   decided_by_employee_id, decision_reason`;
@@ -58,7 +58,7 @@ function isUniqueViolation(error: unknown) {
   );
 }
 
-function entry(row: EntryRow): AttendanceEntry {
+export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
   return {
     id: row.ID,
     employeeId: row.EMPLOYEE_ID,
@@ -120,8 +120,8 @@ export class ManualDecisionRepository {
     limit: number,
   ) {
     return this.database.withConnection(async (connection) => {
-      const result = await connection.execute<EntryRow>(
-        `SELECT ${columns} FROM attendance_entries
+      const result = await connection.execute<AttendanceEntryRow>(
+        `SELECT ${attendanceColumns} FROM attendance_entries
          WHERE source = 'MANUAL' AND status = 'PENDING_REVIEW'
            AND (:cursorAt IS NULL OR submitted_at > :cursorAt
              OR (submitted_at = :cursorAt AND id > :cursorId))
@@ -140,7 +140,7 @@ export class ManualDecisionRepository {
         },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
-      return (result.rows ?? []).map(entry);
+      return (result.rows ?? []).map(attendanceEntry);
     });
   }
 
@@ -320,13 +320,13 @@ export class ManualDecisionRepository {
   }
 
   private async selectEntry(connection: Connection, entryId: string) {
-    const result = await connection.execute<EntryRow>(
-      `SELECT ${columns} FROM attendance_entries
+    const result = await connection.execute<AttendanceEntryRow>(
+      `SELECT ${attendanceColumns} FROM attendance_entries
        WHERE id = :entryId AND source = 'MANUAL'`,
       { entryId },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     const row = result.rows?.[0];
-    return row ? entry(row) : undefined;
+    return row ? attendanceEntry(row) : undefined;
   }
 }

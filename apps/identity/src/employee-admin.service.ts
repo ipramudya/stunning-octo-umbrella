@@ -162,6 +162,22 @@ export class EmployeeAdminService {
     return profile(await this.existing(employeeId));
   }
 
+  async batchGet(token: string, employeeIds: string[]) {
+    await this.authorize(token);
+    const ids = [...new Set(employeeIds)];
+    if (ids.length < 1 || ids.length > 100 || ids.some((id) => !id))
+      fail('VALIDATION_ERROR');
+    const employees = await this.employees.findByIds(ids);
+    if (employees.length !== ids.length)
+      fail('EMPLOYEE_DATA_INTEGRITY_ERROR', status.UNAVAILABLE);
+    const byId = new Map(employees.map((employee) => [employee.id, employee]));
+    return ids.map((id) => {
+      const employee = byId.get(id);
+      if (!employee) fail('EMPLOYEE_DATA_INTEGRITY_ERROR', status.UNAVAILABLE);
+      return profile(employee);
+    });
+  }
+
   async create(
     token: string,
     raw: Omit<EmployeeInput, 'passwordHash'> & { password: string },

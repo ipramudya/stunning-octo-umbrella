@@ -150,6 +150,14 @@ export interface GetEmployeeRequest {
   employeeId: string;
 }
 
+export interface BatchGetEmployeesRequest {
+  employeeIds: string[];
+}
+
+export interface BatchGetEmployeesResponse {
+  items: EmployeeProfile[];
+}
+
 export interface UpdateEmployeeProfileRequest {
   employeeId: string;
   fullName?: string | undefined;
@@ -1105,6 +1113,148 @@ export const GetEmployeeRequest: MessageFns<GetEmployeeRequest> = {
   },
 };
 
+function createBaseBatchGetEmployeesRequest(): BatchGetEmployeesRequest {
+  return { employeeIds: [] };
+}
+
+export const BatchGetEmployeesRequest: MessageFns<BatchGetEmployeesRequest> = {
+  encode(message: BatchGetEmployeesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.employeeIds) {
+      writer.uint32(10).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): BatchGetEmployeesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseBatchGetEmployeesRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.employeeIds.push(reader.string());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): BatchGetEmployeesRequest {
+    return {
+      employeeIds: globalThis.Array.isArray(object?.employeeIds)
+        ? object.employeeIds.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.employee_ids)
+        ? object.employee_ids.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: BatchGetEmployeesRequest): unknown {
+    const obj: any = {};
+    if (message.employeeIds?.length) {
+      obj.employeeIds = message.employeeIds;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<BatchGetEmployeesRequest>): BatchGetEmployeesRequest {
+    return BatchGetEmployeesRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<BatchGetEmployeesRequest>): BatchGetEmployeesRequest {
+    const message = createBaseBatchGetEmployeesRequest();
+    message.employeeIds = object.employeeIds?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseBatchGetEmployeesResponse(): BatchGetEmployeesResponse {
+  return { items: [] };
+}
+
+export const BatchGetEmployeesResponse: MessageFns<BatchGetEmployeesResponse> = {
+  encode(message: BatchGetEmployeesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      EmployeeProfile.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): BatchGetEmployeesResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseBatchGetEmployeesResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.items.push(EmployeeProfile.decode(reader, reader.uint32()));
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): BatchGetEmployeesResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => EmployeeProfile.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: BatchGetEmployeesResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => EmployeeProfile.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<BatchGetEmployeesResponse>): BatchGetEmployeesResponse {
+    return BatchGetEmployeesResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<BatchGetEmployeesResponse>): BatchGetEmployeesResponse {
+    const message = createBaseBatchGetEmployeesResponse();
+    message.items = object.items?.map((e) => EmployeeProfile.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseUpdateEmployeeProfileRequest(): UpdateEmployeeProfileRequest {
   return { employeeId: "", fullName: undefined, email: undefined, clearEmail: false };
 }
@@ -1788,6 +1938,17 @@ export const IdentityServiceService = {
     responseSerialize: (value: EmployeeProfile): Buffer => Buffer.from(EmployeeProfile.encode(value).finish()),
     responseDeserialize: (value: Buffer): EmployeeProfile => EmployeeProfile.decode(value),
   },
+  batchGetEmployees: {
+    path: "/dexa.identity.v1.IdentityService/BatchGetEmployees" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: BatchGetEmployeesRequest): Buffer =>
+      Buffer.from(BatchGetEmployeesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): BatchGetEmployeesRequest => BatchGetEmployeesRequest.decode(value),
+    responseSerialize: (value: BatchGetEmployeesResponse): Buffer =>
+      Buffer.from(BatchGetEmployeesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): BatchGetEmployeesResponse => BatchGetEmployeesResponse.decode(value),
+  },
   updateEmployeeProfile: {
     path: "/dexa.identity.v1.IdentityService/UpdateEmployeeProfile" as const,
     requestStream: false as const,
@@ -1829,6 +1990,7 @@ export interface IdentityServiceServer extends UntypedServiceImplementation {
   listEmployees: handleUnaryCall<ListEmployeesRequest, ListEmployeesResponse>;
   createEmployee: handleUnaryCall<CreateEmployeeRequest, EmployeeProfile>;
   getEmployee: handleUnaryCall<GetEmployeeRequest, EmployeeProfile>;
+  batchGetEmployees: handleUnaryCall<BatchGetEmployeesRequest, BatchGetEmployeesResponse>;
   updateEmployeeProfile: handleUnaryCall<UpdateEmployeeProfileRequest, EmployeeProfile>;
   updateEmployeePhoneNumber: handleUnaryCall<UpdateEmployeePhoneNumberRequest, EmployeeProfile>;
   resetEmployeePassword: handleUnaryCall<ResetEmployeePasswordRequest, Empty>;
@@ -1939,6 +2101,21 @@ export interface IdentityServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: EmployeeProfile) => void,
+  ): ClientUnaryCall;
+  batchGetEmployees(
+    request: BatchGetEmployeesRequest,
+    callback: (error: ServiceError | null, response: BatchGetEmployeesResponse) => void,
+  ): ClientUnaryCall;
+  batchGetEmployees(
+    request: BatchGetEmployeesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: BatchGetEmployeesResponse) => void,
+  ): ClientUnaryCall;
+  batchGetEmployees(
+    request: BatchGetEmployeesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: BatchGetEmployeesResponse) => void,
   ): ClientUnaryCall;
   updateEmployeeProfile(
     request: UpdateEmployeeProfileRequest,

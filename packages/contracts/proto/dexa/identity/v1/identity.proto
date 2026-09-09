@@ -12,6 +12,7 @@ service IdentityService {
   rpc ListEmployees(ListEmployeesRequest) returns (ListEmployeesResponse);
   rpc CreateEmployee(CreateEmployeeRequest) returns (EmployeeProfile);
   rpc GetEmployee(GetEmployeeRequest) returns (EmployeeProfile);
+  rpc BatchGetEmployees(BatchGetEmployeesRequest) returns (BatchGetEmployeesResponse);
   rpc UpdateEmployeeProfile(UpdateEmployeeProfileRequest) returns (EmployeeProfile);
   rpc UpdateEmployeePhoneNumber(UpdateEmployeePhoneNumberRequest) returns (EmployeeProfile);
   rpc ResetEmployeePassword(ResetEmployeePasswordRequest) returns (google.protobuf.Empty);
@@ -77,6 +78,14 @@ message CreateEmployeeRequest {
 
 message GetEmployeeRequest {
   string employee_id = 1;
+}
+
+message BatchGetEmployeesRequest {
+  repeated string employee_ids = 1;
+}
+
+message BatchGetEmployeesResponse {
+  repeated EmployeeProfile items = 1;
 }
 
 message UpdateEmployeeProfileRequest {

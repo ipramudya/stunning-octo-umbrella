@@ -15,6 +15,10 @@ service AttendanceService {
   rpc ListPendingManualAttendance(ListPendingManualAttendanceRequest) returns (ListPendingManualAttendanceResponse);
   rpc GetManualAttendance(GetManualAttendanceRequest) returns (AttendanceEntry);
   rpc DecideManualAttendance(DecideManualAttendanceRequest) returns (AttendanceEntry);
+  rpc ListEmployeeAttendance(ListEmployeeAttendanceRequest) returns (ListAttendanceResponse);
+  rpc GetEmployeeAttendance(GetAttendanceRequest) returns (AttendanceEntry);
+  rpc ListAttendance(ListAttendanceRequest) returns (ListAttendanceResponse);
+  rpc GetAttendance(GetAttendanceRequest) returns (AttendanceEntry);
 }
 
 message AuthorizeEvidenceUploadRequest {
@@ -121,6 +125,38 @@ message ListPendingManualAttendanceResponse {
 
 message GetManualAttendanceRequest {
   string entry_id = 1;
+}
+
+message ListEmployeeAttendanceRequest {
+  string month = 1;
+}
+
+message GetAttendanceRequest {
+  string entry_id = 1;
+}
+
+enum AttendanceOrder {
+  ATTENDANCE_ORDER_UNSPECIFIED = 0;
+  ATTENDANCE_ORDER_ASC = 1;
+  ATTENDANCE_ORDER_DESC = 2;
+}
+
+message ListAttendanceRequest {
+  string date_from = 1;
+  string date_to = 2;
+  optional string employee_id = 3;
+  optional AttendanceSource source = 4;
+  optional AttendanceStatus status = 5;
+  optional ClockType clock_type = 6;
+  AttendanceOrder order = 7;
+  optional string cursor = 8;
+  int32 limit = 9;
+}
+
+message ListAttendanceResponse {
+  repeated AttendanceEntry items = 1;
+  optional string next_cursor = 2;
+  bool has_next_page = 3;
 }
 
 enum ManualAttendanceDecision {

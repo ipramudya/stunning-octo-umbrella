@@ -49,7 +49,7 @@ import {
   type UpdateEmployeeDto,
   updatePhoneSchema,
   type UpdatePhoneDto,
-} from './employee.contract.js';
+} from './employee.dto.js';
 import { grpcCode, grpcErrorCode } from './grpc-error.js';
 import { IDENTITY_HEALTH_CLIENT } from './grpc-health.client.js';
 import { RateLimiter } from './rate-limiter.js';

@@ -162,17 +162,17 @@ async function hrdRequest(path, options = {}) {
   });
 }
 
-const pending = await hrdRequest('?limit=1');
+const pending = await hrdRequest('/manual?limit=1');
 assert.equal(pending.status, 200);
 const pendingBody = await pending.json();
 assert.equal(pendingBody.items.length, 1);
 assert.equal(pendingBody.items[0].id, createdBody.id);
 assert.equal(pendingBody.items[0].employee.id, employeeId);
-const detail = await hrdRequest(`/${createdBody.id}`);
+const detail = await hrdRequest(`/manual/${createdBody.id}`);
 assert.equal(detail.status, 200);
 assert.equal((await detail.json()).evidenceId, manualUploadId);
 const evidenceAccess = await fetch(
-  `${baseUrl}/api/v1/evidence/${manualUploadId}/access`,
+  `${baseUrl}/api/v1/hrd/attendance/${createdBody.id}/evidence/access`,
   {
     method: 'POST',
     headers: { cookie: cookieHeader(hrd), origin },
@@ -180,7 +180,7 @@ const evidenceAccess = await fetch(
 );
 assert.equal(evidenceAccess.status, 200);
 
-const approved = await hrdRequest(`/${createdBody.id}/approve`, {
+const approved = await hrdRequest(`/manual/${createdBody.id}/approve`, {
   method: 'POST',
   key: 'approve-manual-attendance',
 });
@@ -192,7 +192,7 @@ assert.equal(
   approvedBody.decision.reviewer.id,
   '00000000-0000-4000-8000-000000000001',
 );
-const approvalReplay = await hrdRequest(`/${createdBody.id}/approve`, {
+const approvalReplay = await hrdRequest(`/manual/${createdBody.id}/approve`, {
   method: 'POST',
   key: 'approve-manual-attendance',
 });
@@ -200,7 +200,7 @@ assert.equal(approvalReplay.status, 200);
 assert.deepEqual(await approvalReplay.json(), approvedBody);
 assert.equal(
   (
-    await hrdRequest(`/${createdBody.id}/reject`, {
+    await hrdRequest(`/manual/${createdBody.id}/reject`, {
       method: 'POST',
       key: 'reject-approved-attendance',
       body: { reason: 'Too late.' },
@@ -221,7 +221,7 @@ const clockOutCreated = await submitManual(
 );
 assert.equal(clockOutCreated.status, 201);
 const clockOutBody = await clockOutCreated.json();
-const rejected = await hrdRequest(`/${clockOutBody.id}/reject`, {
+const rejected = await hrdRequest(`/manual/${clockOutBody.id}/reject`, {
   method: 'POST',
   key: 'reject-manual-attendance',
   body: { reason: ' Evidence does not match. ' },
@@ -246,11 +246,59 @@ const ownManual = {
 const ownCreated = await submitManual(ownManual, 'hrd-own-manual', hrd);
 assert.equal(ownCreated.status, 201);
 const ownBody = await ownCreated.json();
-const selfDecision = await hrdRequest(`/${ownBody.id}/approve`, {
+const selfDecision = await hrdRequest(`/manual/${ownBody.id}/approve`, {
   method: 'POST',
   key: 'self-approve-manual',
 });
 assert.equal(selfDecision.status, 403);
 assert.equal((await selfDecision.json()).code, 'SELF_APPROVAL_FORBIDDEN');
 
-console.log('Attendance submission and decision integration check passed.');
+const month = workDate.slice(0, 7);
+const ownHistory = await fetch(
+  `${baseUrl}/api/v1/me/attendance?month=${month}`,
+  { headers: { cookie: cookieHeader(employee) } },
+);
+assert.equal(ownHistory.status, 200);
+assert.ok(
+  (await ownHistory.json()).items.some((entry) => entry.id === createdBody.id),
+);
+const ownDetail = await fetch(
+  `${baseUrl}/api/v1/me/attendance/${createdBody.id}`,
+  { headers: { cookie: cookieHeader(employee) } },
+);
+assert.equal(ownDetail.status, 200);
+assert.equal((await ownDetail.json()).employeeId, employeeId);
+const isolatedDetail = await fetch(
+  `${baseUrl}/api/v1/me/attendance/${ownBody.id}`,
+  { headers: { cookie: cookieHeader(employee) } },
+);
+assert.equal(isolatedDetail.status, 404);
+
+const monitoring = await hrdRequest(
+  `?dateFrom=${hrdWorkDate}&dateTo=${workDate}&source=MANUAL&order=asc&limit=1`,
+);
+assert.equal(monitoring.status, 200);
+const monitoringBody = await monitoring.json();
+assert.equal(monitoringBody.items.length, 1);
+assert.ok(monitoringBody.items[0].employee.employeeNumber);
+assert.equal(monitoringBody.pageInfo.hasNextPage, true);
+const nextPage = await hrdRequest(
+  `?dateFrom=${hrdWorkDate}&dateTo=${workDate}&source=MANUAL&order=asc&limit=1&cursor=${encodeURIComponent(monitoringBody.pageInfo.nextCursor)}`,
+);
+assert.equal(nextPage.status, 200);
+assert.notEqual(
+  (await nextPage.json()).items[0].id,
+  monitoringBody.items[0].id,
+);
+const monitoringDetail = await hrdRequest(`/${createdBody.id}`);
+assert.equal(monitoringDetail.status, 200);
+assert.equal((await monitoringDetail.json()).employee.id, employeeId);
+const oversizedRange = await hrdRequest(
+  '?dateFrom=2026-01-01&dateTo=2026-02-02',
+);
+assert.equal(oversizedRange.status, 400);
+assert.equal((await oversizedRange.json()).code, 'DATE_RANGE_TOO_LARGE');
+
+console.log(
+  'Attendance submission, decision, and history integration check passed.',
+);

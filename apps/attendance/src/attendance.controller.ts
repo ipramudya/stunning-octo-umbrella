@@ -14,12 +14,20 @@ import {
   type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
   type DecideManualAttendanceRequest,
+  type GetAttendanceRequest,
   type GetManualAttendanceRequest,
+  type ListAttendanceRequest,
+  type ListAttendanceResponse,
+  type ListEmployeeAttendanceRequest,
   type ListPendingManualAttendanceRequest,
   type UpdateAttendanceZoneRequest,
 } from '@project/contracts';
 import { z } from 'zod';
 
+import {
+  AttendanceQueryError,
+  AttendanceQueryService,
+} from './attendance-query.service.js';
 import { AttendanceZoneRepository } from './attendance-zone.js';
 import type { Environment } from './config.schema.js';
 import { EvidenceError, EvidenceService } from './evidence.service.js';
@@ -69,6 +77,12 @@ function failure(code: number, detail: string, retryAfter?: number): never {
   metadata.set('x-error-code', detail);
   if (retryAfter !== undefined) metadata.set('retry-after', String(retryAfter));
   throw new RpcException({ code, details: detail, metadata });
+}
+
+function queryFailure(error: unknown): never {
+  if (error instanceof AttendanceQueryError)
+    failure(error.grpcStatus, error.code);
+  throw error;
 }
 
 function grpcTimestamp(date: Date) {
@@ -209,6 +223,7 @@ export class AttendanceController {
     private readonly regularAttendance: RegularAttendanceService,
     private readonly manualAttendance: ManualAttendanceService,
     private readonly manualDecisions: ManualDecisionService,
+    private readonly queries: AttendanceQueryService,
     config: ConfigService<Environment, true>,
   ) {
     this.issuer = config.get('JWT_ISSUER', { infer: true });
@@ -227,6 +242,56 @@ export class AttendanceController {
     return this.zones.get();
   }
 
+  @GrpcMethod('AttendanceService', 'ListEmployeeAttendance')
+  async listEmployeeAttendance(
+    request: ListEmployeeAttendanceRequest,
+    metadata: Metadata,
+  ): Promise<ListAttendanceResponse> {
+    try {
+      const claims = await this.authorize(metadata, ['EMPLOYEE']);
+      const items = await this.queries.listEmployee(claims.sub, request.month);
+      return { items: items.map(grpcEntry), hasNextPage: false };
+    } catch (error) {
+      queryFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'GetEmployeeAttendance')
+  async getEmployeeAttendance(
+    request: GetAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    try {
+      const claims = await this.authorize(metadata, ['EMPLOYEE']);
+      return grpcEntry(
+        await this.queries.getEmployee(claims.sub, request.entryId),
+      );
+    } catch (error) {
+      queryFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'ListAttendance')
+  async listAttendance(request: ListAttendanceRequest, metadata: Metadata) {
+    try {
+      await this.authorize(metadata, ['HRD']);
+      const result = await this.queries.list(request);
+      return { ...result, items: result.items.map(grpcEntry) };
+    } catch (error) {
+      queryFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'GetAttendance')
+  async getAttendance(request: GetAttendanceRequest, metadata: Metadata) {
+    try {
+      await this.authorize(metadata, ['HRD']);
+      return grpcEntry(await this.queries.get(request.entryId));
+    } catch (error) {
+      queryFailure(error);
+    }
+  }
+
   @GrpcMethod('AttendanceService', 'AuthorizeEvidenceUpload')
   async authorizeEvidenceUpload(
     request: AuthorizeEvidenceUploadRequest,
@@ -239,10 +304,7 @@ export class AttendanceController {
         request.contentType,
         request.sizeBytes,
       );
-      return {
-        ...result,
-        expiresAt: grpcTimestamp(result.expiresAt),
-      };
+      return { ...result, expiresAt: grpcTimestamp(result.expiresAt) };
     } catch (error) {
       evidenceFailure(error);
     }
@@ -259,10 +321,7 @@ export class AttendanceController {
         { employeeId: claims.sub, roles: claims.roles },
         request.evidenceId,
       );
-      return {
-        ...result,
-        expiresAt: grpcTimestamp(result.expiresAt),
-      };
+      return { ...result, expiresAt: grpcTimestamp(result.expiresAt) };
     } catch (error) {
       evidenceFailure(error);
     }

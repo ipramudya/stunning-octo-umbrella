@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AttendanceQueryRepository } from './attendance-query.repository.js';
+import { AttendanceQueryService } from './attendance-query.service.js';
 import { AttendanceZoneRepository } from './attendance-zone.js';
 import { AttendanceController } from './attendance.controller.js';
 import { environmentSchema } from './config.schema.js';
@@ -29,6 +31,8 @@ import { RegularAttendanceService } from './regular-attendance.service.js';
   ],
   controllers: [AttendanceController, GrpcHealthController, HealthController],
   providers: [
+    AttendanceQueryRepository,
+    AttendanceQueryService,
     AttendanceZoneRepository,
     EvidenceRepository,
     EvidenceService,

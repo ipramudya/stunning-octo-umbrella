@@ -28,7 +28,7 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, fromEvent, type Observable, takeUntil } from 'rxjs';
 
-import { loginSchema, type LoginDto } from './auth.contract.js';
+import { loginSchema, type LoginDto } from './auth.dto.js';
 import type { Environment } from './config.schema.js';
 import { grpcCode } from './grpc-error.js';
 import { IDENTITY_HEALTH_CLIENT } from './grpc-health.client.js';
