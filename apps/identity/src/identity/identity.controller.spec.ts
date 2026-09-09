@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { GrpcAuthorizationService } from '../auth/grpc-authorization.service.js';
 import type { EmployeeAdminService } from '../employee/employee-admin.service.js';
 import { IdentityController } from './identity.controller.js';
 import type { IdentityAuthService } from './identity.service.js';
@@ -14,6 +15,7 @@ describe('IdentityController', () => {
     const auth = { login: vi.fn().mockResolvedValue(credentials) };
     const controller = new IdentityController(
       auth as unknown as IdentityAuthService,
+      {} as GrpcAuthorizationService,
       {} as EmployeeAdminService,
     );
 

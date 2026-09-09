@@ -5,10 +5,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { argon2id, hash } from 'argon2';
 
-import { AuthError } from '../auth/auth-error.js';
 import { profile } from '../auth/auth.helper.js';
 import { SessionStore } from '../auth/session.store.js';
-import { TokenService } from '../auth/tokens.js';
 import type { Environment } from '../config/config-typedef.js';
 import type { EmployeeInput } from './employee.entity.js';
 import {
@@ -22,51 +20,24 @@ import {
 } from './employee.helper.js';
 import { EmployeeRepository } from './employee.repository.js';
 
-type Actor = { id: string };
-
 @Injectable()
 export class EmployeeAdminService {
-  // Dependency injection determines this constructor signature.
-  // oxlint-disable-next-line max-params
   constructor(
     @Inject(ConfigService)
     private readonly config: ConfigService<Environment, true>,
     @Inject(EmployeeRepository) private readonly employees: EmployeeRepository,
     @Inject(SessionStore) private readonly sessions: SessionStore,
-    @Inject(TokenService) private readonly tokens: TokenService,
   ) {}
 
-  async authorize(token: string): Promise<Actor> {
-    try {
-      const claims = await this.tokens.verify(token, 'dexa-identity');
-
-      if (!claims.roles.includes('HRD')) {
-        fail('FORBIDDEN', status.PERMISSION_DENIED);
-      }
-
-      return { id: claims.sub };
-    } catch (error) {
-      if (error instanceof AuthError) {
-        throw error;
-      }
-
-      fail('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
-    }
-  }
-
   async list({
-    token,
     query,
     cursor,
     requestedLimit,
   }: {
-    token: string;
     query: string | undefined;
     cursor: string | undefined;
     requestedLimit: number;
   }) {
-    await this.authorize(token);
-
     const limit = requestedLimit || 20;
 
     if (limit < 1 || limit > 100) {
@@ -100,15 +71,11 @@ export class EmployeeAdminService {
     };
   }
 
-  async get(token: string, employeeId: string) {
-    await this.authorize(token);
-
+  async get(employeeId: string) {
     return profile(await this.existing(employeeId));
   }
 
-  async batchGet(token: string, employeeIds: string[]) {
-    await this.authorize(token);
-
+  async batchGet(employeeIds: string[]) {
     const ids = [...new Set(employeeIds)];
 
     if (ids.length < 1 || ids.length > 100 || ids.some((id) => !id)) {
@@ -135,11 +102,9 @@ export class EmployeeAdminService {
   }
 
   async create(
-    token: string,
+    actorId: string,
     raw: Omit<EmployeeInput, 'passwordHash'> & { password: string },
   ) {
-    const actor = await this.authorize(token);
-
     const input = {
       employeeNumber: required(raw.employeeNumber, 32).toUpperCase(),
       fullName: required(raw.fullName, 120),
@@ -153,7 +118,7 @@ export class EmployeeAdminService {
       await this.employees.create(
         id,
         { ...input, passwordHash: await this.passwordHash(input.password) },
-        actor.id,
+        actorId,
       );
     } catch (error) {
       await this.mapUnique(error, input);
@@ -163,12 +128,10 @@ export class EmployeeAdminService {
   }
 
   async updateProfile(
-    token: string,
+    actorId: string,
     employeeId: string,
     changes: { fullName?: string; email?: string | null },
   ) {
-    const actor = await this.authorize(token);
-
     if (changes.fullName === undefined && changes.email === undefined) {
       fail('VALIDATION_ERROR');
     }
@@ -191,7 +154,7 @@ export class EmployeeAdminService {
           id: employeeId,
           fullName,
           email: normalizedEmail,
-          actorId: actor.id,
+          actorId,
         }))
       ) {
         fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
@@ -209,14 +172,12 @@ export class EmployeeAdminService {
     return profile(await this.existing(employeeId));
   }
 
-  async updatePhone(token: string, employeeId: string, rawPhone: string) {
-    const actor = await this.authorize(token);
-
+  async updatePhone(actorId: string, employeeId: string, rawPhone: string) {
     const phoneNumber = phone(rawPhone);
 
     try {
       if (
-        !(await this.employees.updatePhone(employeeId, phoneNumber, actor.id))
+        !(await this.employees.updatePhone(employeeId, phoneNumber, actorId))
       ) {
         fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
       }
@@ -229,13 +190,15 @@ export class EmployeeAdminService {
     return profile(await this.existing(employeeId));
   }
 
-  async resetPassword(token: string, employeeId: string, rawPassword: string) {
-    const actor = await this.authorize(token);
-
+  async resetPassword(
+    actorId: string,
+    employeeId: string,
+    rawPassword: string,
+  ) {
     const passwordHash = await this.passwordHash(password(rawPassword));
 
     if (
-      !(await this.employees.updatePassword(employeeId, passwordHash, actor.id))
+      !(await this.employees.updatePassword(employeeId, passwordHash, actorId))
     ) {
       fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     }

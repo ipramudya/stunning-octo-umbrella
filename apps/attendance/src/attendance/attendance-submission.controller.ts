@@ -1,5 +1,5 @@
 import { status, type Metadata } from '@grpc/grpc-js';
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller, UseFilters, UseGuards } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import {
   ClockType,
@@ -7,6 +7,9 @@ import {
   type CreateRegularAttendanceRequest,
 } from '@project/contracts';
 
+import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import { ManualAttendanceService } from '../manual-attendance/manual-attendance.service.js';
 import { RegularAttendanceService } from '../regular-attendance/regular-attendance.service.js';
 import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
@@ -17,6 +20,8 @@ import { manualSchema, regularSchema } from './attendance.schema.js';
 
 @Controller()
 @UseFilters(AttendanceExceptionFilter)
+@UseGuards(GrpcAuthGuard, RolesGuard)
+@Roles('EMPLOYEE')
 export class AttendanceSubmissionController {
   constructor(
     private readonly authorization: AttendanceAuthorizationService,
@@ -29,7 +34,7 @@ export class AttendanceSubmissionController {
     request: CreateRegularAttendanceRequest,
     metadata: Metadata,
   ) {
-    const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+    const claims = this.authorization.claims(metadata);
 
     const parsed = regularSchema.safeParse(request);
 
@@ -58,7 +63,7 @@ export class AttendanceSubmissionController {
     request: CreateManualAttendanceRequest,
     metadata: Metadata,
   ) {
-    const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+    const claims = this.authorization.claims(metadata);
 
     const key = this.idempotencyKey(metadata);
     const parsed = manualSchema.safeParse(request);

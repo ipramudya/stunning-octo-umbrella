@@ -6,7 +6,7 @@ import { AttendanceQueryController } from './attendance-query.controller.js';
 describe('AttendanceQueryController', () => {
   it('uses the authenticated employee for personal attendance', async () => {
     const authorization = {
-      authorize: vi.fn().mockResolvedValue({ sub: 'employee-1' }),
+      claims: vi.fn().mockReturnValue({ sub: 'employee-1' }),
     };
     const queries = { listEmployee: vi.fn().mockResolvedValue([]) };
     const controller = new AttendanceQueryController(
@@ -17,9 +17,7 @@ describe('AttendanceQueryController', () => {
     await expect(
       controller.listEmployeeAttendance({ month: '2026-09' }, new Metadata()),
     ).resolves.toEqual({ items: [], hasNextPage: false });
-    expect(authorization.authorize).toHaveBeenCalledWith(expect.any(Metadata), [
-      'EMPLOYEE',
-    ]);
+    expect(authorization.claims).toHaveBeenCalledWith(expect.any(Metadata));
     expect(queries.listEmployee).toHaveBeenCalledWith('employee-1', '2026-09');
   });
 });

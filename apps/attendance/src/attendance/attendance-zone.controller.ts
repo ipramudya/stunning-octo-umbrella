@@ -1,6 +1,6 @@
 import type { Metadata } from '@grpc/grpc-js';
 import { status } from '@grpc/grpc-js';
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller, UseFilters, UseGuards } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import type {
   AttendanceZone,
@@ -8,6 +8,9 @@ import type {
 } from '@project/contracts';
 
 import { AttendanceZoneRepository } from '../attendance-zone/attendance-zone.repository.js';
+import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
 import { failure } from './attendance.error.js';
@@ -15,6 +18,7 @@ import { updateSchema } from './attendance.schema.js';
 
 @Controller()
 @UseFilters(AttendanceExceptionFilter)
+@UseGuards(GrpcAuthGuard, RolesGuard)
 export class AttendanceZoneController {
   constructor(
     private readonly authorization: AttendanceAuthorizationService,
@@ -24,19 +28,18 @@ export class AttendanceZoneController {
   @GrpcMethod('AttendanceService', 'GetAttendanceZone')
   async getAttendanceZone(
     _request: object,
-    metadata: Metadata,
+    _metadata: Metadata,
   ): Promise<AttendanceZone> {
-    await this.authorization.authorize(metadata);
-
     return this.zones.get();
   }
 
   @GrpcMethod('AttendanceService', 'UpdateAttendanceZone')
+  @Roles('HRD')
   async updateAttendanceZone(
     request: UpdateAttendanceZoneRequest,
     metadata: Metadata,
   ): Promise<AttendanceZone> {
-    const claims = await this.authorization.authorize(metadata, ['HRD']);
+    const claims = this.authorization.claims(metadata);
 
     const parsed = updateSchema.safeParse(request);
 

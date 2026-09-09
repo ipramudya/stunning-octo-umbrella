@@ -9,6 +9,8 @@ import { AttendanceEvidenceController } from './attendance/attendance-evidence.c
 import { AttendanceQueryController } from './attendance/attendance-query.controller.js';
 import { AttendanceSubmissionController } from './attendance/attendance-submission.controller.js';
 import { AttendanceZoneController } from './attendance/attendance-zone.controller.js';
+import { GrpcAuthGuard } from './auth/grpc-auth.guard.js';
+import { RolesGuard } from './auth/roles.guard.js';
 import { EvidenceStore } from './evidence/evidence-store.js';
 import { EvidenceRepository } from './evidence/evidence.repository.js';
 import { EvidenceService } from './evidence/evidence.service.js';
@@ -36,6 +38,7 @@ import { RegularAttendanceService } from './regular-attendance/regular-attendanc
     EvidenceRepository,
     EvidenceService,
     EvidenceStore,
+    GrpcAuthGuard,
     ManualDecisionRepository,
     ManualDecisionService,
     ManualAttendanceRepository,
@@ -43,6 +46,7 @@ import { RegularAttendanceService } from './regular-attendance/regular-attendanc
     OracleDatabase,
     RegularAttendanceRepository,
     RegularAttendanceService,
+    RolesGuard,
   ],
   exports: [EvidenceService, OracleDatabase],
 })

@@ -1,5 +1,5 @@
 import type { Metadata } from '@grpc/grpc-js';
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller, UseFilters, UseGuards } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import type {
   GetAttendanceRequest,
@@ -9,12 +9,16 @@ import type {
 } from '@project/contracts';
 
 import { AttendanceQueryService } from '../attendance-query/attendance-query.service.js';
+import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
 import { grpcEntry } from './attendance.helper.js';
 
 @Controller()
 @UseFilters(AttendanceExceptionFilter)
+@UseGuards(GrpcAuthGuard, RolesGuard)
 export class AttendanceQueryController {
   constructor(
     private readonly authorization: AttendanceAuthorizationService,
@@ -22,11 +26,12 @@ export class AttendanceQueryController {
   ) {}
 
   @GrpcMethod('AttendanceService', 'ListEmployeeAttendance')
+  @Roles('EMPLOYEE')
   async listEmployeeAttendance(
     request: ListEmployeeAttendanceRequest,
     metadata: Metadata,
   ): Promise<ListAttendanceResponse> {
-    const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+    const claims = this.authorization.claims(metadata);
 
     const items = await this.queries.listEmployee(claims.sub, request.month);
 
@@ -34,11 +39,12 @@ export class AttendanceQueryController {
   }
 
   @GrpcMethod('AttendanceService', 'GetEmployeeAttendance')
+  @Roles('EMPLOYEE')
   async getEmployeeAttendance(
     request: GetAttendanceRequest,
     metadata: Metadata,
   ) {
-    const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+    const claims = this.authorization.claims(metadata);
 
     return grpcEntry(
       await this.queries.getEmployee(claims.sub, request.entryId),
@@ -46,18 +52,16 @@ export class AttendanceQueryController {
   }
 
   @GrpcMethod('AttendanceService', 'ListAttendance')
-  async listAttendance(request: ListAttendanceRequest, metadata: Metadata) {
-    await this.authorization.authorize(metadata, ['HRD']);
-
+  @Roles('HRD')
+  async listAttendance(request: ListAttendanceRequest, _metadata: Metadata) {
     const result = await this.queries.list(request);
 
     return { ...result, items: result.items.map(grpcEntry) };
   }
 
   @GrpcMethod('AttendanceService', 'GetAttendance')
-  async getAttendance(request: GetAttendanceRequest, metadata: Metadata) {
-    await this.authorization.authorize(metadata, ['HRD']);
-
+  @Roles('HRD')
+  async getAttendance(request: GetAttendanceRequest, _metadata: Metadata) {
     return grpcEntry(await this.queries.get(request.entryId));
   }
 }

@@ -6,8 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import {
-  AccessForbiddenError,
-  type InternalRole,
+  type InternalClaims,
   verifyInternalAccess,
 } from '../auth/internal-token.js';
 import type { Environment } from '../config/config-typedef.js';
@@ -16,6 +15,8 @@ import { bearer } from './attendance.helper.js';
 
 @Injectable()
 export class AttendanceAuthorizationService {
+  private readonly authenticated = new WeakMap<Metadata, InternalClaims>();
+
   private readonly issuer: string;
 
   private readonly publicKey: string;
@@ -28,20 +29,29 @@ export class AttendanceAuthorizationService {
     );
   }
 
-  async authorize(metadata: Metadata, roles: InternalRole[] = []) {
+  async authenticate(metadata: Metadata) {
     try {
-      return await verifyInternalAccess({
+      const claims = await verifyInternalAccess({
         token: bearer(metadata),
         publicKeyPem: this.publicKey,
         issuer: this.issuer,
-        requiredRoles: roles,
       });
-    } catch (error) {
-      if (error instanceof AccessForbiddenError) {
-        failure(status.PERMISSION_DENIED, 'FORBIDDEN');
-      }
 
+      this.authenticated.set(metadata, claims);
+
+      return claims;
+    } catch {
       failure(status.UNAUTHENTICATED, 'AUTHENTICATION_REQUIRED');
     }
+  }
+
+  claims(metadata: Metadata) {
+    const claims = this.authenticated.get(metadata);
+
+    if (!claims) {
+      failure(status.UNAUTHENTICATED, 'AUTHENTICATION_REQUIRED');
+    }
+
+    return claims;
   }
 }

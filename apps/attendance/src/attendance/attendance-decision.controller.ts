@@ -1,5 +1,5 @@
 import { status, type Metadata } from '@grpc/grpc-js';
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller, UseFilters, UseGuards } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import type {
   DecideManualAttendanceRequest,
@@ -7,6 +7,9 @@ import type {
   ListPendingManualAttendanceRequest,
 } from '@project/contracts';
 
+import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import { ManualDecisionService } from '../manual-decision/manual-decision.service.js';
 import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
@@ -15,6 +18,8 @@ import { grpcEntry } from './attendance.helper.js';
 
 @Controller()
 @UseFilters(AttendanceExceptionFilter)
+@UseGuards(GrpcAuthGuard, RolesGuard)
+@Roles('HRD')
 export class AttendanceDecisionController {
   constructor(
     private readonly authorization: AttendanceAuthorizationService,
@@ -24,10 +29,8 @@ export class AttendanceDecisionController {
   @GrpcMethod('AttendanceService', 'ListPendingManualAttendance')
   async listPendingManualAttendance(
     request: ListPendingManualAttendanceRequest,
-    metadata: Metadata,
+    _metadata: Metadata,
   ) {
-    await this.authorization.authorize(metadata, ['HRD']);
-
     const result = await this.decisions.list(request.cursor, request.limit);
 
     return { ...result, items: result.items.map(grpcEntry) };
@@ -36,10 +39,8 @@ export class AttendanceDecisionController {
   @GrpcMethod('AttendanceService', 'GetManualAttendance')
   async getManualAttendance(
     request: GetManualAttendanceRequest,
-    metadata: Metadata,
+    _metadata: Metadata,
   ) {
-    await this.authorization.authorize(metadata, ['HRD']);
-
     return grpcEntry(await this.decisions.get(request.entryId));
   }
 
@@ -48,7 +49,7 @@ export class AttendanceDecisionController {
     request: DecideManualAttendanceRequest,
     metadata: Metadata,
   ) {
-    const claims = await this.authorization.authorize(metadata, ['HRD']);
+    const claims = this.authorization.claims(metadata);
 
     const key = metadata.get('idempotency-key')[0];
 

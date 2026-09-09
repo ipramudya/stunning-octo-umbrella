@@ -2,7 +2,6 @@ import type { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SessionStore } from '../auth/session.store.js';
-import type { TokenService } from '../auth/tokens.js';
 import type { Environment } from '../config/config-typedef.js';
 import { EmployeeAdminService } from './employee-admin.service.js';
 import type { Employee } from './employee.entity.js';
@@ -18,7 +17,7 @@ const employee = (employeeNumber: string, id: string): Employee => ({
   roles: ['EMPLOYEE'],
 });
 
-function service(overrides: Partial<EmployeeRepository> = {}, roles = ['HRD']) {
+function service(overrides: Partial<EmployeeRepository> = {}) {
   const employees = {
     list: vi.fn(),
     findById: vi.fn(),
@@ -27,7 +26,6 @@ function service(overrides: Partial<EmployeeRepository> = {}, roles = ['HRD']) {
     ...overrides,
   };
   const sessions = { revokeEmployee: vi.fn() };
-  const tokens = { verify: vi.fn().mockResolvedValue({ sub: 'hrd', roles }) };
 
   return {
     value: new EmployeeAdminService(
@@ -37,11 +35,9 @@ function service(overrides: Partial<EmployeeRepository> = {}, roles = ['HRD']) {
       >,
       employees as unknown as EmployeeRepository,
       sessions as unknown as SessionStore,
-      tokens as unknown as TokenService,
     ),
     employees,
     sessions,
-    tokens,
   };
 }
 
@@ -54,7 +50,6 @@ describe('EmployeeAdminService', () => {
     });
 
     const page = await value.list({
-      token: 'token',
       query: undefined,
       cursor: undefined,
       requestedLimit: 1,
@@ -64,7 +59,6 @@ describe('EmployeeAdminService', () => {
     expect(page.hasNextPage).toBe(true);
     expect(employees.list).toHaveBeenCalledWith(undefined, undefined, 1);
     await value.list({
-      token: 'token',
       query: undefined,
       cursor: page.nextCursor,
       requestedLimit: 1,
@@ -76,21 +70,12 @@ describe('EmployeeAdminService', () => {
     );
     await expect(
       value.list({
-        token: 'token',
         query: undefined,
         cursor: Buffer.from('{}').toString('base64url'),
         requestedLimit: 1,
       }),
     ).rejects.toMatchObject({
       code: 'INVALID_CURSOR',
-    });
-  });
-
-  it('denies a delegated token without HRD', async () => {
-    const { value } = service({}, ['EMPLOYEE']);
-
-    await expect(value.get('token', 'employee')).rejects.toMatchObject({
-      code: 'FORBIDDEN',
     });
   });
 
@@ -107,7 +92,7 @@ describe('EmployeeAdminService', () => {
     sessions.revokeEmployee.mockRejectedValue(new Error('redis unavailable'));
 
     await expect(
-      value.updatePhone('token', 'employee', '+628999'),
+      value.updatePhone('hrd', 'employee', '+628999'),
     ).resolves.toMatchObject({
       phoneNumber: '+628999',
     });

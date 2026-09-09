@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { GrpcAuthGuard } from './auth/grpc-auth.guard.js';
+import { GrpcAuthorizationService } from './auth/grpc-authorization.service.js';
+import { RolesGuard } from './auth/roles.guard.js';
 import { SessionStore } from './auth/session.store.js';
 import { TokenService } from './auth/tokens.js';
 import { EmployeeAdminService } from './employee/employee-admin.service.js';
@@ -13,8 +16,11 @@ import { OracleDatabase } from './oracle.js';
   providers: [
     EmployeeAdminService,
     EmployeeRepository,
+    GrpcAuthGuard,
+    GrpcAuthorizationService,
     IdentityAuthService,
     OracleDatabase,
+    RolesGuard,
     SessionStore,
     TokenService,
   ],
