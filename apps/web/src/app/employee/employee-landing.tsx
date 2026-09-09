@@ -2,9 +2,11 @@
 
 import { Clock01Icon, ClockCheckIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import Link from 'next/link';
 
 import { CenteredPage } from '@/components/layout/centered-page';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const today = new Intl.DateTimeFormat('id-ID', {
   day: 'numeric',
@@ -81,9 +83,12 @@ export const EmployeeLanding = () => (
             <span className="text-muted-foreground">Belum tercatat</span>
           </li>
         </ul>
-        <Button className="mt-4 w-full" type="button" variant="outline">
+        <Link
+          className={cn(buttonVariants({ variant: 'outline' }), 'mt-4 w-full')}
+          href="/employee/history"
+        >
           Lihat riwayat absensi
-        </Button>
+        </Link>
       </section>
     </div>
   </CenteredPage>
