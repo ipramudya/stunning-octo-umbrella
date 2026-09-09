@@ -29,6 +29,7 @@
     "@swc/cli": "0.8.1",
     "@swc/core": "1.16.2",
     "@types/node": "24.13.3",
+    "agentation-mcp": "^1.2.0",
     "grpc-tools": "1.13.1",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
@@ -36,6 +37,7 @@
     "ts-proto": "2.12.2",
     "turbo": "2.10.12",
     "typescript": "6.0.3",
+    "ultracite": "^7.11.1",
     "vite": "8.0.0",
     "vitest": "5.0.0"
   },

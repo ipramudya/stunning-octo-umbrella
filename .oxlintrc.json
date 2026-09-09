@@ -19,6 +19,7 @@
     "dexa/no-conditional-object-spread": "error",
     "dexa/ordered-class-members": "error",
     "dexa/padding-between-logical-blocks": "error",
+    "dexa/react-default-import-only": "error",
     "typescript/await-thenable": "error",
     "typescript/consistent-type-assertions": [
       "error",

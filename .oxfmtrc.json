@@ -13,6 +13,10 @@
       "unknown"
     ]
   },
+  "sortTailwindcss": {
+    "functions": ["clsx", "cva", "tw", "twMerge", "cn", "twJoin", "tv"],
+    "stylesheet": "./apps/web/src/app/globals.css"
+  },
   "ignorePatterns": [
     ".agents/**",
     ".local/**",

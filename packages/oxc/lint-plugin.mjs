@@ -209,6 +209,89 @@ const orderedClassMembers = {
   },
 };
 
+const explicitDefaultComponent = {
+  meta: {
+    messages: {
+      componentFirst:
+        'Place the default component before other top-level declarations.',
+      explicitDefault:
+        'Declare the component with `export default function ComponentName()`.',
+    },
+  },
+  create(context) {
+    return {
+      Program(node) {
+        if (!context.filename.endsWith('.tsx')) {
+          return;
+        }
+
+        const defaultExport = node.body.find(
+          (statement) => statement.type === 'ExportDefaultDeclaration',
+        );
+
+        if (!defaultExport) {
+          return;
+        }
+
+        const declaration = defaultExport.declaration;
+
+        if (
+          declaration.type !== 'FunctionDeclaration' ||
+          !declaration.id ||
+          !/^[A-Z]/.test(declaration.id.name)
+        ) {
+          context.report({
+            node: defaultExport,
+            messageId: 'explicitDefault',
+          });
+
+          return;
+        }
+
+        const firstDeclaration = node.body.find(
+          (statement) =>
+            statement.type !== 'ImportDeclaration' && !statement.directive,
+        );
+
+        if (defaultExport !== firstDeclaration) {
+          context.report({
+            node: defaultExport,
+            messageId: 'componentFirst',
+          });
+        }
+      },
+    };
+  },
+};
+
+const reactDefaultImportOnly = {
+  meta: {
+    messages: {
+      defaultImportOnly:
+        'Import React as the default export and access its members through React, for example React.useState.',
+    },
+  },
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value !== 'react') {
+          return;
+        }
+
+        const hasReactDefault = node.specifiers.some(
+          (specifier) =>
+            specifier.type === 'ImportDefaultSpecifier' &&
+            specifier.local.name === 'React',
+        );
+
+        if (node.specifiers.length !== 1 || !hasReactDefault) {
+          context.report({ node, messageId: 'defaultImportOnly' });
+        }
+      },
+    };
+  },
+};
+
 const noConditionalObjectSpread = {
   meta: {
     messages: {
@@ -236,9 +319,11 @@ const noConditionalObjectSpread = {
 export default {
   meta: { name: 'dexa' },
   rules: {
+    'explicit-default-component': explicitDefaultComponent,
     'max-if-condition-terms': maxIfConditionTerms,
     'no-conditional-object-spread': noConditionalObjectSpread,
     'ordered-class-members': orderedClassMembers,
     'padding-between-logical-blocks': paddingBetweenLogicalBlocks,
+    'react-default-import-only': reactDefaultImportOnly,
   },
 };
