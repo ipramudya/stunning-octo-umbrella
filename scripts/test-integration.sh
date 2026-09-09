@@ -7,6 +7,11 @@ MINIO_PORT="${MINIO_PORT:-$((GATEWAY_PORT + 1))}"
 APP_ORIGIN="http://localhost:${GATEWAY_PORT}"
 export APP_ORIGIN COMPOSE_PROJECT_NAME GATEWAY_PORT MINIO_PORT
 
+prune_integration_images() {
+  docker image prune --force \
+    --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" >/dev/null || true
+}
+
 cleanup() {
   status=$?
   if [ "$status" -ne 0 ]; then
@@ -14,14 +19,14 @@ cleanup() {
     docker compose logs --no-color --tail 100 || true
   fi
   docker compose down --volumes --remove-orphans --timeout 10
+  prune_integration_images
 }
 trap cleanup EXIT INT TERM
 
 # A killed test run can bypass the trap. Remove it before allocating another stack.
 docker compose down --volumes --remove-orphans --timeout 10
-for service in identity attendance gateway; do
-  docker compose build "$service"
-done
+prune_integration_images
+docker compose build identity attendance gateway
 docker compose up --detach --wait --wait-timeout 180
 node tests/integration/walking-skeleton.mjs
 node tests/integration/authentication.mjs
