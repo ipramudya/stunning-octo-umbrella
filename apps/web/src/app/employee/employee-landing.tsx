@@ -5,7 +5,6 @@ import {
   ClockCheckIcon,
   Logout01Icon,
   MoreVerticalIcon,
-  UserEdit01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
@@ -61,11 +60,7 @@ export const EmployeeLanding = () => (
           >
             <HugeiconsIcon aria-hidden="true" icon={MoreVerticalIcon} />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36">
-            <DropdownMenuItem>
-              <HugeiconsIcon aria-hidden="true" icon={UserEdit01Icon} />
-              Perbarui profil
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-28">
             <DropdownMenuItem variant="destructive">
               <HugeiconsIcon aria-hidden="true" icon={Logout01Icon} />
               Keluar
@@ -90,13 +85,9 @@ export const EmployeeLanding = () => (
             <DrawerHeader>
               <DrawerTitle>Menu akun</DrawerTitle>
             </DrawerHeader>
-            <div className="grid gap-2 p-4 pt-0">
-              <Button className="justify-start" type="button" variant="outline">
-                <HugeiconsIcon aria-hidden="true" icon={UserEdit01Icon} />
-                Perbarui profil
-              </Button>
+            <div className="p-4 pt-0">
               <Button
-                className="justify-start"
+                className="w-full justify-start"
                 type="button"
                 variant="destructive"
               >

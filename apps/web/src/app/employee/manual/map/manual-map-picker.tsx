@@ -6,8 +6,9 @@ import Link from 'next/link';
 import React from 'react';
 
 import { CenteredPage } from '@/components/layout/centered-page';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Map, MapControls } from '@/components/ui/map';
+import { cn } from '@/lib/utils';
 
 type ClockType = 'clock-in' | 'clock-out';
 
@@ -21,15 +22,18 @@ const initialCoordinate: Coordinate = {
   longitude: 106.8456,
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 const locationName = (responseBody: string) => {
   try {
     const value = JSON.parse(responseBody) as unknown;
 
-    if (typeof value !== 'object' || value === null) {
+    if (!isRecord(value) || !Object.hasOwn(value, 'display_name')) {
       return null;
     }
 
-    const displayName = Reflect.get(value, 'display_name');
+    const { display_name: displayName } = value;
     return typeof displayName === 'string' ? displayName : null;
   } catch {
     return null;
@@ -88,7 +92,10 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
     <CenteredPage>
       <div>
         <Link
-          className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            buttonVariants({ variant: 'secondary' }),
+            'min-h-10 [&_svg]:size-5',
+          )}
           href={`/employee/manual/${type}`}
         >
           <HugeiconsIcon aria-hidden="true" icon={ArrowLeft01Icon} />
@@ -103,7 +110,7 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
         <section className="mt-6 overflow-hidden border border-border bg-card">
           <Map
             center={[coordinate.longitude, coordinate.latitude]}
-            className="h-96 outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+            className="h-96 outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
             onViewportChange={({ center }) => {
               setAddress('Memuat alamat...');
               setCoordinate({ latitude: center[1], longitude: center[0] });

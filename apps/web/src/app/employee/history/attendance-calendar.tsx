@@ -6,7 +6,8 @@ import Link from 'next/link';
 import React from 'react';
 
 import { CenteredPage } from '@/components/layout/centered-page';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
@@ -55,7 +56,10 @@ export const AttendanceCalendar = () => {
     <CenteredPage>
       <div>
         <Link
-          className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            buttonVariants({ variant: 'secondary' }),
+            'min-h-10 [&_svg]:size-5',
+          )}
           href="/employee"
         >
           <HugeiconsIcon aria-hidden="true" icon={ArrowLeft01Icon} />

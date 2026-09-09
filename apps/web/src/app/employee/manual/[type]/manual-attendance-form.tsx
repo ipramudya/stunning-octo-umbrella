@@ -25,7 +25,10 @@ export const ManualAttendanceForm = ({ type }: { type: ClockType }) => {
     <CenteredPage>
       <div>
         <Link
-          className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className={cn(
+            buttonVariants({ variant: 'secondary' }),
+            'min-h-10 [&_svg]:size-5',
+          )}
           href={`/employee/clock/${type}`}
         >
           <HugeiconsIcon aria-hidden="true" icon={ArrowLeft01Icon} />
