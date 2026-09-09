@@ -28,6 +28,13 @@ export type RegularAttendanceRequest = {
   evidenceUploadId: string;
 };
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 @Injectable()
 export class RegularAttendanceService {
   private readonly logger = new Logger(RegularAttendanceService.name);
@@ -146,7 +153,7 @@ export class RegularAttendanceService {
         .cleanup(upload)
         .catch((error: unknown) =>
           this.logger.warn(
-            `staging cleanup deferred for ${upload?.id}: ${error instanceof Error ? error.message : String(error)}`,
+            `staging cleanup deferred for ${upload?.id}: ${errorMessage(error)}`,
           ),
         );
       return { entry, replayed: false };
@@ -156,7 +163,7 @@ export class RegularAttendanceService {
           await this.evidence.abort(upload);
         } catch (cleanupError) {
           this.logger.warn(
-            `evidence rollback deferred for ${upload.id}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+            `evidence rollback deferred for ${upload.id}: ${errorMessage(cleanupError)}`,
           );
         }
       }

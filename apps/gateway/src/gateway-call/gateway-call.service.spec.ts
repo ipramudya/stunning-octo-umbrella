@@ -1,6 +1,5 @@
 import { EventEmitter } from 'node:events';
 
-import type { ClientGrpc } from '@nestjs/microservices';
 import { type Authorization, TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { of } from 'rxjs';
@@ -27,19 +26,23 @@ function setup() {
   const identity = {
     authorizeAccess,
   } as Pick<IdentityGrpcClient, 'authorizeAccess'>;
-  const grpc = {
-    getService: () => identity,
-  } as unknown as ClientGrpc;
   const config = {
-    get: (key: keyof Environment) =>
-      key === 'APP_ORIGIN' ? 'https://app.example' : undefined,
+    get: (key: keyof Environment) => {
+      if (key === 'APP_ORIGIN') {
+        return 'https://app.example';
+      }
+      return undefined;
+    },
   } as ConstructorParameters<typeof GatewayCallService>[1];
   const consume = vi.fn();
   const rateLimiter = {
     consume,
   } as Pick<RateLimiter, 'consume'> as RateLimiter;
-  const service = new GatewayCallService(grpc, config, rateLimiter);
-  service.onModuleInit();
+  const service = new GatewayCallService(
+    identity as IdentityGrpcClient,
+    config,
+    rateLimiter,
+  );
 
   const headers = new Map<string, unknown>();
   const reply = {

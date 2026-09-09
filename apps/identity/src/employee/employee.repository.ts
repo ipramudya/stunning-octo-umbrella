@@ -72,6 +72,13 @@ export class EmployeeRepository {
   ) {
     return this.database.withConnection(async (connection) => {
       const escaped = query?.replace(/[\\%_]/g, '\\$&');
+      let prefix = null;
+      let contains = null;
+      if (escaped) {
+        const normalized = escaped.toUpperCase();
+        prefix = `${normalized}%`;
+        contains = `%${normalized}%`;
+      }
       const result = await connection.execute<EmployeeRow>(
         `SELECT ${employeeColumns}
            FROM employees e
@@ -84,8 +91,8 @@ export class EmployeeRepository {
           FETCH FIRST ${limit + 1} ROWS ONLY`,
         {
           query: escaped ?? null,
-          prefix: escaped ? `${escaped.toUpperCase()}%` : null,
-          contains: escaped ? `%${escaped.toUpperCase()}%` : null,
+          prefix,
+          contains,
           after_number: after?.employeeNumber ?? null,
           after_id: after?.id ?? null,
         },
@@ -138,7 +145,7 @@ export class EmployeeRepository {
          WHERE id = :id`,
         {
           full_name: fullName ?? null,
-          change_email: email === undefined ? 0 : 1,
+          change_email: Number(email !== undefined),
           email: email ?? null,
           actor: actorId,
           id,
@@ -235,7 +242,10 @@ export class EmployeeRepository {
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
       const row = result.rows?.[0];
-      return row ? employee(row) : undefined;
+      if (row) {
+        return employee(row);
+      }
+      return undefined;
     });
   }
 

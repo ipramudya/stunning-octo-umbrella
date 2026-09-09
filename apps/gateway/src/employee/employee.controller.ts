@@ -1,5 +1,4 @@
 import { status, type Metadata } from '@grpc/grpc-js';
-import type { OnModuleInit } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -16,7 +15,6 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import type { ClientGrpc } from '@nestjs/microservices';
 // oxlint-disable max-params
 import { TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -25,9 +23,9 @@ import { firstValueFrom, type Observable, takeUntil } from 'rxjs';
 import { publicProfile } from '../auth/auth.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import type { GatewayCallContext } from '../gateway-call/gateway-call.types.js';
+import { IDENTITY_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
 import { grpcCode, grpcErrorCode } from '../grpc-client/grpc-error.js';
-import { IDENTITY_HEALTH_CLIENT } from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
@@ -45,17 +43,11 @@ import {
 } from './employee.dto.js';
 
 @Controller({ path: 'hrd/employees', version: '1' })
-export class EmployeeController implements OnModuleInit {
-  private identity!: IdentityGrpcClient;
-
+export class EmployeeController {
   constructor(
-    @Inject(IDENTITY_HEALTH_CLIENT) private readonly grpc: ClientGrpc,
+    @Inject(IDENTITY_CLIENT) private readonly identity: IdentityGrpcClient,
     private readonly gatewayCall: GatewayCallService,
   ) {}
-
-  onModuleInit() {
-    this.identity = this.grpc.getService<IdentityGrpcClient>('IdentityService');
-  }
 
   @Get()
   async list(
@@ -207,14 +199,14 @@ export class EmployeeController implements OnModuleInit {
       throw error;
     }
     const code = grpcErrorCode(error);
+    let invalidCode = 'VALIDATION_ERROR';
+    let invalidDetail = 'Request validation failed';
+    if (code === 'INVALID_CURSOR') {
+      invalidCode = code;
+      invalidDetail = 'The cursor is invalid';
+    }
     const mappings: Partial<Record<status, [number, string, string]>> = {
-      [status.INVALID_ARGUMENT]: [
-        400,
-        code === 'INVALID_CURSOR' ? code : 'VALIDATION_ERROR',
-        code === 'INVALID_CURSOR'
-          ? 'The cursor is invalid'
-          : 'Request validation failed',
-      ],
+      [status.INVALID_ARGUMENT]: [400, invalidCode, invalidDetail],
       [status.UNAUTHENTICATED]: [
         401,
         'AUTHENTICATION_REQUIRED',
@@ -239,8 +231,10 @@ export class EmployeeController implements OnModuleInit {
       ],
     };
     const codeFromGrpc = grpcCode(error);
-    const mapped =
-      codeFromGrpc === undefined ? undefined : mappings[codeFromGrpc];
+    let mapped;
+    if (codeFromGrpc !== undefined) {
+      mapped = mappings[codeFromGrpc];
+    }
     if (mapped) {
       fail(...mapped, request, traceId);
     }

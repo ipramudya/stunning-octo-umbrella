@@ -17,15 +17,19 @@ export const manualAttendanceSchema = z.object({
 
 export type ManualAttendanceDto = z.infer<typeof manualAttendanceSchema>;
 
+function clockType(value: ManualAttendanceDto['clockType']) {
+  if (value === 'CLOCK_IN') {
+    return ClockType.CLOCK_TYPE_CLOCK_IN;
+  }
+  return ClockType.CLOCK_TYPE_CLOCK_OUT;
+}
+
 export function manualAttendanceRequest(
   value: ManualAttendanceDto,
 ): CreateManualAttendanceRequest {
   return {
     ...value,
-    clockType:
-      value.clockType === 'CLOCK_IN'
-        ? ClockType.CLOCK_TYPE_CLOCK_IN
-        : ClockType.CLOCK_TYPE_CLOCK_OUT,
+    clockType: clockType(value.clockType),
     claimedAt: new Date(value.claimedAt),
   };
 }

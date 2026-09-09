@@ -98,23 +98,28 @@ export class AttendanceQueryService {
     if (limit < 1 || limit > 100) {
       this.fail('VALIDATION_ERROR');
     }
-    const selectedSource = request.source
-      ? attendanceSourceNames.get(request.source)
-      : undefined;
-    const selectedStatus = request.status
-      ? attendanceStatusNames.get(request.status)
-      : undefined;
-    const selectedClockType = request.clockType
-      ? clockTypeNames.get(request.clockType)
-      : undefined;
+    let selectedSource;
+    if (request.source) {
+      selectedSource = attendanceSourceNames.get(request.source);
+    }
+    let selectedStatus;
+    if (request.status) {
+      selectedStatus = attendanceStatusNames.get(request.status);
+    }
+    let selectedClockType;
+    if (request.clockType) {
+      selectedClockType = clockTypeNames.get(request.clockType);
+    }
     const hasInvalidSource = request.source && !selectedSource;
     const hasInvalidStatus = request.status && !selectedStatus;
     const hasInvalidClockType = request.clockType && !selectedClockType;
     if (hasInvalidSource || hasInvalidStatus || hasInvalidClockType) {
       this.fail('VALIDATION_ERROR');
     }
-    const order =
-      request.order === AttendanceOrder.ATTENDANCE_ORDER_ASC ? 'ASC' : 'DESC';
+    let order: 'ASC' | 'DESC' = 'DESC';
+    if (request.order === AttendanceOrder.ATTENDANCE_ORDER_ASC) {
+      order = 'ASC';
+    }
     const entries = await this.repository.list({
       dateFrom: request.dateFrom,
       dateTo: request.dateTo,
@@ -129,9 +134,13 @@ export class AttendanceQueryService {
     const hasNextPage = entries.length > limit;
     const items = entries.slice(0, limit);
     const last = items.at(-1);
+    let nextCursor;
+    if (hasNextPage && last) {
+      nextCursor = this.encodeCursor(last);
+    }
     return {
       items,
-      nextCursor: hasNextPage && last ? this.encodeCursor(last) : undefined,
+      nextCursor,
       hasNextPage,
     };
   }

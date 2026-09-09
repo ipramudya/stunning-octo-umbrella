@@ -23,8 +23,11 @@ export function profile(employee: Employee): EmployeeProfile {
     fullName: employee.fullName,
     phoneNumber: employee.phoneNumber,
     email: employee.email || undefined,
-    roles: employee.roles.map((role) =>
-      role === 'HRD' ? Role.ROLE_HRD : Role.ROLE_EMPLOYEE,
-    ),
+    roles: employee.roles.map((role) => {
+      if (role === 'HRD') {
+        return Role.ROLE_HRD;
+      }
+      return Role.ROLE_EMPLOYEE;
+    }),
   };
 }

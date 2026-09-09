@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import { status, Metadata } from '@grpc/grpc-js';
-import type { OnModuleInit } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -16,15 +15,14 @@ import {
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ClientGrpc } from '@nestjs/microservices';
 import type { SessionCredentials } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, fromEvent, takeUntil } from 'rxjs';
 
 import type { Environment } from '../config/config-typedef.js';
+import { IDENTITY_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
 import { grpcCode } from '../grpc-client/grpc-error.js';
-import { IDENTITY_HEALTH_CLIENT } from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import {
   RateLimiter,
@@ -36,19 +34,14 @@ import { loginSchema, type LoginDto } from './auth.dto.js';
 import { cookies, publicProfile } from './auth.helper.js';
 
 @Controller({ path: 'auth', version: '1' })
-export class AuthController implements OnModuleInit {
+export class AuthController {
   private readonly logger = new Logger(AuthController.name);
-  private identity!: IdentityGrpcClient;
 
   constructor(
-    @Inject(IDENTITY_HEALTH_CLIENT) private readonly grpc: ClientGrpc,
+    @Inject(IDENTITY_CLIENT) private readonly identity: IdentityGrpcClient,
     private readonly config: ConfigService<Environment, true>,
     private readonly rateLimiter: RateLimiter,
   ) {}
-
-  onModuleInit() {
-    this.identity = this.grpc.getService<IdentityGrpcClient>('IdentityService');
-  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

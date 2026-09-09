@@ -42,14 +42,21 @@ export class AttendanceQueryRepository {
     employeeId?: string,
   ): Promise<AttendanceEntry | undefined> {
     return this.database.withConnection(async (connection) => {
+      let employeeClause = '';
+      if (employeeId) {
+        employeeClause = ' AND employee_id = :employeeId';
+      }
       const result = await connection.execute<AttendanceEntryRow>(
         `SELECT ${attendanceColumns} FROM attendance_entries
-         WHERE id = :entryId${employeeId ? ' AND employee_id = :employeeId' : ''}`,
+         WHERE id = :entryId${employeeClause}`,
         { entryId, employeeId: employeeId || undefined },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
       const row = result.rows?.[0];
-      return row ? attendanceEntry(row) : undefined;
+      if (row) {
+        return attendanceEntry(row);
+      }
+      return undefined;
     });
   }
 
@@ -71,7 +78,10 @@ export class AttendanceQueryRepository {
       }
     }
     if (filters.cursor) {
-      const operator = filters.order === 'ASC' ? '>' : '<';
+      let operator = '<';
+      if (filters.order === 'ASC') {
+        operator = '>';
+      }
       clauses.push(`(work_date ${operator} :cursorDate
         OR (work_date = :cursorDate AND submitted_at ${operator} :cursorAt)
         OR (work_date = :cursorDate AND submitted_at = :cursorAt AND id ${operator} :cursorId))`);

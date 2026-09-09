@@ -16,6 +16,13 @@ import { ManualAttendanceError } from './manual-attendance.helper.js';
 import { validateManualAttendancePolicy } from './manual-attendance.helper.js';
 import { ManualAttendanceRepository } from './manual-attendance.repository.js';
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 @Injectable()
 export class ManualAttendanceService implements OnApplicationBootstrap {
   private requestHash(
@@ -107,7 +114,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
         await this.evidence.complete(upload);
       } catch (error) {
         this.logger.warn(
-          `staging evidence cleanup deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `staging evidence cleanup deferred for ${upload.id}: ${errorMessage(error)}`,
         );
       }
       return { entry: created, replay: false };
@@ -118,14 +125,14 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
         }
       } catch (cleanupError) {
         this.logger.warn(
-          `evidence cleanup deferred: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+          `evidence cleanup deferred: ${errorMessage(cleanupError)}`,
         );
       }
       try {
         await this.repository.release(employeeId, idempotencyKey, hash);
       } catch (cleanupError) {
         this.logger.warn(
-          `idempotency cleanup deferred: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+          `idempotency cleanup deferred: ${errorMessage(cleanupError)}`,
         );
       }
       if (error instanceof AttendanceConflict) {

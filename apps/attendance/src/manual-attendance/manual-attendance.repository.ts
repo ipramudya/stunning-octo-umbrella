@@ -192,6 +192,13 @@ export class ManualAttendanceRepository {
     });
   }
 
+  private clockType(value: ClockType) {
+    if (value === ClockType.CLOCK_TYPE_CLOCK_IN) {
+      return 'CLOCK_IN';
+    }
+    return 'CLOCK_OUT';
+  }
+
   private async insertEntry(
     connection: Connection,
     entry: AttendanceEntry,
@@ -211,10 +218,7 @@ export class ManualAttendanceRepository {
         id: entry.id,
         employeeId: entry.employeeId,
         workDate: { val: workDate, type: oracledb.DATE },
-        clockType:
-          entry.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
-            ? 'CLOCK_IN'
-            : 'CLOCK_OUT',
+        clockType: this.clockType(entry.clockType),
         claimedAt: {
           val: entry.claimedAt,
           type: oracledb.DB_TYPE_TIMESTAMP_TZ,

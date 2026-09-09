@@ -54,18 +54,28 @@ function attendanceStatus(status: AttendanceEntryRow['STATUS']) {
 }
 
 export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
+  let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
+  if (row.CLOCK_TYPE === 'CLOCK_IN') {
+    clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
+  }
+  let source = AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
+  if (row.SOURCE === 'MANUAL') {
+    source = AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
+  }
+  let decision;
+  if (row.DECIDED_AT && row.DECIDED_BY_EMPLOYEE_ID) {
+    decision = {
+      decidedByEmployeeId: row.DECIDED_BY_EMPLOYEE_ID,
+      decidedAt: row.DECIDED_AT,
+      reason: row.DECISION_REASON ?? '',
+    };
+  }
   return {
     id: row.ID,
     employeeId: row.EMPLOYEE_ID,
     workDate: row.WORK_DATE.toISOString().slice(0, 10),
-    clockType:
-      row.CLOCK_TYPE === 'CLOCK_IN'
-        ? ClockType.CLOCK_TYPE_CLOCK_IN
-        : ClockType.CLOCK_TYPE_CLOCK_OUT,
-    source:
-      row.SOURCE === 'MANUAL'
-        ? AttendanceSource.ATTENDANCE_SOURCE_MANUAL
-        : AttendanceSource.ATTENDANCE_SOURCE_REGULAR,
+    clockType,
+    source,
     status: attendanceStatus(row.STATUS),
     occurredAt: row.OCCURRED_AT || undefined,
     claimedAt: row.CLAIMED_AT || undefined,
@@ -79,14 +89,7 @@ export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
     },
     reason: row.REASON || undefined,
     evidenceId: row.EVIDENCE_ID || undefined,
-    decision:
-      row.DECIDED_AT && row.DECIDED_BY_EMPLOYEE_ID
-        ? {
-            decidedByEmployeeId: row.DECIDED_BY_EMPLOYEE_ID,
-            decidedAt: row.DECIDED_AT,
-            reason: row.DECISION_REASON ?? '',
-          }
-        : undefined,
+    decision,
     idempotentReplay: false,
   };
 }
@@ -254,6 +257,12 @@ export class ManualDecisionRepository {
       const approved =
         input.decision ===
         ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE;
+      let attendanceStatus = 'REJECTED';
+      let occurredAt = null;
+      if (approved) {
+        attendanceStatus = 'RECORDED';
+        occurredAt = locked.claimedAt;
+      }
       await connection.execute(
         `UPDATE attendance_entries
          SET status = :status, occurred_at = :occurredAt,
@@ -261,9 +270,9 @@ export class ManualDecisionRepository {
            decision_reason = :reason, updated_at = SYSTIMESTAMP
          WHERE id = :entryId`,
         {
-          status: approved ? 'RECORDED' : 'REJECTED',
+          status: attendanceStatus,
           occurredAt: {
-            val: approved ? locked.claimedAt : null,
+            val: occurredAt,
             type: oracledb.DB_TYPE_TIMESTAMP_TZ,
           },
           reviewerId: input.reviewerId,
@@ -336,6 +345,9 @@ export class ManualDecisionRepository {
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     const row = result.rows?.[0];
-    return row ? attendanceEntry(row) : undefined;
+    if (row) {
+      return attendanceEntry(row);
+    }
+    return undefined;
   }
 }

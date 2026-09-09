@@ -53,10 +53,10 @@ export class EvidenceService
   private cleanupRunning = false;
 
   private expectedMagic(contentType: string, bytes: Uint8Array) {
-    const expected =
-      contentType === 'image/jpeg'
-        ? [0xff, 0xd8, 0xff]
-        : [137, 80, 78, 71, 13, 10, 26, 10];
+    let expected = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (contentType === 'image/jpeg') {
+      expected = [0xff, 0xd8, 0xff];
+    }
     return expected.every((byte, index) => bytes[index] === byte);
   }
 
@@ -100,7 +100,7 @@ export class EvidenceService
       this.recoveryComplete = await this.recoverFinalizingUploads();
     } catch (error) {
       this.logger.warn(
-        `scheduled cleanup deferred: ${error instanceof Error ? error.message : String(error)}`,
+        `scheduled cleanup deferred: ${this.errorMessage(error)}`,
       );
     } finally {
       this.cleanupRunning = false;
@@ -116,11 +116,18 @@ export class EvidenceService
       } catch (error) {
         complete = false;
         this.logger.warn(
-          `evidence recovery deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `evidence recovery deferred for ${upload.id}: ${this.errorMessage(error)}`,
         );
       }
     }
     return complete;
+  }
+
+  private errorMessage(error: unknown) {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
   }
 
   async authorizeUpload(

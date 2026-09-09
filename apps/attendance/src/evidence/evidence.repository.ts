@@ -72,7 +72,11 @@ export class EvidenceRepository {
         { id },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
-      return result.rows?.[0] ? value(result.rows[0]) : undefined;
+      const row = result.rows?.[0];
+      if (row) {
+        return value(row);
+      }
+      return undefined;
     });
   }
 
@@ -104,7 +108,11 @@ export class EvidenceRepository {
       { id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
-    return result.rows?.[0] ? value(result.rows[0]) : undefined;
+    const row = result.rows?.[0];
+    if (row) {
+      return value(row);
+    }
+    return undefined;
   }
 
   async finalizing(

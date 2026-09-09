@@ -13,10 +13,10 @@ export class GrpcHealthController {
 
   @GrpcMethod('Health', 'Check')
   async check(): Promise<HealthCheckResponse> {
-    return {
-      status: (await this.readiness.isReady())
-        ? HealthCheckResponse_ServingStatus.SERVING
-        : HealthCheckResponse_ServingStatus.NOT_SERVING,
-    };
+    let status = HealthCheckResponse_ServingStatus.NOT_SERVING;
+    if (await this.readiness.isReady()) {
+      status = HealthCheckResponse_ServingStatus.SERVING;
+    }
+    return { status };
   }
 }

@@ -38,11 +38,11 @@ const manualDecisionStatus: Record<ManualDecisionErrorCode, status> = {
 
 export class ManualDecisionError extends AttendanceError {
   constructor(code: ManualDecisionErrorCode) {
-    super(
-      code,
-      manualDecisionStatus[code],
-      code === 'REQUEST_IN_PROGRESS' ? 1 : undefined,
-    );
+    let retryAfterSeconds;
+    if (code === 'REQUEST_IN_PROGRESS') {
+      retryAfterSeconds = 1;
+    }
+    super(code, manualDecisionStatus[code], retryAfterSeconds);
   }
 }
 
@@ -122,9 +122,13 @@ export class ManualDecisionService {
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items.at(-1);
+    let nextCursor;
+    if (hasNextPage && last) {
+      nextCursor = this.encodeCursor(last);
+    }
     return {
       items,
-      nextCursor: hasNextPage && last ? this.encodeCursor(last) : undefined,
+      nextCursor,
       hasNextPage,
     };
   }

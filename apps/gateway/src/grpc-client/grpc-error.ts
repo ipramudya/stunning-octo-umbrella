@@ -9,7 +9,10 @@ export function grpcCode(error: unknown): status | undefined {
     return undefined;
   }
   const code = error.code;
-  return typeof code === 'number' ? code : undefined;
+  if (typeof code === 'number') {
+    return code;
+  }
+  return undefined;
 }
 
 export function grpcMetadata(error: unknown, key: string) {
@@ -21,7 +24,10 @@ export function grpcMetadata(error: unknown, key: string) {
     return undefined;
   }
   const value = metadata.get(key)[0];
-  return typeof value === 'string' ? value : undefined;
+  if (typeof value === 'string') {
+    return value;
+  }
+  return undefined;
 }
 
 export function grpcErrorCode(error: unknown) {

@@ -38,7 +38,7 @@ export class AttendanceZoneRepository {
           latitude: { val: value.latitude, type: oracledb.NUMBER },
           longitude: { val: value.longitude, type: oracledb.NUMBER },
           radiusMeters: { val: value.radiusMeters, type: oracledb.NUMBER },
-          active: { val: value.active ? 1 : 0, type: oracledb.NUMBER },
+          active: { val: Number(value.active), type: oracledb.NUMBER },
           employeeId: { val: employeeId, type: oracledb.STRING, maxSize: 36 },
         },
       );

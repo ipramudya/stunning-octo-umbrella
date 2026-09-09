@@ -147,8 +147,9 @@ export class IdentityController {
 
   private authorization(metadata: Metadata) {
     const value = metadata.get('authorization')[0];
-    return typeof value === 'string' && value.startsWith('Bearer ')
-      ? value.slice(7)
-      : '';
+    if (typeof value === 'string' && value.startsWith('Bearer ')) {
+      return value.slice(7);
+    }
+    return '';
   }
 }

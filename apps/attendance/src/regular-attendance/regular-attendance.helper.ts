@@ -62,10 +62,12 @@ export function jakartaTime(now: Date) {
 
 export function attendanceTime(now: Date, clockType: ClockType) {
   const result = jakartaTime(now);
-  const [start, end] =
-    clockType === 'CLOCK_IN'
-      ? [8 * 60 * 60, 9 * 60 * 60]
-      : [17 * 60 * 60, 18 * 60 * 60];
+  let start = 17 * 60 * 60;
+  let end = 18 * 60 * 60;
+  if (clockType === 'CLOCK_IN') {
+    start = 8 * 60 * 60;
+    end = 9 * 60 * 60;
+  }
   if (result.seconds < start || result.seconds > end) {
     throw new RegularAttendanceError('ATTENDANCE_WINDOW_CLOSED');
   }

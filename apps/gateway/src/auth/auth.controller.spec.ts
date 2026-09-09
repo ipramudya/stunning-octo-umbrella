@@ -1,10 +1,10 @@
 import { HttpException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
-import type { ClientGrpc } from '@nestjs/microservices';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Environment } from '../config/config-typedef.js';
+import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
 import type { RateLimiter } from '../rate-limit/rate-limiter.js';
 import { AuthController } from './auth.controller.js';
 
@@ -13,7 +13,7 @@ describe('AuthController', () => {
     const config = {
       get: vi.fn().mockReturnValue('http://localhost:3000'),
     } as unknown as ConfigService<Environment, true>;
-    const controller = new AuthController({} as ClientGrpc, config, {
+    const controller = new AuthController({} as IdentityGrpcClient, config, {
       consume: vi.fn(),
     } as unknown as RateLimiter);
     const request = {

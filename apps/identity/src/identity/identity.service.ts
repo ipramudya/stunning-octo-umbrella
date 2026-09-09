@@ -89,9 +89,10 @@ export class IdentityAuthService {
   }
 
   revoke(refreshToken: string) {
-    return refreshToken
-      ? this.sessions.revoke(refreshToken)
-      : Promise.resolve();
+    if (refreshToken) {
+      return this.sessions.revoke(refreshToken);
+    }
+    return Promise.resolve();
   }
 
   async authorize(

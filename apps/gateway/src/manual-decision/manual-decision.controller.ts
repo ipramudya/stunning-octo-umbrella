@@ -1,6 +1,5 @@
 // oxlint-disable max-params -- Nest supplies route handler dependencies separately.
 import { status, type Metadata } from '@grpc/grpc-js';
-import type { OnModuleInit } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -14,7 +13,6 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import type { ClientGrpc } from '@nestjs/microservices';
 import {
   AttendanceOrder,
   ManualAttendanceDecision,
@@ -27,6 +25,10 @@ import { attendanceEntryIdSchema } from '../attendance/attendance.dto.js';
 import { timestampIso } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import type { GatewayCallContext } from '../gateway-call/gateway-call.types.js';
+import {
+  ATTENDANCE_CLIENT,
+  IDENTITY_CLIENT,
+} from '../grpc-client/grpc-client.providers.js';
 import type {
   AttendanceGrpcClient,
   IdentityGrpcClient,
@@ -36,10 +38,6 @@ import {
   grpcErrorCode,
   grpcMetadata,
 } from '../grpc-client/grpc-error.js';
-import {
-  ATTENDANCE_HEALTH_CLIENT,
-  IDENTITY_HEALTH_CLIENT,
-} from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
@@ -64,23 +62,13 @@ type CallContext = GatewayCallContext & {
 };
 
 @Controller({ path: 'hrd/attendance', version: '1' })
-export class ManualDecisionController implements OnModuleInit {
-  private identity!: IdentityGrpcClient;
-  private attendance!: AttendanceGrpcClient;
-
+export class ManualDecisionController {
   constructor(
-    @Inject(IDENTITY_HEALTH_CLIENT) private readonly identityGrpc: ClientGrpc,
-    @Inject(ATTENDANCE_HEALTH_CLIENT)
-    private readonly attendanceGrpc: ClientGrpc,
+    @Inject(IDENTITY_CLIENT) private readonly identity: IdentityGrpcClient,
+    @Inject(ATTENDANCE_CLIENT)
+    private readonly attendance: AttendanceGrpcClient,
     private readonly gatewayCall: GatewayCallService,
   ) {}
-
-  onModuleInit() {
-    this.identity =
-      this.identityGrpc.getService<IdentityGrpcClient>('IdentityService');
-    this.attendance =
-      this.attendanceGrpc.getService<AttendanceGrpcClient>('AttendanceService');
-  }
 
   @Get()
   async list(

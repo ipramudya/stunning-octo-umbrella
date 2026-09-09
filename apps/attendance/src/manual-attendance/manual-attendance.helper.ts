@@ -48,11 +48,11 @@ const manualAttendanceStatus: Record<ManualAttendanceErrorCode, status> = {
 
 export class ManualAttendanceError extends AttendanceError {
   constructor(code: ManualAttendanceErrorCode) {
-    super(
-      code,
-      manualAttendanceStatus[code],
-      code === 'REQUEST_IN_PROGRESS' ? 1 : undefined,
-    );
+    let retryAfterSeconds;
+    if (code === 'REQUEST_IN_PROGRESS') {
+      retryAfterSeconds = 1;
+    }
+    super(code, manualAttendanceStatus[code], retryAfterSeconds);
   }
 }
 

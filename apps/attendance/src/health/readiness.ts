@@ -35,11 +35,12 @@ export class ReadinessService {
     }
     const minio = new URL(this.config.get('MINIO_ENDPOINT', { infer: true }));
     try {
+      let defaultPort = 80;
+      if (minio.protocol === 'https:') {
+        defaultPort = 443;
+      }
       const [minioReady] = await Promise.all([
-        canConnect(
-          minio.hostname,
-          Number(minio.port || (minio.protocol === 'https:' ? 443 : 80)),
-        ),
+        canConnect(minio.hostname, Number(minio.port || defaultPort)),
         this.database.withConnection((connection) =>
           connection.execute(
             `SELECT SDO_GEOM.SDO_DISTANCE(

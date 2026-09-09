@@ -1,18 +1,23 @@
 #!/bin/sh
 set -eu
 
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dexa-integration-$$}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dexa-integration}"
 GATEWAY_PORT="${GATEWAY_PORT:-$((20000 + $$ % 19000))}"
 MINIO_PORT="${MINIO_PORT:-$((GATEWAY_PORT + 1))}"
 APP_ORIGIN="http://localhost:${GATEWAY_PORT}"
 export APP_ORIGIN COMPOSE_PROJECT_NAME GATEWAY_PORT MINIO_PORT
 
 cleanup() {
-  docker compose down --volumes --remove-orphans
+  docker compose down --volumes --remove-orphans --timeout 10
 }
 trap cleanup EXIT INT TERM
 
-docker compose up --build --detach --wait
+# A killed test run can bypass the trap. Remove it before allocating another stack.
+cleanup
+for service in identity attendance gateway; do
+  docker compose build "$service"
+done
+docker compose up --detach --wait --wait-timeout 180
 node tests/integration/walking-skeleton.mjs
 node tests/integration/authentication.mjs
 node tests/integration/employee-administration.mjs

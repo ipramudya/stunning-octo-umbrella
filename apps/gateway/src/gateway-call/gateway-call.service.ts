@@ -1,33 +1,26 @@
 import { randomUUID } from 'node:crypto';
 
 import { Metadata } from '@grpc/grpc-js';
-import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ClientGrpc } from '@nestjs/microservices';
 import type { TokenAudience } from '@project/contracts';
 import { firstValueFrom, fromEvent, takeUntil } from 'rxjs';
 
 import { cookies } from '../auth/auth.helper.js';
 import type { Environment } from '../config/config-typedef.js';
+import { IDENTITY_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
-import { IDENTITY_HEALTH_CLIENT } from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import { RateLimiter, RateLimitError } from '../rate-limit/rate-limiter.js';
 import type { GatewayCall, GatewayCallContext } from './gateway-call.types.js';
 
 @Injectable()
-export class GatewayCallService implements OnModuleInit {
-  private identity!: IdentityGrpcClient;
-
+export class GatewayCallService {
   constructor(
-    @Inject(IDENTITY_HEALTH_CLIENT) private readonly grpc: ClientGrpc,
+    @Inject(IDENTITY_CLIENT) private readonly identity: IdentityGrpcClient,
     private readonly config: ConfigService<Environment, true>,
     private readonly rateLimiter: RateLimiter,
   ) {}
-
-  onModuleInit() {
-    this.identity = this.grpc.getService<IdentityGrpcClient>('IdentityService');
-  }
 
   async run<T>(call: GatewayCall<T>) {
     const {
@@ -48,8 +41,10 @@ export class GatewayCallService implements OnModuleInit {
     }
 
     const idempotencyHeader = request.headers['idempotency-key'];
-    const idempotencyKey =
-      typeof idempotencyHeader === 'string' ? idempotencyHeader : undefined;
+    let idempotencyKey: string | undefined;
+    if (typeof idempotencyHeader === 'string') {
+      idempotencyKey = idempotencyHeader;
+    }
     if (idempotent && (!idempotencyKey || idempotencyKey.length > 128)) {
       fail(
         400,

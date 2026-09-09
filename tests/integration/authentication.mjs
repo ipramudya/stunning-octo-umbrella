@@ -118,7 +118,11 @@ composeExec(
 );
 
 const tokenParts = internalToken.split('.');
-tokenParts[2] = `${tokenParts[2][0] === 'A' ? 'B' : 'A'}${tokenParts[2].slice(1)}`;
+let replacement = 'A';
+if (tokenParts[2][0] === 'A') {
+  replacement = 'B';
+}
+tokenParts[2] = `${replacement}${tokenParts[2].slice(1)}`;
 const invalidToken = tokenParts.join('.');
 const expiredToken = composeExec(
   [

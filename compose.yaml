@@ -43,7 +43,7 @@ services:
       - identity-pki:/pki/identity
 
   oracle:
-    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
+    image: gvenzl/oracle-free:23.26.0-faststart@sha256:cd05f5d687fc7de2eceb862ff4a5c05b8087ee7f5425ef0dab63fcabda7609b9
     restart: unless-stopped
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
@@ -57,7 +57,7 @@ services:
       - oracle-data:/opt/oracle/oradata
 
   identity-schema:
-    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
+    image: gvenzl/oracle-free:23.26.0-faststart@sha256:cd05f5d687fc7de2eceb862ff4a5c05b8087ee7f5425ef0dab63fcabda7609b9
     restart: 'no'
     depends_on:
       oracle:
@@ -76,7 +76,7 @@ services:
       - ./infra/oracle/create-identity-schema.sql:/schema.sql:ro
 
   attendance-schema:
-    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
+    image: gvenzl/oracle-free:23.26.0-faststart@sha256:cd05f5d687fc7de2eceb862ff4a5c05b8087ee7f5425ef0dab63fcabda7609b9
     restart: 'no'
     depends_on:
       oracle:
@@ -95,9 +95,7 @@ services:
       - ./infra/oracle/create-attendance-schema.sql:/schema.sql:ro
 
   attendance-migrate:
-    build:
-      context: .
-      dockerfile: apps/attendance/Dockerfile
+    image: dexa-attendance:local
     restart: 'no'
     command:
       ['node', 'scripts/oracle-migrate.mjs', 'apps/attendance/migrations']
@@ -107,9 +105,7 @@ services:
     environment: *attendance-environment
 
   attendance-seed:
-    build:
-      context: .
-      dockerfile: apps/attendance/Dockerfile
+    image: dexa-attendance:local
     restart: 'no'
     command: ['node', 'apps/attendance/dist/scripts/seed.js']
     depends_on:
@@ -118,9 +114,7 @@ services:
     environment: *attendance-environment
 
   identity-migrate:
-    build:
-      context: .
-      dockerfile: apps/identity/Dockerfile
+    image: dexa-identity:local
     restart: 'no'
     command: ['node', 'scripts/oracle-migrate.mjs', 'apps/identity/migrations']
     depends_on:
@@ -129,9 +123,7 @@ services:
     environment: *identity-environment
 
   identity-seed:
-    build:
-      context: .
-      dockerfile: apps/identity/Dockerfile
+    image: dexa-identity:local
     restart: 'no'
     command: ['node', 'apps/identity/dist/scripts/seed.js']
     depends_on:
@@ -205,6 +197,7 @@ services:
 
   identity:
     <<: *app
+    image: dexa-identity:local
     build:
       context: .
       dockerfile: apps/identity/Dockerfile
@@ -236,6 +229,7 @@ services:
 
   attendance:
     <<: *app
+    image: dexa-attendance:local
     build:
       context: .
       dockerfile: apps/attendance/Dockerfile
@@ -269,6 +263,7 @@ services:
 
   gateway:
     <<: *app
+    image: dexa-gateway:local
     build:
       context: .
       dockerfile: apps/gateway/Dockerfile

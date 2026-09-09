@@ -79,9 +79,13 @@ export class EmployeeAdminService {
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items.at(-1);
+    let nextCursor;
+    if (hasNextPage && last) {
+      nextCursor = encodeCursor(last);
+    }
     return {
       items: items.map(profile),
-      nextCursor: hasNextPage && last ? encodeCursor(last) : undefined,
+      nextCursor,
       hasNextPage,
     };
   }
@@ -145,12 +149,16 @@ export class EmployeeAdminService {
     if (changes.fullName === undefined && changes.email === undefined) {
       fail('VALIDATION_ERROR');
     }
-    const fullName =
-      changes.fullName === undefined
-        ? undefined
-        : required(changes.fullName, 120);
-    const normalizedEmail =
-      changes.email === null ? null : email(changes.email);
+    let fullName;
+    if (changes.fullName !== undefined) {
+      fullName = required(changes.fullName, 120);
+    }
+    let normalizedEmail;
+    if (changes.email === null) {
+      normalizedEmail = null;
+    } else {
+      normalizedEmail = email(changes.email);
+    }
     try {
       if (
         !(await this.employees.updateProfile({
@@ -163,11 +171,11 @@ export class EmployeeAdminService {
         fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
       }
     } catch (error) {
-      await this.mapUnique(
-        error,
-        normalizedEmail ? { email: normalizedEmail } : {},
-        employeeId,
-      );
+      const uniqueInput: { email?: string } = {};
+      if (normalizedEmail) {
+        uniqueInput.email = normalizedEmail;
+      }
+      await this.mapUnique(error, uniqueInput, employeeId);
     }
     return profile(await this.existing(employeeId));
   }
@@ -233,9 +241,10 @@ export class EmployeeAdminService {
       throw error;
     }
     const conflict = await this.employees.conflict(input, excludeId);
-    fail(
-      conflict ?? 'VALIDATION_ERROR',
-      conflict ? status.ALREADY_EXISTS : status.INVALID_ARGUMENT,
-    );
+    let grpcStatus = status.INVALID_ARGUMENT;
+    if (conflict) {
+      grpcStatus = status.ALREADY_EXISTS;
+    }
+    fail(conflict ?? 'VALIDATION_ERROR', grpcStatus);
   }
 }

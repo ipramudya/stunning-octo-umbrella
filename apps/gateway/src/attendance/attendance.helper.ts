@@ -1,4 +1,8 @@
-import { AttendanceStatus } from '@project/contracts';
+import {
+  AttendanceSource,
+  AttendanceStatus,
+  ClockType,
+} from '@project/contracts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -42,6 +46,27 @@ export function timestampIso(value: unknown) {
   return new Date(
     timestampSeconds(value.seconds) * 1_000 + (nanos ?? 0) / 1_000_000,
   ).toISOString();
+}
+
+export function clockTypeName(clockType: ClockType) {
+  if (clockType === ClockType.CLOCK_TYPE_CLOCK_IN) {
+    return 'CLOCK_IN' as const;
+  }
+  return 'CLOCK_OUT' as const;
+}
+
+export function attendanceSourceName(source: AttendanceSource) {
+  if (source === AttendanceSource.ATTENDANCE_SOURCE_MANUAL) {
+    return 'MANUAL' as const;
+  }
+  return 'REGULAR' as const;
+}
+
+export function optionalTimestampIso(value: unknown) {
+  if (hasTimestamp(value)) {
+    return timestampIso(value);
+  }
+  return null;
 }
 
 export function attendanceStatusName(status: AttendanceStatus) {

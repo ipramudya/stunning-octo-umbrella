@@ -1,5 +1,4 @@
 import { status, Metadata, type CallOptions } from '@grpc/grpc-js';
-import type { OnModuleInit } from '@nestjs/common';
 import {
   Controller,
   Get,
@@ -9,26 +8,22 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import type { ClientGrpc } from '@nestjs/microservices';
-import {
-  type AttendanceEntry,
-  AttendanceSource,
-  ClockType,
-  TokenAudience,
-} from '@project/contracts';
+import { type AttendanceEntry, TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, type Observable, takeUntil } from 'rxjs';
 
 import { attendanceEntryIdSchema } from '../attendance/attendance.dto.js';
 import {
+  attendanceSourceName,
   attendanceStatusName,
-  hasTimestamp,
+  clockTypeName,
+  optionalTimestampIso,
   timestampIso,
 } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
+import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
 import { grpcCode, grpcErrorCode } from '../grpc-client/grpc-error.js';
-import { ATTENDANCE_HEALTH_CLIENT } from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
@@ -37,53 +32,41 @@ import {
 } from './attendance-history.dto.js';
 
 @Controller({ path: 'me/attendance', version: '1' })
-export class AttendanceHistoryController implements OnModuleInit {
-  private attendance!: AttendanceGrpcClient;
-
+export class AttendanceHistoryController {
   private response(entry: AttendanceEntry) {
     return {
       id: entry.id,
       employeeId: entry.employeeId,
       workDate: entry.workDate,
-      clockType:
-        entry.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
-          ? 'CLOCK_IN'
-          : 'CLOCK_OUT',
-      source:
-        entry.source === AttendanceSource.ATTENDANCE_SOURCE_MANUAL
-          ? 'MANUAL'
-          : 'REGULAR',
+      clockType: clockTypeName(entry.clockType),
+      source: attendanceSourceName(entry.source),
       status: attendanceStatusName(entry.status),
-      occurredAt: hasTimestamp(entry.occurredAt)
-        ? timestampIso(entry.occurredAt)
-        : null,
-      claimedAt: hasTimestamp(entry.claimedAt)
-        ? timestampIso(entry.claimedAt)
-        : null,
+      occurredAt: optionalTimestampIso(entry.occurredAt),
+      claimedAt: optionalTimestampIso(entry.claimedAt),
       submittedAt: timestampIso(entry.submittedAt),
       location: entry.location,
       reason: entry.reason ?? null,
       evidenceId: entry.evidenceId ?? null,
-      decision: entry.decision?.decidedByEmployeeId
-        ? {
-            decidedByEmployeeId: entry.decision.decidedByEmployeeId,
-            decidedAt: timestampIso(entry.decision.decidedAt),
-            reason: entry.decision.reason || null,
-          }
-        : null,
+      decision: this.decision(entry),
+    };
+  }
+
+  private decision(entry: AttendanceEntry) {
+    if (!entry.decision?.decidedByEmployeeId) {
+      return null;
+    }
+    return {
+      decidedByEmployeeId: entry.decision.decidedByEmployeeId,
+      decidedAt: timestampIso(entry.decision.decidedAt),
+      reason: entry.decision.reason || null,
     };
   }
 
   constructor(
-    @Inject(ATTENDANCE_HEALTH_CLIENT)
-    private readonly attendanceGrpc: ClientGrpc,
+    @Inject(ATTENDANCE_CLIENT)
+    private readonly attendance: AttendanceGrpcClient,
     private readonly gatewayCall: GatewayCallService,
   ) {}
-
-  onModuleInit() {
-    this.attendance =
-      this.attendanceGrpc.getService<AttendanceGrpcClient>('AttendanceService');
-  }
 
   @Get()
   async list(

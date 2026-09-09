@@ -7,7 +7,10 @@ import type { Environment } from '../config/config-typedef.js';
 
 function client(endpoint: string, accessKey: string, secretKey: string) {
   const url = new URL(endpoint);
-  let port = url.protocol === 'https:' ? 443 : 80;
+  let port = 80;
+  if (url.protocol === 'https:') {
+    port = 443;
+  }
   if (url.port) {
     port = Number(url.port);
   }
@@ -73,11 +76,10 @@ export class EvidenceStore implements OnModuleInit {
   }
 
   stat(key: string, versionId?: string) {
-    return this.internal.statObject(
-      this.bucket,
-      key,
-      versionId ? { versionId } : undefined,
-    );
+    if (versionId) {
+      return this.internal.statObject(this.bucket, key, { versionId });
+    }
+    return this.internal.statObject(this.bucket, key);
   }
 
   async magic(key: string, versionId: string) {
@@ -103,10 +105,9 @@ export class EvidenceStore implements OnModuleInit {
   }
 
   remove(key: string, versionId?: string) {
-    return this.internal.removeObject(
-      this.bucket,
-      key,
-      versionId ? { versionId } : undefined,
-    );
+    if (versionId) {
+      return this.internal.removeObject(this.bucket, key, { versionId });
+    }
+    return this.internal.removeObject(this.bucket, key);
   }
 }

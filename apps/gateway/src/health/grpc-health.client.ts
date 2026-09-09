@@ -23,10 +23,12 @@ export function createHealthClientOptions({
   pkiDir: string;
   service: 'identity' | 'attendance';
 }): GrpcOptions {
-  const servicePackage =
-    service === 'identity' ? 'dexa.identity.v1' : 'dexa.attendance.v1';
-  const serviceProto =
-    service === 'identity' ? IDENTITY_PROTO_PATH : ATTENDANCE_PROTO_PATH;
+  let servicePackage = 'dexa.attendance.v1';
+  let serviceProto = ATTENDANCE_PROTO_PATH;
+  if (service === 'identity') {
+    servicePackage = 'dexa.identity.v1';
+    serviceProto = IDENTITY_PROTO_PATH;
+  }
   return {
     transport: Transport.GRPC,
     options: {

@@ -65,11 +65,11 @@ export function post(path, body, jar) {
   if (jar) {
     headers.cookie = cookieHeader(jar);
   }
-  return fetch(`${baseUrl}${path}`, {
-    method: 'POST',
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const options = { method: 'POST', headers };
+  if (body !== undefined) {
+    options.body = JSON.stringify(body);
+  }
+  return fetch(`${baseUrl}${path}`, options);
 }
 
 export function me(jar) {

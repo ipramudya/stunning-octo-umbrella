@@ -193,7 +193,10 @@ export class SessionStore implements OnModuleDestroy {
 
   async get(sid: string) {
     const value = await (await this.redis()).get(`${sessionPrefix}${sid}`);
-    return value ? SessionStore.parseSession(value) : undefined;
+    if (value) {
+      return SessionStore.parseSession(value);
+    }
+    return undefined;
   }
 
   async getByRefreshToken(token: string) {
@@ -205,7 +208,10 @@ export class SessionStore implements OnModuleDestroy {
       return undefined;
     }
     const session = await this.get(sid);
-    return session ? { sid, session } : undefined;
+    if (session) {
+      return { sid, session };
+    }
+    return undefined;
   }
 
   async rotate(token: string) {

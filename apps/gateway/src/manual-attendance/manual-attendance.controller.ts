@@ -1,6 +1,5 @@
 // oxlint-disable max-params -- Nest supplies route handler dependencies separately.
 import { status } from '@grpc/grpc-js';
-import type { OnModuleInit } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -10,28 +9,25 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import type { ClientGrpc } from '@nestjs/microservices';
-import {
-  type AttendanceEntry,
-  AttendanceSource,
-  ClockType,
-  TokenAudience,
-} from '@project/contracts';
+import { type AttendanceEntry, TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, takeUntil } from 'rxjs';
 
 import {
+  attendanceSourceName,
   attendanceStatusName,
+  clockTypeName,
+  optionalTimestampIso,
   timestampIso,
 } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
+import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
 import {
   grpcCode,
   grpcErrorCode,
   grpcMetadata,
 } from '../grpc-client/grpc-error.js';
-import { ATTENDANCE_HEALTH_CLIENT } from '../health/grpc-health.client.js';
 import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
@@ -41,25 +37,17 @@ import {
 } from './manual-attendance.dto.js';
 
 @Controller({ version: '1' })
-export class ManualAttendanceController implements OnModuleInit {
-  private attendance!: AttendanceGrpcClient;
-
+export class ManualAttendanceController {
   private attendanceResponse(entry: AttendanceEntry) {
     return {
       id: entry.id,
       employeeId: entry.employeeId,
       workDate: entry.workDate,
-      clockType:
-        entry.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
-          ? 'CLOCK_IN'
-          : 'CLOCK_OUT',
-      source:
-        entry.source === AttendanceSource.ATTENDANCE_SOURCE_MANUAL
-          ? 'MANUAL'
-          : 'REGULAR',
+      clockType: clockTypeName(entry.clockType),
+      source: attendanceSourceName(entry.source),
       status: attendanceStatusName(entry.status),
-      occurredAt: entry.occurredAt ? timestampIso(entry.occurredAt) : null,
-      claimedAt: entry.claimedAt ? timestampIso(entry.claimedAt) : null,
+      occurredAt: optionalTimestampIso(entry.occurredAt),
+      claimedAt: optionalTimestampIso(entry.claimedAt),
       submittedAt: timestampIso(entry.submittedAt),
       location: {
         address: entry.location?.address ?? null,
@@ -75,15 +63,10 @@ export class ManualAttendanceController implements OnModuleInit {
   }
 
   constructor(
-    @Inject(ATTENDANCE_HEALTH_CLIENT)
-    private readonly attendanceGrpc: ClientGrpc,
+    @Inject(ATTENDANCE_CLIENT)
+    private readonly attendance: AttendanceGrpcClient,
     private readonly gatewayCall: GatewayCallService,
   ) {}
-
-  onModuleInit() {
-    this.attendance =
-      this.attendanceGrpc.getService<AttendanceGrpcClient>('AttendanceService');
-  }
 
   @Post('me/attendance/manual')
   async create(
@@ -108,7 +91,11 @@ export class ManualAttendanceController implements OnModuleInit {
             )
             .pipe(takeUntil(context.cancelled)),
         );
-        reply.status(entry.idempotentReplay ? 200 : 201);
+        let responseStatus = 201;
+        if (entry.idempotentReplay) {
+          responseStatus = 200;
+        }
+        reply.status(responseStatus);
         return this.attendanceResponse(entry);
       },
       failure: (error, traceId) =>
