@@ -14,7 +14,6 @@ export class GrpcHealthController {
   @GrpcMethod('Health', 'Check')
   async check(): Promise<HealthCheckResponse> {
     let status = HealthCheckResponse_ServingStatus.NOT_SERVING;
-
     if (await this.readiness.isReady()) {
       status = HealthCheckResponse_ServingStatus.SERVING;
     }

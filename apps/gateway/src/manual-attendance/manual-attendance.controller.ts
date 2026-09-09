@@ -93,7 +93,6 @@ export class ManualAttendanceController {
         );
 
         let responseStatus = 201;
-
         if (entry.idempotentReplay) {
           responseStatus = 200;
         }

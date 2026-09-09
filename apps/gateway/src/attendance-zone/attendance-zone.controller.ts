@@ -57,7 +57,6 @@ export class AttendanceZoneController {
           metadata,
           context.options,
         );
-
         if (body) {
           response = this.attendance.updateAttendanceZone(
             body,

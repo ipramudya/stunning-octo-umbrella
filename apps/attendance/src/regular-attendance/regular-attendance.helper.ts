@@ -65,7 +65,6 @@ export function attendanceTime(now: Date, clockType: ClockType) {
   const result = jakartaTime(now);
   let start = 17 * 60 * 60;
   let end = 18 * 60 * 60;
-
   if (clockType === 'CLOCK_IN') {
     start = 8 * 60 * 60;
     end = 9 * 60 * 60;

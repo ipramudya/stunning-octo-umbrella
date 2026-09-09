@@ -13,7 +13,6 @@ export class AttendanceExceptionFilter implements RpcExceptionFilter {
     }
 
     let failure: AttendanceError;
-
     if (error instanceof AttendanceError) {
       failure = error;
     } else {

@@ -39,7 +39,6 @@ export class ReadinessService {
 
     try {
       let defaultPort = 80;
-
       if (minio.protocol === 'https:') {
         defaultPort = 443;
       }

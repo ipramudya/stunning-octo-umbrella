@@ -63,7 +63,6 @@ export class RegularAttendanceController {
 
         const body = parsed.data;
         let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
-
         if (body.clockType === 'CLOCK_IN') {
           clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
         }
@@ -83,7 +82,6 @@ export class RegularAttendanceController {
         }
 
         let responseStatus = 201;
-
         if (result.idempotentReplay) {
           responseStatus = 200;
         }
@@ -91,7 +89,6 @@ export class RegularAttendanceController {
         reply.status(responseStatus);
 
         let responseClockType = 'CLOCK_OUT';
-
         if (result.clockType === ClockType.CLOCK_TYPE_CLOCK_IN) {
           responseClockType = 'CLOCK_IN';
         }

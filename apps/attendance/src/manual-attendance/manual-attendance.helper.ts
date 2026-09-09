@@ -51,7 +51,6 @@ const manualAttendanceStatus: Record<ManualAttendanceErrorCode, status> = {
 export class ManualAttendanceError extends AttendanceError {
   constructor(code: ManualAttendanceErrorCode) {
     let retryAfterSeconds;
-
     if (code === 'REQUEST_IN_PROGRESS') {
       retryAfterSeconds = 1;
     }

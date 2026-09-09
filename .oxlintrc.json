@@ -17,6 +17,7 @@
     "eslint/no-ternary": "error",
     "dexa/max-if-condition-terms": "error",
     "dexa/no-conditional-object-spread": "error",
+    "dexa/ordered-class-members": "error",
     "dexa/padding-between-logical-blocks": "error",
     "typescript/await-thenable": "error",
     "typescript/consistent-type-assertions": [

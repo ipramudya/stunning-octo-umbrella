@@ -111,19 +111,16 @@ export class AttendanceQueryService {
     }
 
     let selectedSource;
-
     if (request.source) {
       selectedSource = attendanceSourceNames.get(request.source);
     }
 
     let selectedStatus;
-
     if (request.status) {
       selectedStatus = attendanceStatusNames.get(request.status);
     }
 
     let selectedClockType;
-
     if (request.clockType) {
       selectedClockType = clockTypeNames.get(request.clockType);
     }
@@ -137,7 +134,6 @@ export class AttendanceQueryService {
     }
 
     let order: 'ASC' | 'DESC' = 'DESC';
-
     if (request.order === AttendanceOrder.ATTENDANCE_ORDER_ASC) {
       order = 'ASC';
     }
@@ -158,7 +154,6 @@ export class AttendanceQueryService {
     const items = entries.slice(0, limit);
     const last = items.at(-1);
     let nextCursor;
-
     if (hasNextPage && last) {
       nextCursor = this.encodeCursor(last);
     }

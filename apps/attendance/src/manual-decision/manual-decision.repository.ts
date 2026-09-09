@@ -55,19 +55,16 @@ function attendanceStatus(status: AttendanceEntryRow['STATUS']) {
 
 export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
   let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
-
   if (row.CLOCK_TYPE === 'CLOCK_IN') {
     clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
   }
 
   let source = AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
-
   if (row.SOURCE === 'MANUAL') {
     source = AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
   }
 
   let decision;
-
   if (row.DECIDED_AT && row.DECIDED_BY_EMPLOYEE_ID) {
     decision = {
       decidedByEmployeeId: row.DECIDED_BY_EMPLOYEE_ID,
@@ -283,7 +280,6 @@ export class ManualDecisionRepository {
         ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE;
       let attendanceStatus = 'REJECTED';
       let occurredAt = null;
-
       if (approved) {
         attendanceStatus = 'RECORDED';
         occurredAt = locked.claimedAt;

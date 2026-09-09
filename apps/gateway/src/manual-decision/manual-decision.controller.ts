@@ -79,7 +79,6 @@ export class ManualDecisionController {
   ) {
     return this.call(request, reply, false, async (context) => {
       let order = AttendanceOrder.ATTENDANCE_ORDER_DESC;
-
       if (query.order === 'asc') {
         order = AttendanceOrder.ATTENDANCE_ORDER_ASC;
       }
@@ -111,7 +110,6 @@ export class ManualDecisionController {
       return {
         items: result.items.map((entry) => {
           let reviewer;
-
           if (entry.decision?.decidedByEmployeeId) {
             reviewer = profiles.get(entry.decision.decidedByEmployeeId);
           }
@@ -210,7 +208,6 @@ export class ManualDecisionController {
       const profiles = await this.profiles(ids, context);
 
       let reviewer;
-
       if (entry.decision?.decidedByEmployeeId) {
         reviewer = profiles.get(entry.decision.decidedByEmployeeId);
       }
@@ -325,7 +322,6 @@ export class ManualDecisionController {
 
       const reviewerId = result.decision?.decidedByEmployeeId;
       let reviewer;
-
       if (reviewerId) {
         reviewer = profiles.get(reviewerId);
       }

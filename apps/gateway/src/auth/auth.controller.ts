@@ -324,7 +324,6 @@ export class AuthController {
       new URL(this.config.get('APP_ORIGIN', { infer: true })).hostname,
     );
     let secure = '; Secure';
-
     if (localhost) {
       secure = '';
     }

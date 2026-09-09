@@ -37,7 +37,6 @@ export function attendanceFailure({
 
   if (code === status.PERMISSION_DENIED) {
     let detail = 'HRD access is required';
-
     if (regularAttendance) {
       detail = 'Employee access is required';
     }
@@ -73,7 +72,6 @@ export function attendanceFailure({
     const errorCode = backendErrorCode ?? 'EVIDENCE_INVALID';
     let httpStatus = 409;
     let detail = 'Evidence is not available';
-
     if (regularAttendance) {
       httpStatus = 422;
       detail = 'Attendance is not eligible';

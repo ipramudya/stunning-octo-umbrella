@@ -85,7 +85,6 @@ export class EvidenceController {
         let response: Observable<
           EvidenceUploadAuthorization | EvidenceAccessAuthorization
         >;
-
         if (operation === 'upload' && 'contentType' in body) {
           response = this.attendance.authorizeEvidenceUpload(
             body,

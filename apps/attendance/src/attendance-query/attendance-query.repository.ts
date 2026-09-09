@@ -44,7 +44,6 @@ export class AttendanceQueryRepository {
   ): Promise<AttendanceEntry | undefined> {
     return this.database.withConnection(async (connection) => {
       let employeeClause = '';
-
       if (employeeId) {
         employeeClause = ' AND employee_id = :employeeId';
       }
@@ -93,7 +92,6 @@ export class AttendanceQueryRepository {
 
     if (filters.cursor) {
       let operator = '<';
-
       if (filters.order === 'ASC') {
         operator = '>';
       }

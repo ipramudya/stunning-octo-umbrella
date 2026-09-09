@@ -89,7 +89,6 @@ export class EmployeeAdminService {
     const items = rows.slice(0, limit);
     const last = items.at(-1);
     let nextCursor;
-
     if (hasNextPage && last) {
       nextCursor = encodeCursor(last);
     }
@@ -175,13 +174,11 @@ export class EmployeeAdminService {
     }
 
     let fullName;
-
     if (changes.fullName !== undefined) {
       fullName = required(changes.fullName, 120);
     }
 
     let normalizedEmail;
-
     if (changes.email === null) {
       normalizedEmail = null;
     } else {
@@ -285,7 +282,6 @@ export class EmployeeAdminService {
     const conflict = await this.employees.conflict(input, excludeId);
 
     let grpcStatus = status.INVALID_ARGUMENT;
-
     if (conflict) {
       grpcStatus = status.ALREADY_EXISTS;
     }

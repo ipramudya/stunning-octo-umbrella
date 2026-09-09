@@ -39,7 +39,6 @@ const manualDecisionStatus: Record<ManualDecisionErrorCode, status> = {
 export class ManualDecisionError extends AttendanceError {
   constructor(code: ManualDecisionErrorCode) {
     let retryAfterSeconds;
-
     if (code === 'REQUEST_IN_PROGRESS') {
       retryAfterSeconds = 1;
     }
@@ -136,7 +135,6 @@ export class ManualDecisionService {
     const items = rows.slice(0, limit);
     const last = items.at(-1);
     let nextCursor;
-
     if (hasNextPage && last) {
       nextCursor = this.encodeCursor(last);
     }

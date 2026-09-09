@@ -79,7 +79,6 @@ export class EmployeeRepository {
       const escaped = query?.replace(/[\\%_]/g, '\\$&');
       let prefix = null;
       let contains = null;
-
       if (escaped) {
         const normalized = escaped.toUpperCase();
 

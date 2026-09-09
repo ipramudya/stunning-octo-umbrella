@@ -8,7 +8,6 @@ import { AuthError } from '../auth/auth-error.js';
 export class IdentityExceptionFilter implements RpcExceptionFilter {
   catch(error: unknown) {
     let failure: AuthError;
-
     if (error instanceof AuthError) {
       failure = error;
     } else {

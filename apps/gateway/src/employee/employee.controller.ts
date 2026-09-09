@@ -202,7 +202,6 @@ export class EmployeeController {
     const code = grpcErrorCode(error);
     let invalidCode = 'VALIDATION_ERROR';
     let invalidDetail = 'Request validation failed';
-
     if (code === 'INVALID_CURSOR') {
       invalidCode = code;
       invalidDetail = 'The cursor is invalid';
@@ -235,7 +234,6 @@ export class EmployeeController {
     };
     const codeFromGrpc = grpcCode(error);
     let mapped;
-
     if (codeFromGrpc !== undefined) {
       mapped = mappings[codeFromGrpc];
     }

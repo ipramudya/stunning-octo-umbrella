@@ -20,14 +20,12 @@ export class ProblemFilter implements ExceptionFilter {
     const reply = http.getResponse<FastifyReply>();
     let status = 500;
     let response;
-
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       response = exception.getResponse();
     }
 
     let supplied;
-
     if (isProblem(response)) {
       supplied = response;
     }
@@ -37,7 +35,6 @@ export class ProblemFilter implements ExceptionFilter {
     const title = STATUS_CODES[status] ?? 'Bad Request';
     const code = clientProblemCodes[status] ?? 'VALIDATION_ERROR';
     let problem: Problem;
-
     if (supplied) {
       problem = { ...supplied, status, instance: request.url, traceId };
     } else if (clientError) {

@@ -65,7 +65,6 @@ export function protoDate(value: unknown) {
   const seconds: unknown = Reflect.get(value, 'seconds');
   const nanos: unknown = Reflect.get(value, 'nanos');
   let numericSeconds = Number(seconds);
-
   if (typeof seconds === 'object' && seconds !== null) {
     numericSeconds =
       Number(Reflect.get(seconds, 'low')) +

@@ -132,7 +132,6 @@ composeExec(
 
 const tokenParts = internalToken.split('.');
 let replacement = 'A';
-
 if (tokenParts[2][0] === 'A') {
   replacement = 'B';
 }

@@ -23,7 +23,6 @@ const definition = loadSync(
 const identityPackage = loadPackageDefinition(definition).dexa.identity.v1;
 const IdentityService = identityPackage.IdentityService;
 let certificateAuthority = '/app/.local/pki/server-ca.crt';
-
 if (certificateName === 'gateway') {
   certificateAuthority = '/app/.local/pki/ca.crt';
 }

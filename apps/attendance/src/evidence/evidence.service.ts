@@ -54,7 +54,6 @@ export class EvidenceService
 
   private expectedMagic(contentType: string, bytes: Uint8Array) {
     let expected = [137, 80, 78, 71, 13, 10, 26, 10];
-
     if (contentType === 'image/jpeg') {
       expected = [0xff, 0xd8, 0xff];
     }

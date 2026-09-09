@@ -8,7 +8,6 @@ import type { Environment } from '../config/config-typedef.js';
 function client(endpoint: string, accessKey: string, secretKey: string) {
   const url = new URL(endpoint);
   let port = 80;
-
   if (url.protocol === 'https:') {
     port = 443;
   }

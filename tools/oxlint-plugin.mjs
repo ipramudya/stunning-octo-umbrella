@@ -46,18 +46,43 @@ function isAwaitedDeclaration(statement) {
   );
 }
 
+function isDeclarationAssignmentPair(previous, current) {
+  if (
+    previous.type !== 'VariableDeclaration' ||
+    current.type !== 'IfStatement' ||
+    current.consequent.type !== 'BlockStatement'
+  ) {
+    return false;
+  }
+
+  const names = new Set(
+    previous.declarations
+      .filter((declaration) => declaration.id.type === 'Identifier')
+      .map((declaration) => declaration.id.name),
+  );
+
+  return current.consequent.body.some(
+    (statement) =>
+      statement.type === 'ExpressionStatement' &&
+      statement.expression.type === 'AssignmentExpression' &&
+      statement.expression.left.type === 'Identifier' &&
+      names.has(statement.expression.left.name),
+  );
+}
+
 function needsLogicalPadding(previous, current) {
   return (
-    blockStatements.has(previous.type) ||
-    blockStatements.has(current.type) ||
-    isAwaitedDeclaration(previous) ||
-    isAwaitedDeclaration(current) ||
-    (previous.type === 'VariableDeclaration' &&
-      current.type !== 'VariableDeclaration') ||
-    (previous.type === 'ExpressionStatement' &&
-      current.type === 'VariableDeclaration') ||
-    current.type === 'ReturnStatement' ||
-    current.type === 'ThrowStatement'
+    !isDeclarationAssignmentPair(previous, current) &&
+    (blockStatements.has(previous.type) ||
+      blockStatements.has(current.type) ||
+      isAwaitedDeclaration(previous) ||
+      isAwaitedDeclaration(current) ||
+      (previous.type === 'VariableDeclaration' &&
+        current.type !== 'VariableDeclaration') ||
+      (previous.type === 'ExpressionStatement' &&
+        current.type === 'VariableDeclaration') ||
+      current.type === 'ReturnStatement' ||
+      current.type === 'ThrowStatement')
   );
 }
 
@@ -66,6 +91,8 @@ const paddingBetweenLogicalBlocks = {
     fixable: 'whitespace',
     messages: {
       missingPadding: 'Add a blank line between logical blocks.',
+      unexpectedPadding:
+        'Keep a declaration next to the conditional that assigns it.',
     },
   },
   create(context) {
@@ -74,10 +101,20 @@ const paddingBetweenLogicalBlocks = {
         const previous = statements[index - 1];
         const current = statements[index];
 
-        if (
-          needsLogicalPadding(previous, current) &&
-          current.loc.start.line - previous.loc.end.line < 2
-        ) {
+        const lineGap = current.loc.start.line - previous.loc.end.line;
+
+        if (isDeclarationAssignmentPair(previous, current) && lineGap > 1) {
+          context.report({
+            node: current,
+            messageId: 'unexpectedPadding',
+            fix(fixer) {
+              return fixer.replaceTextRange(
+                [previous.end, current.start],
+                `\n${' '.repeat(current.loc.start.column)}`,
+              );
+            },
+          });
+        } else if (needsLogicalPadding(previous, current) && lineGap < 2) {
           context.report({
             node: current,
             messageId: 'missingPadding',
@@ -98,6 +135,55 @@ const paddingBetweenLogicalBlocks = {
       },
       SwitchCase(node) {
         checkStatements(node.consequent);
+      },
+    };
+  },
+};
+
+function classMemberRank(member) {
+  if (
+    member.type === 'PropertyDefinition' ||
+    member.type === 'AccessorProperty' ||
+    member.type === 'StaticBlock'
+  ) {
+    return 0;
+  }
+
+  if (member.kind === 'constructor') {
+    return 1;
+  }
+
+  if (
+    member.accessibility === 'private' ||
+    member.key?.type === 'PrivateIdentifier'
+  ) {
+    return 3;
+  }
+
+  return 2;
+}
+
+const orderedClassMembers = {
+  meta: {
+    messages: {
+      invalidOrder:
+        'Order class members as fields, constructor, public methods, then private methods.',
+    },
+  },
+  create(context) {
+    return {
+      ClassBody(node) {
+        let highestRank = 0;
+
+        for (const member of node.body) {
+          const rank = classMemberRank(member);
+
+          if (rank < highestRank) {
+            context.report({ node: member, messageId: 'invalidOrder' });
+          } else {
+            highestRank = rank;
+          }
+        }
       },
     };
   },
@@ -132,6 +218,7 @@ export default {
   rules: {
     'max-if-condition-terms': maxIfConditionTerms,
     'no-conditional-object-spread': noConditionalObjectSpread,
+    'ordered-class-members': orderedClassMembers,
     'padding-between-logical-blocks': paddingBetweenLogicalBlocks,
   },
 };

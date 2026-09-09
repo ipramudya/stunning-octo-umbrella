@@ -283,7 +283,6 @@ export class SessionStore implements OnModuleDestroy {
     const client = await this.redis();
 
     let sha = this.scriptShas.get(script);
-
     if (!sha) {
       sha = await client.scriptLoad(script);
       this.scriptShas.set(script, sha);

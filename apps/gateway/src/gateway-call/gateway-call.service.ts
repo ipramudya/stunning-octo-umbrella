@@ -44,7 +44,6 @@ export class GatewayCallService {
 
     const idempotencyHeader = request.headers['idempotency-key'];
     let idempotencyKey: string | undefined;
-
     if (typeof idempotencyHeader === 'string') {
       idempotencyKey = idempotencyHeader;
     }
