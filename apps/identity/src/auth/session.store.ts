@@ -163,6 +163,10 @@ export class SessionStore implements OnModuleDestroy {
     return value;
   }
 
+  async ping() {
+    return (await this.redis()).ping();
+  }
+
   async create(employeeId: string, credentialVersion: number) {
     const token = SessionStore.refreshToken();
     const sid = randomUUID();

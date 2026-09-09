@@ -59,19 +59,7 @@ export class EvidenceService
   async onApplicationBootstrap() {
     await this.repository.removeExpiredUploads();
     await this.attendance.cleanupAttempts();
-    let complete = true;
-    for (const upload of await this.repository.finalizingUploads()) {
-      try {
-        await this.removePermanent(upload);
-        await this.repository.recover(upload);
-      } catch (error) {
-        complete = false;
-        this.logger.warn(
-          `evidence recovery deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-    this.recoveryComplete = complete;
+    this.recoveryComplete = await this.recoverFinalizingUploads();
     this.cleanupTimer ??= setInterval(
       () => void this.scheduledCleanup(),
       60 * 60 * 1_000,
@@ -90,6 +78,7 @@ export class EvidenceService
     try {
       await this.repository.removeExpiredUploads();
       await this.attendance.cleanupExpiredAttempts();
+      this.recoveryComplete = await this.recoverFinalizingUploads();
     } catch (error) {
       this.logger.warn(
         `scheduled cleanup deferred: ${error instanceof Error ? error.message : String(error)}`,
@@ -97,6 +86,22 @@ export class EvidenceService
     } finally {
       this.cleanupRunning = false;
     }
+  }
+
+  private async recoverFinalizingUploads() {
+    let complete = true;
+    for (const upload of await this.repository.finalizingUploads()) {
+      try {
+        await this.removePermanent(upload);
+        await this.repository.recover(upload);
+      } catch (error) {
+        complete = false;
+        this.logger.warn(
+          `evidence recovery deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return complete;
   }
 
   async authorizeUpload(

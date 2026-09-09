@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EvidenceUpload } from './evidence.entity.js';
 import { EvidenceError } from './evidence.service.js';
@@ -68,6 +68,8 @@ function subject() {
 }
 
 describe('EvidenceService', () => {
+  afterEach(() => vi.useRealTimers());
+
   it('cleans expired uploads when recovery starts', async () => {
     const { service, repository } = subject();
     await service.onApplicationBootstrap();
@@ -86,6 +88,30 @@ describe('EvidenceService', () => {
     await service.onApplicationBootstrap();
 
     expect(service.recoveryComplete).toBe(false);
+  });
+
+  it('becomes ready after deferred recovery succeeds', async () => {
+    vi.useFakeTimers();
+    const { service, repository, store } = subject();
+    const finalizing = {
+      ...upload,
+      status: 'FINALIZING' as const,
+      permanentKey: 'evidence/upload-1',
+    };
+    repository.finalizingUploads.mockResolvedValue([finalizing]);
+    store.stat.mockRejectedValue(new Error('minio unavailable'));
+    repository.recover
+      .mockRejectedValueOnce(new Error('oracle unavailable'))
+      .mockResolvedValueOnce(undefined);
+
+    await service.onApplicationBootstrap();
+    expect(service.recoveryComplete).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1_000);
+
+    expect(repository.recover).toHaveBeenCalledTimes(2);
+    expect(service.recoveryComplete).toBe(true);
+    service.onApplicationShutdown();
   });
 
   it('authorizes only bounded JPEG or PNG uploads', async () => {
