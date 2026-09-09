@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
-  "jsPlugins": ["./tools/oxlint-plugin.mjs"],
+  "jsPlugins": ["./packages/oxc/lint-plugin.mjs"],
   "categories": {
     "correctness": "error"
   },
