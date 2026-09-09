@@ -12,7 +12,7 @@ import {
 import { ATTENDANCE_PROTO_PATH, HEALTH_PROTO_PATH } from '@project/contracts';
 
 import { AppModule } from './app.module.js';
-import type { Environment } from './config.schema.js';
+import type { Environment } from './config/config-typedef.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(

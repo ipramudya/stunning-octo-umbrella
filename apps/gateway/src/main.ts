@@ -9,8 +9,8 @@ import {
 } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module.js';
-import type { Environment } from './config.schema.js';
-import { ProblemFilter } from './problem.filter.js';
+import type { Environment } from './config/config-typedef.js';
+import { ProblemFilter } from './problem/problem.filter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(

@@ -27,11 +27,16 @@ try {
       );
       existing = result.rows?.[0]?.[0];
     } catch (error) {
-      if (version !== '001' || error.errorNum !== 942) throw error;
+      if (version !== '001' || error.errorNum !== 942) {
+        throw error;
+      }
     }
-    if (existing && existing !== checksum)
+    if (existing && existing !== checksum) {
       throw new Error(`Migration checksum mismatch: ${file}`);
-    if (existing) continue;
+    }
+    if (existing) {
+      continue;
+    }
     await connection.execute(sql.trim());
     await connection.execute(
       'INSERT INTO schema_migrations (version, name, checksum) VALUES (:version, :name, :checksum)',

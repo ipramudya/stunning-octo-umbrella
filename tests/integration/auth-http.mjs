@@ -24,13 +24,16 @@ export function cookieHeader(jar) {
 }
 
 export function post(path, body, jar) {
+  const headers = { origin };
+  if (body !== undefined) {
+    headers['content-type'] = 'application/json';
+  }
+  if (jar) {
+    headers.cookie = cookieHeader(jar);
+  }
   return fetch(`${baseUrl}${path}`, {
     method: 'POST',
-    headers: {
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      origin,
-      ...(jar ? { cookie: cookieHeader(jar) } : {}),
-    },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }

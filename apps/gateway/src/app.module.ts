@@ -2,21 +2,25 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule } from '@nestjs/microservices';
 
-import { AttendanceHistoryController } from './attendance-history.controller.js';
-import { AttendanceZoneController } from './attendance-zone.controller.js';
-import { AuthController } from './auth.controller.js';
-import { environmentSchema, type Environment } from './config.schema.js';
-import { EmployeeController } from './employee.controller.js';
+import { AttendanceHistoryController } from './attendance-history/attendance-history.controller.js';
+import { AttendanceZoneController } from './attendance-zone/attendance-zone.controller.js';
+import { AuthController } from './auth/auth.controller.js';
+import {
+  environmentSchema,
+  type Environment,
+} from './config/config-typedef.js';
+import { EmployeeController } from './employee/employee.controller.js';
+import { GatewayCallService } from './gateway-call/gateway-call.service.js';
 import {
   ATTENDANCE_HEALTH_CLIENT,
   createHealthClientOptions,
   IDENTITY_HEALTH_CLIENT,
-} from './grpc-health.client.js';
-import { HealthController } from './health.controller.js';
-import { ManualAttendanceController } from './manual-attendance.controller.js';
-import { ManualDecisionController } from './manual-decision.controller.js';
-import { RateLimiter } from './rate-limiter.js';
-import { ReadinessService } from './readiness.js';
+} from './health/grpc-health.client.js';
+import { HealthController } from './health/health.controller.js';
+import { ReadinessService } from './health/readiness.js';
+import { ManualAttendanceController } from './manual-attendance/manual-attendance.controller.js';
+import { ManualDecisionController } from './manual-decision/manual-decision.controller.js';
+import { RateLimiter } from './rate-limit/rate-limiter.js';
 
 @Module({
   imports: [
@@ -64,6 +68,6 @@ import { ReadinessService } from './readiness.js';
     ManualAttendanceController,
     ManualDecisionController,
   ],
-  providers: [RateLimiter, ReadinessService],
+  providers: [GatewayCallService, RateLimiter, ReadinessService],
 })
 export class AppModule {}

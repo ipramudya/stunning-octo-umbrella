@@ -12,14 +12,19 @@ import {
 } from './auth-http.mjs';
 
 function zoneRequest(path, jar, method = 'GET', body) {
-  return fetch(`${baseUrl}${path}`, {
-    method,
-    headers: {
-      ...(jar ? { cookie: cookieHeader(jar) } : {}),
-      ...(body ? { 'content-type': 'application/json', origin } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  const headers = {};
+  if (jar) {
+    headers.cookie = cookieHeader(jar);
+  }
+  if (body) {
+    headers['content-type'] = 'application/json';
+    headers.origin = origin;
+  }
+  const options = { method, headers };
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  return fetch(`${baseUrl}${path}`, options);
 }
 
 const employee = cookieJar(

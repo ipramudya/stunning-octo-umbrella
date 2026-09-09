@@ -151,15 +151,19 @@ const hrd = cookieJar(
 );
 async function hrdRequest(path, options = {}) {
   const { method = 'GET', key, body } = options;
-  return fetch(`${baseUrl}/api/v1/hrd/attendance${path}`, {
-    method,
-    headers: {
-      cookie: cookieHeader(hrd),
-      ...(method === 'GET' ? {} : { origin, 'idempotency-key': key }),
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const headers = { cookie: cookieHeader(hrd) };
+  if (method !== 'GET') {
+    headers.origin = origin;
+    headers['idempotency-key'] = key;
+  }
+  if (body !== undefined) {
+    headers['content-type'] = 'application/json';
+  }
+  const request = { method, headers };
+  if (body !== undefined) {
+    request.body = JSON.stringify(body);
+  }
+  return fetch(`${baseUrl}/api/v1/hrd/attendance${path}`, request);
 }
 
 const pending = await hrdRequest('/manual?limit=1');

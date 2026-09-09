@@ -57,7 +57,9 @@ assert.equal(invalid.status, 401);
 
 clearRateLimits();
 const sessions = [];
-for (let index = 0; index < 5; index += 1) sessions.push(await login());
+for (let index = 0; index < 5; index += 1) {
+  sessions.push(await login());
+}
 clearRateLimits();
 sessions.push(await login());
 assert.equal((await me(sessions[0])).status, 401);

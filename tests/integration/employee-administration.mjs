@@ -13,15 +13,17 @@ const password = 'EmployeeInitial1!';
 const nextPassword = 'EmployeeChanged1!';
 
 function request(path, method, jar, body) {
-  const options = {
-    method,
-    headers: {
-      cookie: cookieHeader(jar),
-      ...(method === 'GET' ? {} : { origin }),
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-  };
-  if (body !== undefined) options.body = JSON.stringify(body);
+  const headers = { cookie: cookieHeader(jar) };
+  if (method !== 'GET') {
+    headers.origin = origin;
+  }
+  if (body !== undefined) {
+    headers['content-type'] = 'application/json';
+  }
+  const options = { method, headers };
+  if (body !== undefined) {
+    options.body = JSON.stringify(body);
+  }
   return fetch(`${baseUrl}${path}`, options);
 }
 

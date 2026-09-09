@@ -20,8 +20,9 @@ const accounts = [
   },
 ];
 
-if (accounts.some((account) => !account.password))
+if (accounts.some((account) => !account.password)) {
   throw new Error('Demo account passwords are required');
+}
 
 const connection = await oracledb.getConnection({
   user: process.env.ORACLE_USER,
@@ -36,10 +37,13 @@ try {
       { id: account.id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
-    if (existing.rows?.length) continue;
+    if (existing.rows?.length) {
+      continue;
+    }
 
-    if (!account.password)
+    if (!account.password) {
       throw new Error('Demo account passwords are required');
+    }
     const passwordHash = await hash(account.password, {
       type: 2,
       memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 19_456),

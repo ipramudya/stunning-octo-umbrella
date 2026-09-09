@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
+  "jsPlugins": ["./tools/oxlint-plugin.mjs"],
   "categories": {
     "correctness": "error"
   },
@@ -9,8 +10,12 @@
     "typeCheck": true
   },
   "rules": {
+    "eslint/curly": ["error", "all"],
     "eslint/max-params": ["error", 3],
     "eslint/no-console": "error",
+    "eslint/no-nested-ternary": "error",
+    "dexa/max-if-condition-terms": "error",
+    "dexa/no-conditional-object-spread": "error",
     "typescript/await-thenable": "error",
     "typescript/consistent-type-assertions": [
       "error",
@@ -54,7 +59,7 @@
       }
     },
     {
-      "files": ["apps/identity/src/identity.service.ts"],
+      "files": ["apps/identity/src/identity/identity.service.ts"],
       "rules": {
         "eslint/max-params": "off"
       }

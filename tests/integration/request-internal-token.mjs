@@ -6,7 +6,9 @@ import { loadSync } from '@grpc/proto-loader';
 const accessToken = process.argv[2];
 const certificateName = process.argv[3] ?? 'gateway';
 const audience = process.argv[4] ?? 'TOKEN_AUDIENCE_ATTENDANCE';
-if (!accessToken) throw new Error('Access token is required');
+if (!accessToken) {
+  throw new Error('Access token is required');
+}
 
 const definition = loadSync(
   '/app/packages/contracts/proto/dexa/identity/v1/identity.proto',
