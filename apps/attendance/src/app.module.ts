@@ -4,7 +4,12 @@ import { ConfigModule } from '@nestjs/config';
 import { AttendanceQueryRepository } from './attendance-query/attendance-query.repository.js';
 import { AttendanceQueryService } from './attendance-query/attendance-query.service.js';
 import { AttendanceZoneRepository } from './attendance-zone/attendance-zone.repository.js';
-import { AttendanceController } from './attendance/attendance.controller.js';
+import { AttendanceAuthorizationService } from './attendance/attendance-authorization.service.js';
+import { AttendanceDecisionController } from './attendance/attendance-decision.controller.js';
+import { AttendanceEvidenceController } from './attendance/attendance-evidence.controller.js';
+import { AttendanceQueryController } from './attendance/attendance-query.controller.js';
+import { AttendanceSubmissionController } from './attendance/attendance-submission.controller.js';
+import { AttendanceZoneController } from './attendance/attendance-zone.controller.js';
 import { environmentSchema } from './config/config-typedef.js';
 import { EvidenceStore } from './evidence/evidence-store.js';
 import { EvidenceRepository } from './evidence/evidence.repository.js';
@@ -29,8 +34,17 @@ import { RegularAttendanceService } from './regular-attendance/regular-attendanc
       validate: (config) => environmentSchema.parse(config),
     }),
   ],
-  controllers: [AttendanceController, GrpcHealthController, HealthController],
+  controllers: [
+    AttendanceDecisionController,
+    AttendanceEvidenceController,
+    AttendanceQueryController,
+    AttendanceSubmissionController,
+    AttendanceZoneController,
+    GrpcHealthController,
+    HealthController,
+  ],
   providers: [
+    AttendanceAuthorizationService,
     AttendanceQueryRepository,
     AttendanceQueryService,
     AttendanceZoneRepository,

@@ -11,10 +11,12 @@ export class AttendanceExceptionFilter implements RpcExceptionFilter {
     if (error instanceof RpcException) {
       return throwError(() => error.getError());
     }
-    const failure =
-      error instanceof AttendanceError
-        ? error
-        : new AttendanceError('INTERNAL_ERROR', status.UNKNOWN);
+    let failure: AttendanceError;
+    if (error instanceof AttendanceError) {
+      failure = error;
+    } else {
+      failure = new AttendanceError('INTERNAL_ERROR', status.UNKNOWN);
+    }
     const metadata = new Metadata();
     metadata.set('x-error-code', failure.code);
     if (failure.retryAfter !== undefined) {

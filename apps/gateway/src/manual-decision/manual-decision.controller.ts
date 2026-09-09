@@ -16,12 +16,7 @@ import {
 } from '@nestjs/common';
 import type { ClientGrpc } from '@nestjs/microservices';
 import {
-  type AttendanceEntry,
   AttendanceOrder,
-  AttendanceSource,
-  AttendanceStatus,
-  ClockType,
-  type EmployeeProfile,
   ManualAttendanceDecision,
   TokenAudience,
 } from '@project/contracts';
@@ -29,10 +24,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, takeUntil } from 'rxjs';
 
 import { attendanceEntryIdSchema } from '../attendance/attendance.dto.js';
-import {
-  attendanceStatusName,
-  timestampIso,
-} from '../attendance/attendance.helper.js';
+import { timestampIso } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import type { GatewayCallContext } from '../gateway-call/gateway-call.types.js';
 import type {
@@ -58,6 +50,13 @@ import {
   rejectManualAttendanceSchema,
   type RejectManualAttendanceDto,
 } from './manual-decision.dto.js';
+import {
+  attendanceEntryResponse,
+  attendanceSource,
+  attendanceStatus,
+  clockType,
+  requireProfile,
+} from './manual-decision.mapper.js';
 
 type CallContext = GatewayCallContext & {
   attendance: Metadata;
@@ -68,97 +67,6 @@ type CallContext = GatewayCallContext & {
 export class ManualDecisionController implements OnModuleInit {
   private identity!: IdentityGrpcClient;
   private attendance!: AttendanceGrpcClient;
-
-  private requireProfile(
-    profiles: Map<string, EmployeeProfile>,
-    employeeId: string,
-  ) {
-    const profile = profiles.get(employeeId);
-    if (!profile) {
-      throw new Error(`employee profile missing: ${employeeId}`);
-    }
-    return profile;
-  }
-
-  private person(value: EmployeeProfile) {
-    return {
-      id: value.id,
-      employeeNumber: value.employeeNumber,
-      fullName: value.fullName,
-    };
-  }
-
-  private attendanceSource(value: AttendanceListDto['source']) {
-    if (value === 'REGULAR') {
-      return AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
-    }
-    if (value === 'MANUAL') {
-      return AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
-    }
-  }
-
-  private attendanceStatus(value: AttendanceListDto['status']) {
-    if (value === 'PENDING_REVIEW') {
-      return AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW;
-    }
-    if (value === 'RECORDED') {
-      return AttendanceStatus.ATTENDANCE_STATUS_RECORDED;
-    }
-    if (value === 'REJECTED') {
-      return AttendanceStatus.ATTENDANCE_STATUS_REJECTED;
-    }
-  }
-
-  private clockType(value: AttendanceListDto['clockType']) {
-    if (value === 'CLOCK_IN') {
-      return ClockType.CLOCK_TYPE_CLOCK_IN;
-    }
-    if (value === 'CLOCK_OUT') {
-      return ClockType.CLOCK_TYPE_CLOCK_OUT;
-    }
-  }
-
-  private entryResponse(
-    entry: AttendanceEntry,
-    employee: EmployeeProfile,
-    reviewer?: EmployeeProfile,
-  ) {
-    return {
-      id: entry.id,
-      employeeId: entry.employeeId,
-      employee: this.person(employee),
-      workDate: entry.workDate,
-      clockType:
-        entry.clockType === ClockType.CLOCK_TYPE_CLOCK_IN
-          ? 'CLOCK_IN'
-          : 'CLOCK_OUT',
-      source:
-        entry.source === AttendanceSource.ATTENDANCE_SOURCE_MANUAL
-          ? 'MANUAL'
-          : 'REGULAR',
-      status: attendanceStatusName(entry.status),
-      occurredAt: entry.occurredAt ? timestampIso(entry.occurredAt) : null,
-      claimedAt: entry.claimedAt ? timestampIso(entry.claimedAt) : null,
-      submittedAt: timestampIso(entry.submittedAt),
-      location: {
-        address: entry.location?.address ?? null,
-        latitude: entry.location?.latitude ?? null,
-        longitude: entry.location?.longitude ?? null,
-        accuracyMeters: entry.location?.accuracyMeters ?? null,
-        distanceMeters: entry.location?.distanceMeters ?? null,
-      },
-      reason: entry.reason ?? null,
-      evidenceId: entry.evidenceId ?? null,
-      decision:
-        entry.decision && reviewer
-          ? {
-              decidedAt: timestampIso(entry.decision.decidedAt),
-              reviewer: this.person(reviewer),
-              reason: entry.decision.reason || null,
-            }
-          : null,
-    };
-  }
 
   constructor(
     @Inject(IDENTITY_HEALTH_CLIENT) private readonly identityGrpc: ClientGrpc,
@@ -182,18 +90,19 @@ export class ManualDecisionController implements OnModuleInit {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     return this.call(request, reply, false, async (context) => {
+      let order = AttendanceOrder.ATTENDANCE_ORDER_DESC;
+      if (query.order === 'asc') {
+        order = AttendanceOrder.ATTENDANCE_ORDER_ASC;
+      }
       const result = await firstValueFrom(
         this.attendance
           .listAttendance(
             {
               ...query,
-              source: this.attendanceSource(query.source),
-              status: this.attendanceStatus(query.status),
-              clockType: this.clockType(query.clockType),
-              order:
-                query.order === 'asc'
-                  ? AttendanceOrder.ATTENDANCE_ORDER_ASC
-                  : AttendanceOrder.ATTENDANCE_ORDER_DESC,
+              source: attendanceSource(query.source),
+              status: attendanceStatus(query.status),
+              clockType: clockType(query.clockType),
+              order,
             },
             context.attendance,
             context.options,
@@ -208,15 +117,17 @@ export class ManualDecisionController implements OnModuleInit {
         context,
       );
       return {
-        items: result.items.map((entry) =>
-          this.entryResponse(
+        items: result.items.map((entry) => {
+          let reviewer;
+          if (entry.decision?.decidedByEmployeeId) {
+            reviewer = profiles.get(entry.decision.decidedByEmployeeId);
+          }
+          return attendanceEntryResponse(
             entry,
-            this.requireProfile(profiles, entry.employeeId),
-            entry.decision?.decidedByEmployeeId
-              ? profiles.get(entry.decision.decidedByEmployeeId)
-              : undefined,
-          ),
-        ),
+            requireProfile(profiles, entry.employeeId),
+            reviewer,
+          );
+        }),
         pageInfo: {
           nextCursor: result.nextCursor || undefined,
           hasNextPage: result.hasNextPage,
@@ -248,9 +159,9 @@ export class ManualDecisionController implements OnModuleInit {
       );
       return {
         items: result.items.map((entry) =>
-          this.entryResponse(
+          attendanceEntryResponse(
             entry,
-            this.requireProfile(profiles, entry.employeeId),
+            requireProfile(profiles, entry.employeeId),
           ),
         ),
         pageInfo: {
@@ -275,9 +186,9 @@ export class ManualDecisionController implements OnModuleInit {
           .pipe(takeUntil(context.cancelled)),
       );
       const profiles = await this.profiles([entry.employeeId], context);
-      return this.entryResponse(
+      return attendanceEntryResponse(
         entry,
-        this.requireProfile(profiles, entry.employeeId),
+        requireProfile(profiles, entry.employeeId),
       );
     });
   }
@@ -296,12 +207,14 @@ export class ManualDecisionController implements OnModuleInit {
         ids.push(entry.decision.decidedByEmployeeId);
       }
       const profiles = await this.profiles(ids, context);
-      return this.entryResponse(
+      let reviewer;
+      if (entry.decision?.decidedByEmployeeId) {
+        reviewer = profiles.get(entry.decision.decidedByEmployeeId);
+      }
+      return attendanceEntryResponse(
         entry,
-        this.requireProfile(profiles, entry.employeeId),
-        entry.decision?.decidedByEmployeeId
-          ? profiles.get(entry.decision.decidedByEmployeeId)
-          : undefined,
+        requireProfile(profiles, entry.employeeId),
+        reviewer,
       );
     });
   }
@@ -402,10 +315,14 @@ export class ManualDecisionController implements OnModuleInit {
         context,
       );
       const reviewerId = result.decision?.decidedByEmployeeId;
-      return this.entryResponse(
+      let reviewer;
+      if (reviewerId) {
+        reviewer = profiles.get(reviewerId);
+      }
+      return attendanceEntryResponse(
         result,
-        this.requireProfile(profiles, result.employeeId),
-        reviewerId ? profiles.get(reviewerId) : undefined,
+        requireProfile(profiles, result.employeeId),
+        reviewer,
       );
     });
   }

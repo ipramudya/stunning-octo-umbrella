@@ -2,9 +2,10 @@ import { Metadata } from '@grpc/grpc-js';
 
 export function bearer(metadata: Metadata) {
   const value = metadata.get('authorization')[0];
-  return typeof value === 'string' && value.startsWith('Bearer ')
-    ? value.slice(7)
-    : '';
+  if (typeof value === 'string' && value.startsWith('Bearer ')) {
+    return value.slice(7);
+  }
+  return '';
 }
 
 export function grpcTimestamp(date: Date) {
@@ -23,20 +24,26 @@ export function grpcEntry<
     decision?: { decidedAt?: Date };
   },
 >(value: T) {
-  return {
-    ...value,
-    occurredAt: value.occurredAt ? grpcTimestamp(value.occurredAt) : undefined,
-    claimedAt: value.claimedAt ? grpcTimestamp(value.claimedAt) : undefined,
-    submittedAt: value.submittedAt
-      ? grpcTimestamp(value.submittedAt)
-      : undefined,
-    decision: value.decision?.decidedAt
-      ? {
-          ...value.decision,
-          decidedAt: grpcTimestamp(value.decision.decidedAt),
-        }
-      : undefined,
-  };
+  let occurredAt;
+  if (value.occurredAt) {
+    occurredAt = grpcTimestamp(value.occurredAt);
+  }
+  let claimedAt;
+  if (value.claimedAt) {
+    claimedAt = grpcTimestamp(value.claimedAt);
+  }
+  let submittedAt;
+  if (value.submittedAt) {
+    submittedAt = grpcTimestamp(value.submittedAt);
+  }
+  let decision;
+  if (value.decision?.decidedAt) {
+    decision = {
+      ...value.decision,
+      decidedAt: grpcTimestamp(value.decision.decidedAt),
+    };
+  }
+  return { ...value, occurredAt, claimedAt, submittedAt, decision };
 }
 
 export function protoDate(value: unknown) {
@@ -48,11 +55,12 @@ export function protoDate(value: unknown) {
   }
   const seconds: unknown = Reflect.get(value, 'seconds');
   const nanos: unknown = Reflect.get(value, 'nanos');
-  const numericSeconds =
-    typeof seconds === 'object' && seconds !== null
-      ? Number(Reflect.get(seconds, 'low')) +
-        Number(Reflect.get(seconds, 'high')) * 0x1_0000_0000
-      : Number(seconds);
+  let numericSeconds = Number(seconds);
+  if (typeof seconds === 'object' && seconds !== null) {
+    numericSeconds =
+      Number(Reflect.get(seconds, 'low')) +
+      Number(Reflect.get(seconds, 'high')) * 0x1_0000_0000;
+  }
   if (
     !Number.isFinite(numericSeconds) ||
     !Number.isFinite(Number(nanos ?? 0))

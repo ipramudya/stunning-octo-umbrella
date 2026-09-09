@@ -14,6 +14,7 @@
     "eslint/max-params": ["error", 3],
     "eslint/no-console": "error",
     "eslint/no-nested-ternary": "error",
+    "eslint/no-ternary": "error",
     "dexa/max-if-condition-terms": "error",
     "dexa/no-conditional-object-spread": "error",
     "typescript/await-thenable": "error",

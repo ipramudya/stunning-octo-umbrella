@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { STATUS_CODES } from 'node:http';
 
 import { status, Metadata } from '@grpc/grpc-js';
 import type { OnModuleInit } from '@nestjs/common';
@@ -26,6 +25,7 @@ import type { Environment } from '../config/config-typedef.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
 import { grpcCode } from '../grpc-client/grpc-error.js';
 import { IDENTITY_HEALTH_CLIENT } from '../health/grpc-health.client.js';
+import { fail } from '../problem/problem.js';
 import {
   RateLimiter,
   RateLimitError,
@@ -311,7 +311,11 @@ export class AuthController implements OnModuleInit {
     const localhost = ['localhost', '127.0.0.1'].includes(
       new URL(this.config.get('APP_ORIGIN', { infer: true })).hostname,
     );
-    return `${name}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${localhost ? '' : '; Secure'}`;
+    let secure = '; Secure';
+    if (localhost) {
+      secure = '';
+    }
+    return `${name}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secure}`;
   }
 
   private grpcFailure({
@@ -330,17 +334,19 @@ export class AuthController implements OnModuleInit {
     }
     const codeFromGrpc = grpcCode(error);
     if (codeFromGrpc === status.UNAUTHENTICATED) {
-      const code =
-        operation === 'login'
-          ? 'INVALID_CREDENTIALS'
-          : 'AUTHENTICATION_REQUIRED';
+      if (operation === 'login') {
+        this.fail({
+          statusCode: 401,
+          code: 'INVALID_CREDENTIALS',
+          detail: 'Phone number or password is incorrect',
+          request,
+          traceId,
+        });
+      }
       this.fail({
         statusCode: 401,
-        code,
-        detail:
-          operation === 'login'
-            ? 'Phone number or password is incorrect'
-            : 'Authentication is required',
+        code: 'AUTHENTICATION_REQUIRED',
+        detail: 'Authentication is required',
         request,
         traceId,
       });
@@ -394,17 +400,6 @@ export class AuthController implements OnModuleInit {
     request: FastifyRequest;
     traceId: string;
   }): never {
-    throw new HttpException(
-      {
-        type: 'about:blank',
-        title: STATUS_CODES[statusCode] ?? 'Internal Server Error',
-        status: statusCode,
-        detail,
-        instance: request.url,
-        code,
-        traceId,
-      },
-      statusCode,
-    );
+    fail(statusCode, code, detail, request, traceId);
   }
 }
