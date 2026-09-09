@@ -47,7 +47,10 @@ export const LoginForm = () => {
 
   return (
     <CenteredPage>
-      <section className="max-w-xs" aria-labelledby="login-title">
+      <section
+        className="mx-auto w-full max-w-sm"
+        aria-labelledby="login-title"
+      >
         <h1
           id="login-title"
           className="text-2xl leading-tight font-semibold tracking-tight text-balance"
