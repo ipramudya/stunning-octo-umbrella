@@ -38,30 +38,6 @@ import {
 
 @Controller({ version: '1' })
 export class ManualAttendanceController {
-  private attendanceResponse(entry: AttendanceEntry) {
-    return {
-      id: entry.id,
-      employeeId: entry.employeeId,
-      workDate: entry.workDate,
-      clockType: clockTypeName(entry.clockType),
-      source: attendanceSourceName(entry.source),
-      status: attendanceStatusName(entry.status),
-      occurredAt: optionalTimestampIso(entry.occurredAt),
-      claimedAt: optionalTimestampIso(entry.claimedAt),
-      submittedAt: timestampIso(entry.submittedAt),
-      location: {
-        address: entry.location?.address ?? null,
-        latitude: entry.location?.latitude ?? null,
-        longitude: entry.location?.longitude ?? null,
-        accuracyMeters: entry.location?.accuracyMeters ?? null,
-        distanceMeters: entry.location?.distanceMeters ?? null,
-      },
-      reason: entry.reason ?? null,
-      evidenceId: entry.evidenceId ?? null,
-      decision: entry.decision ?? null,
-    };
-  }
-
   constructor(
     @Inject(ATTENDANCE_CLIENT)
     private readonly attendance: AttendanceGrpcClient,
@@ -104,6 +80,30 @@ export class ManualAttendanceController {
       failure: (error, traceId) =>
         this.grpcFailure(error, request, reply, traceId),
     });
+  }
+
+  private attendanceResponse(entry: AttendanceEntry) {
+    return {
+      id: entry.id,
+      employeeId: entry.employeeId,
+      workDate: entry.workDate,
+      clockType: clockTypeName(entry.clockType),
+      source: attendanceSourceName(entry.source),
+      status: attendanceStatusName(entry.status),
+      occurredAt: optionalTimestampIso(entry.occurredAt),
+      claimedAt: optionalTimestampIso(entry.claimedAt),
+      submittedAt: timestampIso(entry.submittedAt),
+      location: {
+        address: entry.location?.address ?? null,
+        latitude: entry.location?.latitude ?? null,
+        longitude: entry.location?.longitude ?? null,
+        accuracyMeters: entry.location?.accuracyMeters ?? null,
+        distanceMeters: entry.location?.distanceMeters ?? null,
+      },
+      reason: entry.reason ?? null,
+      evidenceId: entry.evidenceId ?? null,
+      decision: entry.decision ?? null,
+    };
   }
 
   private grpcFailure(

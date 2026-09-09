@@ -26,6 +26,7 @@ type HealthGrpcService = {
 @Injectable()
 export class ReadinessService implements OnModuleInit {
   private attendance!: HealthGrpcService;
+
   private identity!: HealthGrpcService;
 
   constructor(

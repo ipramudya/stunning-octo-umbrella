@@ -51,75 +51,6 @@ type Cursor = { submittedAt: Date; id: string };
 
 @Injectable()
 export class ManualDecisionService {
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-  }
-
-  private decodeCursor(value: string | undefined): Cursor | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    try {
-      const parsed: unknown = JSON.parse(
-        Buffer.from(value, 'base64url').toString('utf8'),
-      );
-
-      if (!this.isRecord(parsed)) {
-        throw new Error('invalid cursor');
-      }
-
-      const { v, endpoint, submittedAt, id } = parsed;
-      const hasExpectedMetadata =
-        v === 1 && endpoint === 'pending-manual-attendance';
-      const hasExpectedFields =
-        typeof submittedAt === 'string' && typeof id === 'string';
-      const hasExpectedShape =
-        Object.keys(parsed).sort().join(',') === 'endpoint,id,submittedAt,v';
-
-      if (!hasExpectedMetadata || !hasExpectedFields || !hasExpectedShape) {
-        throw new Error('invalid cursor');
-      }
-
-      const date = new Date(submittedAt);
-
-      if (Number.isNaN(date.getTime())) {
-        throw new Error('invalid cursor');
-      }
-
-      return { submittedAt: date, id };
-    } catch {
-      throw new ManualDecisionError('INVALID_CURSOR');
-    }
-  }
-
-  private encodeCursor(value: { submittedAt?: Date; id: string }) {
-    if (!value.submittedAt) {
-      throw new Error('attendance timestamp missing');
-    }
-
-    return Buffer.from(
-      JSON.stringify({
-        v: 1,
-        endpoint: 'pending-manual-attendance',
-        submittedAt: value.submittedAt.toISOString(),
-        id: value.id,
-      }),
-    ).toString('base64url');
-  }
-
-  private requestHash(request: DecideManualAttendanceRequest) {
-    return createHash('sha256')
-      .update(
-        JSON.stringify({
-          entryId: request.entryId,
-          decision: request.decision,
-          reason: request.reason ?? null,
-        }),
-      )
-      .digest('hex');
-  }
-
   constructor(private readonly repository: ManualDecisionRepository) {}
 
   async list(cursor: string | undefined, requestedLimit: number) {
@@ -219,5 +150,74 @@ export class ManualDecisionService {
 
       throw error;
     }
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  private decodeCursor(value: string | undefined): Cursor | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(
+        Buffer.from(value, 'base64url').toString('utf8'),
+      );
+
+      if (!this.isRecord(parsed)) {
+        throw new Error('invalid cursor');
+      }
+
+      const { v, endpoint, submittedAt, id } = parsed;
+      const hasExpectedMetadata =
+        v === 1 && endpoint === 'pending-manual-attendance';
+      const hasExpectedFields =
+        typeof submittedAt === 'string' && typeof id === 'string';
+      const hasExpectedShape =
+        Object.keys(parsed).sort().join(',') === 'endpoint,id,submittedAt,v';
+
+      if (!hasExpectedMetadata || !hasExpectedFields || !hasExpectedShape) {
+        throw new Error('invalid cursor');
+      }
+
+      const date = new Date(submittedAt);
+
+      if (Number.isNaN(date.getTime())) {
+        throw new Error('invalid cursor');
+      }
+
+      return { submittedAt: date, id };
+    } catch {
+      throw new ManualDecisionError('INVALID_CURSOR');
+    }
+  }
+
+  private encodeCursor(value: { submittedAt?: Date; id: string }) {
+    if (!value.submittedAt) {
+      throw new Error('attendance timestamp missing');
+    }
+
+    return Buffer.from(
+      JSON.stringify({
+        v: 1,
+        endpoint: 'pending-manual-attendance',
+        submittedAt: value.submittedAt.toISOString(),
+        id: value.id,
+      }),
+    ).toString('base64url');
+  }
+
+  private requestHash(request: DecideManualAttendanceRequest) {
+    return createHash('sha256')
+      .update(
+        JSON.stringify({
+          entryId: request.entryId,
+          decision: request.decision,
+          reason: request.reason ?? null,
+        }),
+      )
+      .digest('hex');
   }
 }

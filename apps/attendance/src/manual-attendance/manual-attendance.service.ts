@@ -26,27 +26,6 @@ function errorMessage(error: unknown) {
 
 @Injectable()
 export class ManualAttendanceService implements OnApplicationBootstrap {
-  private requestHash(
-    employeeId: string,
-    request: CreateManualAttendanceRequest,
-  ) {
-    return createHash('sha256')
-      .update(
-        JSON.stringify({
-          employeeId,
-          clockType: request.clockType,
-          workDate: request.workDate,
-          claimedAt: request.claimedAt?.toISOString(),
-          address: request.address,
-          latitude: request.latitude,
-          longitude: request.longitude,
-          reason: request.reason,
-          evidenceUploadId: request.evidenceUploadId,
-        }),
-      )
-      .digest('hex');
-  }
-
   private readonly logger = new Logger(ManualAttendanceService.name);
 
   constructor(
@@ -156,5 +135,26 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
 
       throw error;
     }
+  }
+
+  private requestHash(
+    employeeId: string,
+    request: CreateManualAttendanceRequest,
+  ) {
+    return createHash('sha256')
+      .update(
+        JSON.stringify({
+          employeeId,
+          clockType: request.clockType,
+          workDate: request.workDate,
+          claimedAt: request.claimedAt?.toISOString(),
+          address: request.address,
+          latitude: request.latitude,
+          longitude: request.longitude,
+          reason: request.reason,
+          evidenceUploadId: request.evidenceUploadId,
+        }),
+      )
+      .digest('hex');
   }
 }

@@ -29,7 +29,9 @@ function client(endpoint: string, accessKey: string, secretKey: string) {
 @Injectable()
 export class EvidenceStore implements OnModuleInit {
   readonly bucket: string;
+
   private readonly internal: Client;
+
   private readonly public: Client;
 
   constructor(config: ConfigService<Environment, true>) {

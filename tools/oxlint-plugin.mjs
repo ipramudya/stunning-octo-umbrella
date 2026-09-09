@@ -96,6 +96,23 @@ const paddingBetweenLogicalBlocks = {
     },
   },
   create(context) {
+    function checkClassMembers(members) {
+      for (let index = 1; index < members.length; index += 1) {
+        const previous = members[index - 1];
+        const current = members[index];
+
+        if (current.loc.start.line - previous.loc.end.line < 2) {
+          context.report({
+            node: current,
+            messageId: 'missingPadding',
+            fix(fixer) {
+              return fixer.insertTextAfter(previous, '\n');
+            },
+          });
+        }
+      }
+    }
+
     function checkStatements(statements) {
       for (let index = 1; index < statements.length; index += 1) {
         const previous = statements[index - 1];
@@ -129,6 +146,9 @@ const paddingBetweenLogicalBlocks = {
     return {
       BlockStatement(node) {
         checkStatements(node.body);
+      },
+      ClassBody(node) {
+        checkClassMembers(node.body);
       },
       Program(node) {
         checkStatements(node.body);

@@ -94,7 +94,9 @@ const employeePrefix = 'identity:employee-sessions:';
 @Injectable()
 export class SessionStore implements OnModuleDestroy {
   private readonly client: RedisClientType;
+
   private connection?: Promise<RedisClientType>;
+
   private readonly scriptShas = new Map<string, string>();
 
   constructor(private readonly config: ConfigService<Environment, true>) {
@@ -106,67 +108,6 @@ export class SessionStore implements OnModuleDestroy {
       disableOfflineQueue: true,
     });
     this.client.on('error', () => undefined);
-  }
-
-  private redis() {
-    this.connection ??= this.client.connect().then(() => this.client);
-
-    return this.connection;
-  }
-
-  private static digest(token: string) {
-    return createHash('sha256').update(token).digest('base64url');
-  }
-
-  private static refreshToken() {
-    return randomBytes(32).toString('base64url');
-  }
-
-  private static isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-  }
-
-  private static parseSession(json: string): Session {
-    const value: unknown = JSON.parse(json);
-
-    if (!SessionStore.isRecord(value)) {
-      throw new Error('invalid session');
-    }
-
-    const {
-      employeeId,
-      credentialVersion,
-      createdAt,
-      expiresAt,
-      refreshDigest,
-    } = value;
-    const hasIdentity =
-      typeof employeeId === 'string' && typeof credentialVersion === 'number';
-    const hasTimestamps =
-      typeof createdAt === 'number' && typeof expiresAt === 'number';
-
-    if (!hasIdentity || !hasTimestamps || typeof refreshDigest !== 'string') {
-      throw new Error('invalid session');
-    }
-
-    return {
-      employeeId,
-      credentialVersion,
-      createdAt,
-      expiresAt,
-      refreshDigest,
-    };
-  }
-
-  private static stringArray(value: unknown) {
-    if (
-      !Array.isArray(value) ||
-      !value.every((item) => typeof item === 'string')
-    ) {
-      throw new Error('invalid Redis response');
-    }
-
-    return value;
   }
 
   async ping() {
@@ -276,6 +217,73 @@ export class SessionStore implements OnModuleDestroy {
     });
   }
 
+  async onModuleDestroy() {
+    if (this.connection) {
+      await this.client.close();
+    }
+  }
+
+  private redis() {
+    this.connection ??= this.client.connect().then(() => this.client);
+
+    return this.connection;
+  }
+
+  private static digest(token: string) {
+    return createHash('sha256').update(token).digest('base64url');
+  }
+
+  private static refreshToken() {
+    return randomBytes(32).toString('base64url');
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  private static parseSession(json: string): Session {
+    const value: unknown = JSON.parse(json);
+
+    if (!SessionStore.isRecord(value)) {
+      throw new Error('invalid session');
+    }
+
+    const {
+      employeeId,
+      credentialVersion,
+      createdAt,
+      expiresAt,
+      refreshDigest,
+    } = value;
+    const hasIdentity =
+      typeof employeeId === 'string' && typeof credentialVersion === 'number';
+    const hasTimestamps =
+      typeof createdAt === 'number' && typeof expiresAt === 'number';
+
+    if (!hasIdentity || !hasTimestamps || typeof refreshDigest !== 'string') {
+      throw new Error('invalid session');
+    }
+
+    return {
+      employeeId,
+      credentialVersion,
+      createdAt,
+      expiresAt,
+      refreshDigest,
+    };
+  }
+
+  private static stringArray(value: unknown) {
+    if (
+      !Array.isArray(value) ||
+      !value.every((item) => typeof item === 'string')
+    ) {
+      throw new Error('invalid Redis response');
+    }
+
+    return value;
+  }
+
   private async mutate(
     script: string,
     options: { keys?: string[]; arguments: string[] },
@@ -299,12 +307,6 @@ export class SessionStore implements OnModuleDestroy {
       this.scriptShas.set(script, sha);
 
       return client.evalSha(sha, options);
-    }
-  }
-
-  async onModuleDestroy() {
-    if (this.connection) {
-      await this.client.close();
     }
   }
 }

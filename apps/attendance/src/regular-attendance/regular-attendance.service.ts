@@ -39,6 +39,7 @@ function errorMessage(error: unknown) {
 @Injectable()
 export class RegularAttendanceService {
   private readonly logger = new Logger(RegularAttendanceService.name);
+
   private readonly maximumAccuracy: number;
 
   constructor(

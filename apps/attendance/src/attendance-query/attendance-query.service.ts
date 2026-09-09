@@ -23,47 +23,6 @@ import { attendanceCursorSchema } from './attendance-query.schema.js';
 
 @Injectable()
 export class AttendanceQueryService {
-  private fail(
-    code: AttendanceQueryErrorCode,
-    grpcStatus = status.INVALID_ARGUMENT,
-  ): never {
-    throw new AttendanceQueryError(code, grpcStatus);
-  }
-
-  private nextMonth(month: string) {
-    const date = new Date(`${month}-01T00:00:00.000Z`);
-
-    date.setUTCMonth(date.getUTCMonth() + 1);
-
-    return date.toISOString().slice(0, 10);
-  }
-
-  private decodeCursor(value?: string): AttendanceCursor | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    try {
-      const cursor = attendanceCursorSchema.parse(
-        JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
-      );
-
-      return { ...cursor, submittedAt: new Date(cursor.submittedAt) };
-    } catch {
-      this.fail('INVALID_CURSOR');
-    }
-  }
-
-  private encodeCursor(entry: AttendanceEntry) {
-    return Buffer.from(
-      JSON.stringify({
-        workDate: entry.workDate,
-        submittedAt: entry.submittedAt,
-        id: entry.id,
-      }),
-    ).toString('base64url');
-  }
-
   constructor(private readonly repository: AttendanceQueryRepository) {}
 
   async listEmployee(employeeId: string, month: string) {
@@ -173,5 +132,46 @@ export class AttendanceQueryService {
     }
 
     return entry;
+  }
+
+  private fail(
+    code: AttendanceQueryErrorCode,
+    grpcStatus = status.INVALID_ARGUMENT,
+  ): never {
+    throw new AttendanceQueryError(code, grpcStatus);
+  }
+
+  private nextMonth(month: string) {
+    const date = new Date(`${month}-01T00:00:00.000Z`);
+
+    date.setUTCMonth(date.getUTCMonth() + 1);
+
+    return date.toISOString().slice(0, 10);
+  }
+
+  private decodeCursor(value?: string): AttendanceCursor | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    try {
+      const cursor = attendanceCursorSchema.parse(
+        JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
+      );
+
+      return { ...cursor, submittedAt: new Date(cursor.submittedAt) };
+    } catch {
+      this.fail('INVALID_CURSOR');
+    }
+  }
+
+  private encodeCursor(entry: AttendanceEntry) {
+    return Buffer.from(
+      JSON.stringify({
+        workDate: entry.workDate,
+        submittedAt: entry.submittedAt,
+        id: entry.id,
+      }),
+    ).toString('base64url');
   }
 }

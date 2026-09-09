@@ -17,6 +17,7 @@ import { bearer } from './attendance.helper.js';
 @Injectable()
 export class AttendanceAuthorizationService {
   private readonly issuer: string;
+
   private readonly publicKey: string;
 
   constructor(config: ConfigService<Environment, true>) {

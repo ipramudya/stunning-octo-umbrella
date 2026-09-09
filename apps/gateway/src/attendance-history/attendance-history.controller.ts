@@ -33,36 +33,6 @@ import {
 
 @Controller({ path: 'me/attendance', version: '1' })
 export class AttendanceHistoryController {
-  private response(entry: AttendanceEntry) {
-    return {
-      id: entry.id,
-      employeeId: entry.employeeId,
-      workDate: entry.workDate,
-      clockType: clockTypeName(entry.clockType),
-      source: attendanceSourceName(entry.source),
-      status: attendanceStatusName(entry.status),
-      occurredAt: optionalTimestampIso(entry.occurredAt),
-      claimedAt: optionalTimestampIso(entry.claimedAt),
-      submittedAt: timestampIso(entry.submittedAt),
-      location: entry.location,
-      reason: entry.reason ?? null,
-      evidenceId: entry.evidenceId ?? null,
-      decision: this.decision(entry),
-    };
-  }
-
-  private decision(entry: AttendanceEntry) {
-    if (!entry.decision?.decidedByEmployeeId) {
-      return null;
-    }
-
-    return {
-      decidedByEmployeeId: entry.decision.decidedByEmployeeId,
-      decidedAt: timestampIso(entry.decision.decidedAt),
-      reason: entry.decision.reason || null,
-    };
-  }
-
   constructor(
     @Inject(ATTENDANCE_CLIENT)
     private readonly attendance: AttendanceGrpcClient,
@@ -99,6 +69,36 @@ export class AttendanceHistoryController {
         this.attendance.getEmployeeAttendance({ entryId }, metadata, options),
       ),
     );
+  }
+
+  private response(entry: AttendanceEntry) {
+    return {
+      id: entry.id,
+      employeeId: entry.employeeId,
+      workDate: entry.workDate,
+      clockType: clockTypeName(entry.clockType),
+      source: attendanceSourceName(entry.source),
+      status: attendanceStatusName(entry.status),
+      occurredAt: optionalTimestampIso(entry.occurredAt),
+      claimedAt: optionalTimestampIso(entry.claimedAt),
+      submittedAt: timestampIso(entry.submittedAt),
+      location: entry.location,
+      reason: entry.reason ?? null,
+      evidenceId: entry.evidenceId ?? null,
+      decision: this.decision(entry),
+    };
+  }
+
+  private decision(entry: AttendanceEntry) {
+    if (!entry.decision?.decidedByEmployeeId) {
+      return null;
+    }
+
+    return {
+      decidedByEmployeeId: entry.decision.decidedByEmployeeId,
+      decidedAt: timestampIso(entry.decision.decidedAt),
+      reason: entry.decision.reason || null,
+    };
   }
 
   private async call<T>(

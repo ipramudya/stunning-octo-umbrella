@@ -21,14 +21,6 @@ import { audienceNames } from './identity.constant.js';
 export class IdentityAuthService {
   private dummyHash?: Promise<string>;
 
-  private async passwordMatches(passwordHash: string, password: string) {
-    try {
-      return await verify(passwordHash, password);
-    } catch {
-      return false;
-    }
-  }
-
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly employees: EmployeeRepository,
@@ -166,6 +158,14 @@ export class IdentityAuthService {
     );
 
     return { profile: profile(employee), sessionId: claims.sid, tokens };
+  }
+
+  private async passwordMatches(passwordHash: string, password: string) {
+    try {
+      return await verify(passwordHash, password);
+    } catch {
+      return false;
+    }
   }
 
   private async credentials(

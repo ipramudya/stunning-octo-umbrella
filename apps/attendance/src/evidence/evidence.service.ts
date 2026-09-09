@@ -49,25 +49,10 @@ export class EvidenceService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   recoveryComplete = false;
+
   private cleanupTimer?: NodeJS.Timeout;
+
   private cleanupRunning = false;
-
-  private expectedMagic(contentType: string, bytes: Uint8Array) {
-    let expected = [137, 80, 78, 71, 13, 10, 26, 10];
-    if (contentType === 'image/jpeg') {
-      expected = [0xff, 0xd8, 0xff];
-    }
-
-    return expected.every((byte, index) => bytes[index] === byte);
-  }
-
-  private objectVersion(stat: { versionId?: string | null }) {
-    if (!stat.versionId) {
-      throw new EvidenceError('EVIDENCE_INVALID');
-    }
-
-    return stat.versionId;
-  }
 
   private readonly logger = new Logger(EvidenceService.name);
 
@@ -89,52 +74,6 @@ export class EvidenceService
 
   onApplicationShutdown() {
     clearInterval(this.cleanupTimer);
-  }
-
-  private async scheduledCleanup() {
-    if (this.cleanupRunning) {
-      return;
-    }
-
-    this.cleanupRunning = true;
-
-    try {
-      await this.repository.removeExpiredUploads();
-      await this.attendance.cleanupExpiredAttempts();
-      this.recoveryComplete = await this.recoverFinalizingUploads();
-    } catch (error) {
-      this.logger.warn(
-        `scheduled cleanup deferred: ${this.errorMessage(error)}`,
-      );
-    } finally {
-      this.cleanupRunning = false;
-    }
-  }
-
-  private async recoverFinalizingUploads() {
-    let complete = true;
-
-    for (const upload of await this.repository.finalizingUploads()) {
-      try {
-        await this.removePermanent(upload);
-        await this.repository.recover(upload);
-      } catch (error) {
-        complete = false;
-        this.logger.warn(
-          `evidence recovery deferred for ${upload.id}: ${this.errorMessage(error)}`,
-        );
-      }
-    }
-
-    return complete;
-  }
-
-  private errorMessage(error: unknown) {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return String(error);
   }
 
   async authorizeUpload(
@@ -335,6 +274,69 @@ export class EvidenceService
     await this.cleanup(current);
 
     return uploadId;
+  }
+
+  private expectedMagic(contentType: string, bytes: Uint8Array) {
+    let expected = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (contentType === 'image/jpeg') {
+      expected = [0xff, 0xd8, 0xff];
+    }
+
+    return expected.every((byte, index) => bytes[index] === byte);
+  }
+
+  private objectVersion(stat: { versionId?: string | null }) {
+    if (!stat.versionId) {
+      throw new EvidenceError('EVIDENCE_INVALID');
+    }
+
+    return stat.versionId;
+  }
+
+  private async scheduledCleanup() {
+    if (this.cleanupRunning) {
+      return;
+    }
+
+    this.cleanupRunning = true;
+
+    try {
+      await this.repository.removeExpiredUploads();
+      await this.attendance.cleanupExpiredAttempts();
+      this.recoveryComplete = await this.recoverFinalizingUploads();
+    } catch (error) {
+      this.logger.warn(
+        `scheduled cleanup deferred: ${this.errorMessage(error)}`,
+      );
+    } finally {
+      this.cleanupRunning = false;
+    }
+  }
+
+  private async recoverFinalizingUploads() {
+    let complete = true;
+
+    for (const upload of await this.repository.finalizingUploads()) {
+      try {
+        await this.removePermanent(upload);
+        await this.repository.recover(upload);
+      } catch (error) {
+        complete = false;
+        this.logger.warn(
+          `evidence recovery deferred for ${upload.id}: ${this.errorMessage(error)}`,
+        );
+      }
+    }
+
+    return complete;
+  }
+
+  private errorMessage(error: unknown) {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 
   private async prepareUpload(connection: Connection, upload: EvidenceUpload) {

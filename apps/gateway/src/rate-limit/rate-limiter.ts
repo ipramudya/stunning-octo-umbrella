@@ -29,7 +29,9 @@ export function rateKey(value: string) {
 @Injectable()
 export class RateLimiter implements OnModuleDestroy {
   private readonly client: RedisClientType;
+
   private connection?: Promise<RedisClientType>;
+
   private scriptSha?: string;
 
   constructor(config: ConfigService<Environment, true>) {
@@ -85,6 +87,12 @@ export class RateLimiter implements OnModuleDestroy {
     }
   }
 
+  async onModuleDestroy() {
+    if (this.connection) {
+      await this.client.close();
+    }
+  }
+
   private async sha(client: RedisClientType) {
     return (this.scriptSha ??= await client.scriptLoad(FIXED_WINDOW));
   }
@@ -93,11 +101,5 @@ export class RateLimiter implements OnModuleDestroy {
     this.connection ??= this.client.connect().then(() => this.client);
 
     return this.connection;
-  }
-
-  async onModuleDestroy() {
-    if (this.connection) {
-      await this.client.close();
-    }
   }
 }

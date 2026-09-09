@@ -96,7 +96,9 @@ async function assertToken({
 @Injectable()
 export class TokenService {
   private readonly issuer: string;
+
   private readonly privateKey: Promise<CryptoKey>;
+
   private readonly publicKey: Promise<CryptoKey>;
 
   constructor(config: ConfigService<Environment, true>) {
