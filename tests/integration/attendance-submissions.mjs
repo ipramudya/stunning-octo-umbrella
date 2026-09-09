@@ -22,11 +22,11 @@ assert.equal(profile.status, 200);
 const employeeId = (await profile.json()).id;
 const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-async function uploadEvidence() {
+async function uploadEvidence(jar = employee) {
   const authorization = await fetch(`${baseUrl}/api/v1/me/evidence-uploads`, {
     method: 'POST',
     headers: {
-      cookie: cookieHeader(employee),
+      cookie: cookieHeader(jar),
       'content-type': 'application/json',
       origin,
     },
@@ -115,13 +115,17 @@ const manual = {
   reason: 'Missed the regular attendance window.',
   evidenceUploadId: manualUploadId,
 };
-async function submitManual(body) {
+async function submitManual(
+  body,
+  key = 'manual-attendance-check',
+  jar = employee,
+) {
   return fetch(`${baseUrl}/api/v1/me/attendance/manual`, {
     method: 'POST',
     headers: {
-      cookie: cookieHeader(employee),
+      cookie: cookieHeader(jar),
       'content-type': 'application/json',
-      'idempotency-key': 'manual-attendance-check',
+      'idempotency-key': key,
       origin,
     },
     body: JSON.stringify(body),
@@ -139,4 +143,114 @@ assert.equal(
   409,
 );
 
-console.log('Attendance submission integration check passed.');
+const hrd = cookieJar(
+  await post('/api/v1/auth/login', {
+    phoneNumber: '+6280000000001',
+    password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
+  }),
+);
+async function hrdRequest(path, options = {}) {
+  const { method = 'GET', key, body } = options;
+  return fetch(`${baseUrl}/api/v1/hrd/attendance${path}`, {
+    method,
+    headers: {
+      cookie: cookieHeader(hrd),
+      ...(method === 'GET' ? {} : { origin, 'idempotency-key': key }),
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+const pending = await hrdRequest('?limit=1');
+assert.equal(pending.status, 200);
+const pendingBody = await pending.json();
+assert.equal(pendingBody.items.length, 1);
+assert.equal(pendingBody.items[0].id, createdBody.id);
+assert.equal(pendingBody.items[0].employee.id, employeeId);
+const detail = await hrdRequest(`/${createdBody.id}`);
+assert.equal(detail.status, 200);
+assert.equal((await detail.json()).evidenceId, manualUploadId);
+const evidenceAccess = await fetch(
+  `${baseUrl}/api/v1/evidence/${manualUploadId}/access`,
+  {
+    method: 'POST',
+    headers: { cookie: cookieHeader(hrd), origin },
+  },
+);
+assert.equal(evidenceAccess.status, 200);
+
+const approved = await hrdRequest(`/${createdBody.id}/approve`, {
+  method: 'POST',
+  key: 'approve-manual-attendance',
+});
+assert.equal(approved.status, 200);
+const approvedBody = await approved.json();
+assert.equal(approvedBody.status, 'RECORDED');
+assert.equal(approvedBody.occurredAt, manual.claimedAt);
+assert.equal(
+  approvedBody.decision.reviewer.id,
+  '00000000-0000-4000-8000-000000000001',
+);
+const approvalReplay = await hrdRequest(`/${createdBody.id}/approve`, {
+  method: 'POST',
+  key: 'approve-manual-attendance',
+});
+assert.equal(approvalReplay.status, 200);
+assert.deepEqual(await approvalReplay.json(), approvedBody);
+assert.equal(
+  (
+    await hrdRequest(`/${createdBody.id}/reject`, {
+      method: 'POST',
+      key: 'reject-approved-attendance',
+      body: { reason: 'Too late.' },
+    })
+  ).status,
+  409,
+);
+
+const clockOutManual = {
+  ...manual,
+  clockType: 'CLOCK_OUT',
+  claimedAt: `${workDate}T10:00:00.000Z`,
+  evidenceUploadId: await uploadEvidence(),
+};
+const clockOutCreated = await submitManual(
+  clockOutManual,
+  'manual-clock-out-check',
+);
+assert.equal(clockOutCreated.status, 201);
+const clockOutBody = await clockOutCreated.json();
+const rejected = await hrdRequest(`/${clockOutBody.id}/reject`, {
+  method: 'POST',
+  key: 'reject-manual-attendance',
+  body: { reason: ' Evidence does not match. ' },
+});
+assert.equal(rejected.status, 200);
+const rejectedBody = await rejected.json();
+assert.equal(rejectedBody.status, 'REJECTED');
+assert.equal(rejectedBody.decision.reason, 'Evidence does not match.');
+
+const hrdWorkDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jakarta',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date(Date.now() - 2 * 86_400_000));
+const ownManual = {
+  ...manual,
+  workDate: hrdWorkDate,
+  claimedAt: `${hrdWorkDate}T05:00:00.000Z`,
+  evidenceUploadId: await uploadEvidence(hrd),
+};
+const ownCreated = await submitManual(ownManual, 'hrd-own-manual', hrd);
+assert.equal(ownCreated.status, 201);
+const ownBody = await ownCreated.json();
+const selfDecision = await hrdRequest(`/${ownBody.id}/approve`, {
+  method: 'POST',
+  key: 'self-approve-manual',
+});
+assert.equal(selfDecision.status, 403);
+assert.equal((await selfDecision.json()).code, 'SELF_APPROVAL_FORBIDDEN');
+
+console.log('Attendance submission and decision integration check passed.');

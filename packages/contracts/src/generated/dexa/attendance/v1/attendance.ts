@@ -146,6 +146,45 @@ export function attendanceStatusToJSON(object: AttendanceStatus): string {
   }
 }
 
+export enum ManualAttendanceDecision {
+  MANUAL_ATTENDANCE_DECISION_UNSPECIFIED = 0,
+  MANUAL_ATTENDANCE_DECISION_APPROVE = 1,
+  MANUAL_ATTENDANCE_DECISION_REJECT = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function manualAttendanceDecisionFromJSON(object: any): ManualAttendanceDecision {
+  switch (object) {
+    case 0:
+    case "MANUAL_ATTENDANCE_DECISION_UNSPECIFIED":
+      return ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_UNSPECIFIED;
+    case 1:
+    case "MANUAL_ATTENDANCE_DECISION_APPROVE":
+      return ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE;
+    case 2:
+    case "MANUAL_ATTENDANCE_DECISION_REJECT":
+      return ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_REJECT;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ManualAttendanceDecision.UNRECOGNIZED;
+  }
+}
+
+export function manualAttendanceDecisionToJSON(object: ManualAttendanceDecision): string {
+  switch (object) {
+    case ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_UNSPECIFIED:
+      return "MANUAL_ATTENDANCE_DECISION_UNSPECIFIED";
+    case ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE:
+      return "MANUAL_ATTENDANCE_DECISION_APPROVE";
+    case ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_REJECT:
+      return "MANUAL_ATTENDANCE_DECISION_REJECT";
+    case ManualAttendanceDecision.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface AuthorizeEvidenceUploadRequest {
   contentType: string;
   sizeBytes: number;
@@ -221,6 +260,27 @@ export interface AttendanceEntry {
   evidenceId?: string | undefined;
   decision?: AttendanceDecision | undefined;
   idempotentReplay: boolean;
+}
+
+export interface ListPendingManualAttendanceRequest {
+  cursor?: string | undefined;
+  limit: number;
+}
+
+export interface ListPendingManualAttendanceResponse {
+  items: AttendanceEntry[];
+  nextCursor?: string | undefined;
+  hasNextPage: boolean;
+}
+
+export interface GetManualAttendanceRequest {
+  entryId: string;
+}
+
+export interface DecideManualAttendanceRequest {
+  entryId: string;
+  decision: ManualAttendanceDecision;
+  reason?: string | undefined;
 }
 
 export interface AttendanceZone {
@@ -1681,6 +1741,378 @@ export const AttendanceEntry: MessageFns<AttendanceEntry> = {
   },
 };
 
+function createBaseListPendingManualAttendanceRequest(): ListPendingManualAttendanceRequest {
+  return { cursor: undefined, limit: 0 };
+}
+
+export const ListPendingManualAttendanceRequest: MessageFns<ListPendingManualAttendanceRequest> = {
+  encode(message: ListPendingManualAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.cursor !== undefined) {
+      writer.uint32(10).string(message.cursor);
+    }
+    if (message.limit !== 0) {
+      writer.uint32(16).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPendingManualAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListPendingManualAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.cursor = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.limit = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListPendingManualAttendanceRequest {
+    return {
+      cursor: isSet(object.cursor) ? globalThis.String(object.cursor) : undefined,
+      limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0,
+    };
+  },
+
+  toJSON(message: ListPendingManualAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.cursor !== undefined) {
+      obj.cursor = message.cursor;
+    }
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListPendingManualAttendanceRequest>): ListPendingManualAttendanceRequest {
+    return ListPendingManualAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListPendingManualAttendanceRequest>): ListPendingManualAttendanceRequest {
+    const message = createBaseListPendingManualAttendanceRequest();
+    message.cursor = object.cursor ?? undefined;
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseListPendingManualAttendanceResponse(): ListPendingManualAttendanceResponse {
+  return { items: [], nextCursor: undefined, hasNextPage: false };
+}
+
+export const ListPendingManualAttendanceResponse: MessageFns<ListPendingManualAttendanceResponse> = {
+  encode(message: ListPendingManualAttendanceResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      AttendanceEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.nextCursor !== undefined) {
+      writer.uint32(18).string(message.nextCursor);
+    }
+    if (message.hasNextPage !== false) {
+      writer.uint32(24).bool(message.hasNextPage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPendingManualAttendanceResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseListPendingManualAttendanceResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.items.push(AttendanceEntry.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.nextCursor = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.hasNextPage = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): ListPendingManualAttendanceResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => AttendanceEntry.fromJSON(e)) : [],
+      nextCursor: isSet(object.nextCursor)
+        ? globalThis.String(object.nextCursor)
+        : isSet(object.next_cursor)
+        ? globalThis.String(object.next_cursor)
+        : undefined,
+      hasNextPage: isSet(object.hasNextPage)
+        ? globalThis.Boolean(object.hasNextPage)
+        : isSet(object.has_next_page)
+        ? globalThis.Boolean(object.has_next_page)
+        : false,
+    };
+  },
+
+  toJSON(message: ListPendingManualAttendanceResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => AttendanceEntry.toJSON(e));
+    }
+    if (message.nextCursor !== undefined) {
+      obj.nextCursor = message.nextCursor;
+    }
+    if (message.hasNextPage !== false) {
+      obj.hasNextPage = message.hasNextPage;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListPendingManualAttendanceResponse>): ListPendingManualAttendanceResponse {
+    return ListPendingManualAttendanceResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListPendingManualAttendanceResponse>): ListPendingManualAttendanceResponse {
+    const message = createBaseListPendingManualAttendanceResponse();
+    message.items = object.items?.map((e) => AttendanceEntry.fromPartial(e)) || [];
+    message.nextCursor = object.nextCursor ?? undefined;
+    message.hasNextPage = object.hasNextPage ?? false;
+    return message;
+  },
+};
+
+function createBaseGetManualAttendanceRequest(): GetManualAttendanceRequest {
+  return { entryId: "" };
+}
+
+export const GetManualAttendanceRequest: MessageFns<GetManualAttendanceRequest> = {
+  encode(message: GetManualAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.entryId !== "") {
+      writer.uint32(10).string(message.entryId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetManualAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetManualAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.entryId = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): GetManualAttendanceRequest {
+    return {
+      entryId: isSet(object.entryId)
+        ? globalThis.String(object.entryId)
+        : isSet(object.entry_id)
+        ? globalThis.String(object.entry_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetManualAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.entryId !== "") {
+      obj.entryId = message.entryId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetManualAttendanceRequest>): GetManualAttendanceRequest {
+    return GetManualAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetManualAttendanceRequest>): GetManualAttendanceRequest {
+    const message = createBaseGetManualAttendanceRequest();
+    message.entryId = object.entryId ?? "";
+    return message;
+  },
+};
+
+function createBaseDecideManualAttendanceRequest(): DecideManualAttendanceRequest {
+  return { entryId: "", decision: 0, reason: undefined };
+}
+
+export const DecideManualAttendanceRequest: MessageFns<DecideManualAttendanceRequest> = {
+  encode(message: DecideManualAttendanceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.entryId !== "") {
+      writer.uint32(10).string(message.entryId);
+    }
+    if (message.decision !== 0) {
+      writer.uint32(16).int32(message.decision);
+    }
+    if (message.reason !== undefined) {
+      writer.uint32(26).string(message.reason);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DecideManualAttendanceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseDecideManualAttendanceRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.entryId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.decision = reader.int32() as any;
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.reason = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): DecideManualAttendanceRequest {
+    return {
+      entryId: isSet(object.entryId)
+        ? globalThis.String(object.entryId)
+        : isSet(object.entry_id)
+        ? globalThis.String(object.entry_id)
+        : "",
+      decision: isSet(object.decision) ? manualAttendanceDecisionFromJSON(object.decision) : 0,
+      reason: isSet(object.reason) ? globalThis.String(object.reason) : undefined,
+    };
+  },
+
+  toJSON(message: DecideManualAttendanceRequest): unknown {
+    const obj: any = {};
+    if (message.entryId !== "") {
+      obj.entryId = message.entryId;
+    }
+    if (message.decision !== 0) {
+      obj.decision = manualAttendanceDecisionToJSON(message.decision);
+    }
+    if (message.reason !== undefined) {
+      obj.reason = message.reason;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DecideManualAttendanceRequest>): DecideManualAttendanceRequest {
+    return DecideManualAttendanceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DecideManualAttendanceRequest>): DecideManualAttendanceRequest {
+    const message = createBaseDecideManualAttendanceRequest();
+    message.entryId = object.entryId ?? "";
+    message.decision = object.decision ?? 0;
+    message.reason = object.reason ?? undefined;
+    return message;
+  },
+};
+
 function createBaseAttendanceZone(): AttendanceZone {
   return { name: "", address: "", latitude: 0, longitude: 0, radiusMeters: 0, active: false };
 }
@@ -2050,6 +2482,39 @@ export const AttendanceServiceService = {
     responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
     responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
   },
+  listPendingManualAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/ListPendingManualAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ListPendingManualAttendanceRequest): Buffer =>
+      Buffer.from(ListPendingManualAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListPendingManualAttendanceRequest =>
+      ListPendingManualAttendanceRequest.decode(value),
+    responseSerialize: (value: ListPendingManualAttendanceResponse): Buffer =>
+      Buffer.from(ListPendingManualAttendanceResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListPendingManualAttendanceResponse =>
+      ListPendingManualAttendanceResponse.decode(value),
+  },
+  getManualAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/GetManualAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: GetManualAttendanceRequest): Buffer =>
+      Buffer.from(GetManualAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetManualAttendanceRequest => GetManualAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
+  decideManualAttendance: {
+    path: "/dexa.attendance.v1.AttendanceService/DecideManualAttendance" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: DecideManualAttendanceRequest): Buffer =>
+      Buffer.from(DecideManualAttendanceRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): DecideManualAttendanceRequest => DecideManualAttendanceRequest.decode(value),
+    responseSerialize: (value: AttendanceEntry): Buffer => Buffer.from(AttendanceEntry.encode(value).finish()),
+    responseDeserialize: (value: Buffer): AttendanceEntry => AttendanceEntry.decode(value),
+  },
 } as const;
 
 export interface AttendanceServiceServer extends UntypedServiceImplementation {
@@ -2059,6 +2524,9 @@ export interface AttendanceServiceServer extends UntypedServiceImplementation {
   authorizeEvidenceAccess: handleUnaryCall<AuthorizeEvidenceAccessRequest, EvidenceAccessAuthorization>;
   createRegularAttendance: handleUnaryCall<CreateRegularAttendanceRequest, AttendanceEntry>;
   createManualAttendance: handleUnaryCall<CreateManualAttendanceRequest, AttendanceEntry>;
+  listPendingManualAttendance: handleUnaryCall<ListPendingManualAttendanceRequest, ListPendingManualAttendanceResponse>;
+  getManualAttendance: handleUnaryCall<GetManualAttendanceRequest, AttendanceEntry>;
+  decideManualAttendance: handleUnaryCall<DecideManualAttendanceRequest, AttendanceEntry>;
 }
 
 export interface AttendanceServiceClient extends Client {
@@ -2148,6 +2616,51 @@ export interface AttendanceServiceClient extends Client {
   ): ClientUnaryCall;
   createManualAttendance(
     request: CreateManualAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  listPendingManualAttendance(
+    request: ListPendingManualAttendanceRequest,
+    callback: (error: ServiceError | null, response: ListPendingManualAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listPendingManualAttendance(
+    request: ListPendingManualAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ListPendingManualAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  listPendingManualAttendance(
+    request: ListPendingManualAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ListPendingManualAttendanceResponse) => void,
+  ): ClientUnaryCall;
+  getManualAttendance(
+    request: GetManualAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getManualAttendance(
+    request: GetManualAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  getManualAttendance(
+    request: GetManualAttendanceRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  decideManualAttendance(
+    request: DecideManualAttendanceRequest,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  decideManualAttendance(
+    request: DecideManualAttendanceRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: AttendanceEntry) => void,
+  ): ClientUnaryCall;
+  decideManualAttendance(
+    request: DecideManualAttendanceRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: AttendanceEntry) => void,

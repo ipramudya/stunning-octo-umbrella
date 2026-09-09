@@ -13,6 +13,9 @@ import {
   ClockType,
   type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
+  type DecideManualAttendanceRequest,
+  type GetManualAttendanceRequest,
+  type ListPendingManualAttendanceRequest,
   type UpdateAttendanceZoneRequest,
 } from '@project/contracts';
 import { z } from 'zod';
@@ -26,6 +29,10 @@ import {
   ManualAttendanceService,
 } from './manual-attendance.service.js';
 import {
+  ManualDecisionError,
+  ManualDecisionService,
+} from './manual-decision.service.js';
+import {
   RegularAttendanceError,
   RegularAttendanceService,
 } from './regular-attendance.service.js';
@@ -37,7 +44,7 @@ const regularSchema = z.object({
   ]),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  accuracyMeters: z.number().finite(),
+  accuracyMeters: z.number(),
   evidenceUploadId: z.uuid(),
 });
 
@@ -72,6 +79,34 @@ function grpcTimestamp(date: Date) {
   };
 }
 
+function grpcEntry<
+  T extends {
+    occurredAt?: Date;
+    claimedAt?: Date;
+    submittedAt?: Date;
+    decision?: { decidedAt?: Date };
+  },
+>(value: T) {
+  return {
+    ...value,
+    ...(value.occurredAt
+      ? { occurredAt: grpcTimestamp(value.occurredAt) }
+      : {}),
+    ...(value.claimedAt ? { claimedAt: grpcTimestamp(value.claimedAt) } : {}),
+    ...(value.submittedAt
+      ? { submittedAt: grpcTimestamp(value.submittedAt) }
+      : {}),
+    ...(value.decision?.decidedAt
+      ? {
+          decision: {
+            ...value.decision,
+            decidedAt: grpcTimestamp(value.decision.decidedAt),
+          },
+        }
+      : {}),
+  };
+}
+
 function protoDate(value: unknown) {
   if (value instanceof Date) return value;
   if (typeof value !== 'object' || value === null) return undefined;
@@ -98,7 +133,7 @@ const manualSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   reason: z.string().trim().min(1).max(1000),
-  evidenceUploadId: z.string().uuid(),
+  evidenceUploadId: z.uuid(),
 });
 
 function evidenceStatus(code: string) {
@@ -114,6 +149,29 @@ function evidenceFailure(error: unknown): never {
       ? status.NOT_FOUND
       : evidenceStatus(error.code);
   failure(code, error.code);
+}
+
+function manualDecisionFailure(error: unknown): never {
+  if (!(error instanceof ManualDecisionError)) throw error;
+  switch (error.code) {
+    case 'VALIDATION_ERROR':
+    case 'INVALID_CURSOR':
+      failure(status.INVALID_ARGUMENT, error.code);
+    case 'ATTENDANCE_ENTRY_NOT_FOUND':
+      failure(status.NOT_FOUND, error.code);
+    case 'SELF_APPROVAL_FORBIDDEN':
+      failure(status.PERMISSION_DENIED, error.code);
+    case 'IDEMPOTENCY_KEY_REUSED':
+    case 'ENTRY_NOT_PENDING_REVIEW':
+      failure(status.ALREADY_EXISTS, error.code);
+    case 'REQUEST_IN_PROGRESS':
+      failure(status.ABORTED, error.code, 1);
+    case 'CLOCK_IN_REQUIRED':
+    case 'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN':
+      failure(status.FAILED_PRECONDITION, error.code);
+    default:
+      throw error;
+  }
 }
 
 function regularFailure(error: unknown): never {
@@ -150,6 +208,7 @@ export class AttendanceController {
     private readonly evidence: EvidenceService,
     private readonly regularAttendance: RegularAttendanceService,
     private readonly manualAttendance: ManualAttendanceService,
+    private readonly manualDecisions: ManualDecisionService,
     config: ConfigService<Environment, true>,
   ) {
     this.issuer = config.get('JWT_ISSUER', { infer: true });
@@ -282,6 +341,57 @@ export class AttendanceController {
         default:
           failure(status.FAILED_PRECONDITION, error.code);
       }
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'ListPendingManualAttendance')
+  async listPendingManualAttendance(
+    request: ListPendingManualAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    await this.authorize(metadata, ['HRD']);
+    try {
+      const result = await this.manualDecisions.list(
+        request.cursor,
+        request.limit,
+      );
+      return { ...result, items: result.items.map(grpcEntry) };
+    } catch (error) {
+      manualDecisionFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'GetManualAttendance')
+  async getManualAttendance(
+    request: GetManualAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    await this.authorize(metadata, ['HRD']);
+    try {
+      return grpcEntry(await this.manualDecisions.get(request.entryId));
+    } catch (error) {
+      manualDecisionFailure(error);
+    }
+  }
+
+  @GrpcMethod('AttendanceService', 'DecideManualAttendance')
+  async decideManualAttendance(
+    request: DecideManualAttendanceRequest,
+    metadata: Metadata,
+  ) {
+    const claims = await this.authorize(metadata, ['HRD']);
+    const key = metadata.get('idempotency-key')[0];
+    if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+      failure(status.INVALID_ARGUMENT, 'IDEMPOTENCY_KEY_REQUIRED');
+    try {
+      const result = await this.manualDecisions.decide(
+        claims.sub,
+        key,
+        request,
+      );
+      return grpcEntry({ ...result.entry, idempotentReplay: result.replay });
+    } catch (error) {
+      manualDecisionFailure(error);
     }
   }
 

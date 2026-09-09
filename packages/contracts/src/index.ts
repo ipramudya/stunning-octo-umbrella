@@ -15,7 +15,12 @@ export {
   ClockType,
   type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
+  type DecideManualAttendanceRequest,
   type EvidenceAccessAuthorization,
+  type GetManualAttendanceRequest,
+  type ListPendingManualAttendanceRequest,
+  type ListPendingManualAttendanceResponse,
+  ManualAttendanceDecision,
   type EvidenceUploadAuthorization,
   type UpdateAttendanceZoneRequest,
 } from './generated/dexa/attendance/v1/attendance.js';
