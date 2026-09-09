@@ -22,18 +22,22 @@ async function bootstrap() {
       trustProxy: false,
     }),
   );
+
   const config = app.get(ConfigService<Environment, true>);
+
   app.useGlobalFilters(new ProblemFilter());
   app.enableVersioning({ type: VersioningType.URI, prefix: 'api/v' });
   await app.register(helmet);
   app
     .getHttpAdapter()
     .getInstance()
-    .addHook('onRequest', (request) => {
+    .addHook('onRequest', async (request) => {
       const hasBody =
-        request.headers['content-length'] !== undefined ||
+        (request.headers['content-length'] !== undefined &&
+          request.headers['content-length'] !== '0') ||
         request.headers['transfer-encoding'] !== undefined;
       const contentType = request.headers['content-type']?.split(';', 1)[0];
+
       if (
         request.url.startsWith('/api/v1/') &&
         hasBody &&

@@ -27,6 +27,7 @@ describe('AuthController', () => {
       request,
       reply,
     );
+
     await expect(response).rejects.toBeInstanceOf(HttpException);
     await expect(response).rejects.toSatisfy(
       (error: HttpException) => error.getStatus() === 403,

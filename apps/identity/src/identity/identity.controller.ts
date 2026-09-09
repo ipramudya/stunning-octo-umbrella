@@ -46,6 +46,7 @@ export class IdentityController {
   @GrpcMethod('IdentityService', 'LogoutSession')
   async logoutSession(request: LogoutSessionRequest): Promise<Empty> {
     await this.auth.revoke(request.refreshToken);
+
     return {};
   }
 
@@ -97,14 +98,17 @@ export class IdentityController {
     metadata: Metadata = new Metadata(),
   ): Promise<EmployeeProfile> {
     const update: { fullName?: string; email?: string | null } = {};
+
     if (request.fullName !== undefined) {
       update.fullName = request.fullName;
     }
+
     if (request.clearEmail) {
       update.email = null;
     } else if (request.email !== undefined) {
       update.email = request.email;
     }
+
     return this.employees.updateProfile(
       this.authorization(metadata),
       request.employeeId,
@@ -134,6 +138,7 @@ export class IdentityController {
       request.employeeId,
       request.password,
     );
+
     return {};
   }
 
@@ -147,9 +152,11 @@ export class IdentityController {
 
   private authorization(metadata: Metadata) {
     const value = metadata.get('authorization')[0];
+
     if (typeof value === 'string' && value.startsWith('Bearer ')) {
       return value.slice(7);
     }
+
     return '';
   }
 }

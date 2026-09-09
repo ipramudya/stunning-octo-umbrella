@@ -8,11 +8,14 @@ async function problem(response, status, code) {
     response.headers.get('content-type') ?? '',
     /^application\/problem\+json/,
   );
+
   const value = await response.json();
+
   assert.equal(value.code, code);
   assert.equal(value.status, status);
   assert.ok(value.traceId);
   assert.equal(JSON.stringify(value).includes('grpc'), false);
+
   return value;
 }
 
@@ -20,22 +23,29 @@ const employeeLogin = await post('/api/v1/auth/login', {
   phoneNumber: '  +6280000000002  ',
   password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
 });
+
 assert.equal(employeeLogin.status, 200);
 assert.match(
   employeeLogin.headers.get('x-correlation-id') ?? '',
   /^[0-9a-f-]{36}$/,
 );
+
 const employee = await employeeLogin.json();
+
 assert.deepEqual(employee.roles, ['EMPLOYEE']);
 assert.equal(employee.phoneNumber, '+6280000000002');
+
 let jar = cookieJar(employeeLogin);
+
 assert.ok(jar.dexa_access && jar.dexa_refresh);
+
 for (const setCookie of employeeLogin.headers.getSetCookie()) {
   assert.match(setCookie, /HttpOnly/);
   assert.match(setCookie, /SameSite=Strict/);
 }
 
 const current = await me(jar);
+
 assert.equal(current.status, 200);
 assert.equal((await current.json()).id, employee.id);
 
@@ -48,6 +58,7 @@ const internalToken = composeExec(
   ],
   { encoding: 'utf8' },
 ).trim();
+
 assert.ok(internalToken);
 assert.throws(() =>
   composeExec(
@@ -64,7 +75,7 @@ assert.throws(() =>
 
 const roleCheck = `
 import { readFileSync } from 'node:fs';
-import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
+import { verifyInternalAccess } from './apps/attendance/dist/auth/internal-token.js';
 try {
   await verifyInternalAccess({ token: process.env.TOKEN, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity', requiredRoles: ['HRD'] });
   process.exit(1);
@@ -72,6 +83,7 @@ try {
   if (error.message !== 'forbidden') throw error;
 }
 `;
+
 composeExec(
   [
     '-e',
@@ -98,12 +110,13 @@ const identityToken = composeExec(
 ).trim();
 const audienceCheck = `
 import { readFileSync } from 'node:fs';
-import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
+import { verifyInternalAccess } from './apps/attendance/dist/auth/internal-token.js';
 try {
   await verifyInternalAccess({ token: process.env.TOKEN, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity' });
   process.exit(1);
 } catch {}
 `;
+
 composeExec(
   [
     '-e',
@@ -119,10 +132,13 @@ composeExec(
 
 const tokenParts = internalToken.split('.');
 let replacement = 'A';
+
 if (tokenParts[2][0] === 'A') {
   replacement = 'B';
 }
+
 tokenParts[2] = `${replacement}${tokenParts[2].slice(1)}`;
+
 const invalidToken = tokenParts.join('.');
 const expiredToken = composeExec(
   [
@@ -148,7 +164,7 @@ console.log(await new SignJWT({ sid: 'expired', roles: ['EMPLOYEE'] })
 ).trim();
 const rejectedTokenCheck = `
 import { readFileSync } from 'node:fs';
-import { verifyInternalAccess } from './apps/attendance/dist/internal-token.js';
+import { verifyInternalAccess } from './apps/attendance/dist/auth/internal-token.js';
 for (const token of [process.env.INVALID_TOKEN, process.env.EXPIRED_TOKEN]) {
   try {
     await verifyInternalAccess({ token, publicKeyPem: readFileSync('/app/.local/pki/identity-signing.pub', 'utf8'), issuer: 'dexa-identity' });
@@ -156,6 +172,7 @@ for (const token of [process.env.INVALID_TOKEN, process.env.EXPIRED_TOKEN]) {
   } catch {}
 }
 `;
+
 composeExec(
   [
     '-e',
@@ -172,7 +189,9 @@ composeExec(
 );
 
 const oldRefresh = jar.dexa_refresh;
+
 const refreshed = await post('/api/v1/auth/refresh', {}, jar);
+
 assert.equal(refreshed.status, 204);
 jar = { ...jar, ...cookieJar(refreshed) };
 assert.notEqual(jar.dexa_refresh, oldRefresh);
@@ -187,8 +206,11 @@ const staleLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000002',
   password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
 });
+
 assert.equal(staleLogin.status, 200);
+
 const staleJar = cookieJar(staleLogin);
+
 composeExec(
   [
     'oracle',
@@ -212,6 +234,7 @@ const wrongPassword = await problem(
   401,
   'INVALID_CREDENTIALS',
 );
+
 const unknownPhone = await problem(
   await post('/api/v1/auth/login', {
     phoneNumber: '+6280999999999',
@@ -220,12 +243,14 @@ const unknownPhone = await problem(
   401,
   'INVALID_CREDENTIALS',
 );
+
 assert.equal(wrongPassword.detail, unknownPhone.detail);
 
 const hrdLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000001',
   password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
 });
+
 assert.equal(hrdLogin.status, 200);
 assert.deepEqual((await hrdLogin.json()).roles, ['EMPLOYEE', 'HRD']);
 

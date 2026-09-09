@@ -5,9 +5,11 @@ export function cookies(request: FastifyRequest) {
   return Object.fromEntries(
     (request.headers.cookie ?? '').split(';').flatMap((part) => {
       const index = part.indexOf('=');
+
       if (index < 0) {
         return [];
       }
+
       return [[part.slice(0, index).trim(), part.slice(index + 1)]];
     }),
   );
@@ -17,6 +19,7 @@ export function publicProfile(value: EmployeeProfile | undefined) {
   if (!value) {
     throw new Error('missing profile');
   }
+
   return {
     id: value.id,
     employeeNumber: value.employeeNumber,
@@ -27,6 +30,7 @@ export function publicProfile(value: EmployeeProfile | undefined) {
       if (role === Role.ROLE_HRD) {
         return 'HRD';
       }
+
       return 'EMPLOYEE';
     }),
   };

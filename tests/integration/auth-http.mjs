@@ -13,6 +13,7 @@ export function cookieJar(response) {
     response.headers.getSetCookie().map((value) => {
       const [pair] = value.split(';', 1);
       const index = pair.indexOf('=');
+
       return [pair.slice(0, index), pair.slice(index + 1)];
     }),
   );
@@ -28,19 +29,25 @@ export function cookieHeader(jar) {
 // oxlint-disable-next-line max-params
 export function request(path, method, jar, body) {
   const headers = {};
+
   if (jar) {
     headers.cookie = cookieHeader(jar);
   }
+
   if (method !== 'GET') {
     headers.origin = origin;
   }
+
   if (body !== undefined) {
     headers['content-type'] = 'application/json';
   }
+
   const options = { method, headers };
+
   if (body !== undefined) {
     options.body = JSON.stringify(body);
   }
+
   return fetch(`${baseUrl}${path}`, options);
 }
 
@@ -50,25 +57,33 @@ export async function expectProblem(response, status, code) {
     response.headers.get('content-type') ?? '',
     /^application\/problem\+json/,
   );
+
   const value = await response.json();
+
   assert.equal(value.code, code);
   assert.ok(value.traceId);
   assert.equal(JSON.stringify(value).includes('ORA-'), false);
+
   return value;
 }
 
 export function post(path, body, jar) {
   const headers = { origin };
+
   if (body !== undefined) {
     headers['content-type'] = 'application/json';
   }
+
   if (jar) {
     headers.cookie = cookieHeader(jar);
   }
+
   const options = { method: 'POST', headers };
+
   if (body !== undefined) {
     options.body = JSON.stringify(body);
   }
+
   return fetch(`${baseUrl}${path}`, options);
 }
 

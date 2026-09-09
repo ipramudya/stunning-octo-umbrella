@@ -55,8 +55,10 @@ export class RateLimiter implements OnModuleDestroy {
     windowSeconds: number;
   }) {
     const client = await this.redis();
+
     const arguments_ = [`rate:${scope}:${subject}:`, String(windowSeconds)];
     let result;
+
     try {
       result = await client.evalSha(await this.sha(client), {
         arguments: arguments_,
@@ -65,9 +67,11 @@ export class RateLimiter implements OnModuleDestroy {
       if (!String(error).includes('NOSCRIPT')) {
         throw error;
       }
+
       this.scriptSha = await client.scriptLoad(FIXED_WINDOW);
       result = await client.evalSha(this.scriptSha, { arguments: arguments_ });
     }
+
     if (
       !Array.isArray(result) ||
       typeof result[0] !== 'number' ||
@@ -75,6 +79,7 @@ export class RateLimiter implements OnModuleDestroy {
     ) {
       throw new Error('invalid rate limit response');
     }
+
     if (result[0] > maximum) {
       throw new RateLimitError(result[1]);
     }
@@ -86,6 +91,7 @@ export class RateLimiter implements OnModuleDestroy {
 
   private redis() {
     this.connection ??= this.client.connect().then(() => this.client);
+
     return this.connection;
   }
 

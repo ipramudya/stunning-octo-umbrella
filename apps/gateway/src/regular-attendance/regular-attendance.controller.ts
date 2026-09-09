@@ -41,6 +41,7 @@ export class RegularAttendanceController {
       audiences: [TokenAudience.TOKEN_AUDIENCE_ATTENDANCE],
       operation: async (context) => {
         const parsed = regularAttendanceSchema.safeParse(untrustedBody);
+
         if (!parsed.success) {
           throw new HttpException(
             {
@@ -59,11 +60,14 @@ export class RegularAttendanceController {
             400,
           );
         }
+
         const body = parsed.data;
         let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
+
         if (body.clockType === 'CLOCK_IN') {
           clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
         }
+
         const result = await firstValueFrom(
           this.attendance
             .createRegularAttendance(
@@ -73,18 +77,25 @@ export class RegularAttendanceController {
             )
             .pipe(takeUntil(context.cancelled)),
         );
+
         if (!result.occurredAt || !result.submittedAt || !result.location) {
           throw new Error('invalid regular attendance response');
         }
+
         let responseStatus = 201;
+
         if (result.idempotentReplay) {
           responseStatus = 200;
         }
+
         reply.status(responseStatus);
+
         let responseClockType = 'CLOCK_OUT';
+
         if (result.clockType === ClockType.CLOCK_TYPE_CLOCK_IN) {
           responseClockType = 'CLOCK_IN';
         }
+
         return {
           id: result.id,
           employeeId: result.employeeId,

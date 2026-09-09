@@ -6,9 +6,11 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
 
   transform(value: unknown): T {
     const result = this.schema.safeParse(value);
+
     if (result.success) {
       return result.data;
     }
+
     throw new BadRequestException({
       type: 'about:blank',
       title: 'Bad Request',

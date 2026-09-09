@@ -14,6 +14,7 @@ function canConnect(host: string, port: number): Promise<boolean> {
       socket.destroy();
       resolve(result);
     };
+
     socket.setTimeout(1_000);
     socket.once('connect', () => finish(true));
     socket.once('error', () => finish(false));
@@ -33,12 +34,16 @@ export class ReadinessService {
     if (!this.evidence.recoveryComplete) {
       return false;
     }
+
     const minio = new URL(this.config.get('MINIO_ENDPOINT', { infer: true }));
+
     try {
       let defaultPort = 80;
+
       if (minio.protocol === 'https:') {
         defaultPort = 443;
       }
+
       const [minioReady] = await Promise.all([
         canConnect(minio.hostname, Number(minio.port || defaultPort)),
         this.database.withConnection((connection) =>
@@ -51,6 +56,7 @@ export class ReadinessService {
           ),
         ),
       ]);
+
       return minioReady;
     } catch {
       return false;

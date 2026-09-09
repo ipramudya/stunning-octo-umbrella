@@ -1,7 +1,4 @@
-import {
-  ClockType,
-  type CreateManualAttendanceRequest,
-} from '@project/contracts';
+import { ClockType } from '@project/contracts';
 import { z } from 'zod';
 
 export const manualAttendanceSchema = z.object({
@@ -21,15 +18,20 @@ function clockType(value: ManualAttendanceDto['clockType']) {
   if (value === 'CLOCK_IN') {
     return ClockType.CLOCK_TYPE_CLOCK_IN;
   }
+
   return ClockType.CLOCK_TYPE_CLOCK_OUT;
 }
 
-export function manualAttendanceRequest(
-  value: ManualAttendanceDto,
-): CreateManualAttendanceRequest {
+export function manualAttendanceRequest(value: ManualAttendanceDto) {
+  const milliseconds = Date.parse(value.claimedAt);
+  const claimedAt = {
+    seconds: Math.floor(milliseconds / 1_000),
+    nanos: (milliseconds % 1_000) * 1_000_000,
+  };
+
   return {
     ...value,
     clockType: clockType(value.clockType),
-    claimedAt: new Date(value.claimedAt),
+    claimedAt,
   };
 }

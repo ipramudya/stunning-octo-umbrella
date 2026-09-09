@@ -55,14 +55,19 @@ function attendanceStatus(status: AttendanceEntryRow['STATUS']) {
 
 export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
   let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
+
   if (row.CLOCK_TYPE === 'CLOCK_IN') {
     clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
   }
+
   let source = AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
+
   if (row.SOURCE === 'MANUAL') {
     source = AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
   }
+
   let decision;
+
   if (row.DECIDED_AT && row.DECIDED_BY_EMPLOYEE_ID) {
     decision = {
       decidedByEmployeeId: row.DECIDED_BY_EMPLOYEE_ID,
@@ -70,6 +75,7 @@ export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
       reason: row.DECISION_REASON ?? '',
     };
   }
+
   return {
     id: row.ID,
     employeeId: row.EMPLOYEE_ID,
@@ -96,6 +102,7 @@ export function attendanceEntry(row: AttendanceEntryRow): AttendanceEntry {
 
 function restoreResponse(body: string) {
   const value: unknown = JSON.parse(body);
+
   return AttendanceEntry.fromJSON(value);
 }
 
@@ -128,6 +135,7 @@ export class ManualDecisionRepository {
         },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(attendanceEntry);
     });
   }
@@ -156,11 +164,13 @@ export class ManualDecisionRepository {
           { reviewerId, operation, key, hash },
         ),
       );
+
       return { kind: 'new' };
     } catch (error) {
       if (!isUniqueViolation(error)) {
         throw error;
       }
+
       const record = await this.database.withConnection(async (connection) => {
         const result = await connection.execute<IdempotencyRow>(
           `SELECT request_hash, status,
@@ -171,20 +181,26 @@ export class ManualDecisionRepository {
           { reviewerId, operation, key },
           { outFormat: oracledb.OUT_FORMAT_OBJECT },
         );
+
         return result.rows?.[0];
       });
+
       if (!record) {
         throw error;
       }
+
       if (record.REQUEST_HASH !== hash) {
         return { kind: 'mismatch' };
       }
+
       if (record.STATUS === 'IN_PROGRESS') {
         return { kind: 'in-progress' };
       }
+
       if (!record.RESPONSE_BODY) {
         throw new Error('idempotency response missing');
       }
+
       return {
         kind: 'completed',
         response: restoreResponse(record.RESPONSE_BODY),
@@ -216,10 +232,13 @@ export class ManualDecisionRepository {
       await connection.execute(
         'SELECT id FROM attendance_zones WHERE id = 1 FOR UPDATE',
       );
+
       const target = await this.selectEntry(connection, input.entryId);
+
       if (!target) {
         throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
+
       await connection.execute(
         `SELECT id FROM attendance_entries
          WHERE employee_id = :employeeId AND work_date = :workDate
@@ -233,19 +252,24 @@ export class ManualDecisionRepository {
           },
         },
       );
+
       const locked = await this.selectEntry(connection, input.entryId);
+
       if (!locked) {
         throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
+
       if (locked.employeeId === input.reviewerId) {
         throw new ManualDecisionPersistenceError('SELF_APPROVAL_FORBIDDEN');
       }
+
       if (
         locked.source !== AttendanceSource.ATTENDANCE_SOURCE_MANUAL ||
         locked.status !== AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW
       ) {
         throw new ManualDecisionPersistenceError('ENTRY_NOT_PENDING_REVIEW');
       }
+
       if (
         input.decision ===
           ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE &&
@@ -259,10 +283,12 @@ export class ManualDecisionRepository {
         ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_APPROVE;
       let attendanceStatus = 'REJECTED';
       let occurredAt = null;
+
       if (approved) {
         attendanceStatus = 'RECORDED';
         occurredAt = locked.claimedAt;
       }
+
       await connection.execute(
         `UPDATE attendance_entries
          SET status = :status, occurred_at = :occurredAt,
@@ -280,10 +306,13 @@ export class ManualDecisionRepository {
           entryId: input.entryId,
         },
       );
+
       const updated = await this.selectEntry(connection, input.entryId);
+
       if (!updated) {
         throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
+
       const completed = await connection.execute(
         `UPDATE idempotency_records
          SET status = 'COMPLETED', response_status = 200,
@@ -302,9 +331,11 @@ export class ManualDecisionRepository {
           hash: input.hash,
         },
       );
+
       if (completed.rowsAffected !== 1) {
         throw new Error('idempotency claim disappeared');
       }
+
       return updated;
     });
   }
@@ -326,10 +357,13 @@ export class ManualDecisionRepository {
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     const occurredAt = result.rows?.[0]?.OCCURRED_AT;
+
     if (!occurredAt) {
       throw new ManualDecisionPersistenceError('CLOCK_IN_REQUIRED');
     }
+
     if (!clockOut.claimedAt || clockOut.claimedAt <= occurredAt) {
       throw new ManualDecisionPersistenceError(
         'CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN',
@@ -344,10 +378,13 @@ export class ManualDecisionRepository {
       { entryId },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     const row = result.rows?.[0];
+
     if (row) {
       return attendanceEntry(row);
     }
+
     return undefined;
   }
 }

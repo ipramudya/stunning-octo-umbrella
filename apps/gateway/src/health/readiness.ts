@@ -45,6 +45,7 @@ export class ReadinessService implements OnModuleInit {
       this.check(this.identity),
       this.check(this.attendance),
     ]);
+
     return checks.every(Boolean);
   }
 

@@ -31,6 +31,7 @@ function setup() {
       if (key === 'APP_ORIGIN') {
         return 'https://app.example';
       }
+
       return undefined;
     },
   } as ConstructorParameters<typeof GatewayCallService>[1];
@@ -48,6 +49,7 @@ function setup() {
   const reply = {
     header: vi.fn((name: string, value: unknown) => {
       headers.set(name, value);
+
       return reply;
     }),
   } as unknown as FastifyReply;
@@ -98,6 +100,7 @@ describe('GatewayCallService', () => {
 
   it('rejects an unsafe request before authorization when its origin differs', async () => {
     const { service, authorizeAccess, request, reply } = setup();
+
     request.headers.origin = 'https://attacker.example';
 
     await expect(

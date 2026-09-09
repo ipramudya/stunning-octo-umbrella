@@ -8,12 +8,15 @@ import type { Environment } from '../config/config-typedef.js';
 function client(endpoint: string, accessKey: string, secretKey: string) {
   const url = new URL(endpoint);
   let port = 80;
+
   if (url.protocol === 'https:') {
     port = 443;
   }
+
   if (url.port) {
     port = Number(url.port);
   }
+
   return new Client({
     endPoint: url.hostname,
     port,
@@ -33,6 +36,7 @@ export class EvidenceStore implements OnModuleInit {
   constructor(config: ConfigService<Environment, true>) {
     const accessKey = config.get('MINIO_ACCESS_KEY', { infer: true });
     const secretKey = config.get('MINIO_SECRET_KEY', { infer: true });
+
     this.bucket = config.get('MINIO_EVIDENCE_BUCKET', { infer: true });
     this.internal = client(
       config.get('MINIO_ENDPOINT', { infer: true }),
@@ -50,6 +54,7 @@ export class EvidenceStore implements OnModuleInit {
     if (!(await this.internal.bucketExists(this.bucket))) {
       await this.internal.makeBucket(this.bucket);
     }
+
     await this.internal.setBucketVersioning(this.bucket, { Status: 'Enabled' });
     await this.internal.setBucketLifecycle(this.bucket, {
       Rule: [
@@ -79,6 +84,7 @@ export class EvidenceStore implements OnModuleInit {
     if (versionId) {
       return this.internal.statObject(this.bucket, key, { versionId });
     }
+
     return this.internal.statObject(this.bucket, key);
   }
 
@@ -86,10 +92,13 @@ export class EvidenceStore implements OnModuleInit {
     const stream = await this.internal.getObject(this.bucket, key, {
       versionId,
     });
+
     for await (const chunk of stream) {
       stream.destroy();
+
       return Buffer.from(chunk).subarray(0, 8);
     }
+
     return Buffer.alloc(0);
   }
 
@@ -108,6 +117,7 @@ export class EvidenceStore implements OnModuleInit {
     if (versionId) {
       return this.internal.removeObject(this.bucket, key, { versionId });
     }
+
     return this.internal.removeObject(this.bucket, key);
   }
 }

@@ -6,13 +6,17 @@ import { AuthError } from './auth-error.js';
 
 export function validateLogin(phoneNumber: string, password: string) {
   const phone = phoneNumber.trim();
+
   if (!/^\+62[0-9]+$/.test(phone)) {
     throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
   }
+
   const length = Array.from(password).length;
+
   if (length < 12 || length > 128) {
     throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
   }
+
   return { phoneNumber: phone, password };
 }
 
@@ -27,6 +31,7 @@ export function profile(employee: Employee): EmployeeProfile {
       if (role === 'HRD') {
         return Role.ROLE_HRD;
       }
+
       return Role.ROLE_EMPLOYEE;
     }),
   };

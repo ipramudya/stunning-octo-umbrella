@@ -17,6 +17,7 @@ export function isProblem(value: unknown): value is Problem {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
+
   return (
     Reflect.get(value, 'type') === 'about:blank' &&
     typeof Reflect.get(value, 'title') === 'string' &&

@@ -72,10 +72,13 @@ export class EvidenceRepository {
         { id },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       const row = result.rows?.[0];
+
       if (row) {
         return value(row);
       }
+
       return undefined;
     });
   }
@@ -95,10 +98,13 @@ export class EvidenceRepository {
     work: (connection: Connection, upload: EvidenceUpload) => Promise<void>,
   ) {
     const upload = await this.getForUpdate(connection, id);
+
     if (!upload) {
       return false;
     }
+
     await work(connection, upload);
+
     return true;
   }
 
@@ -108,10 +114,13 @@ export class EvidenceRepository {
       { id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     const row = result.rows?.[0];
+
     if (row) {
       return value(row);
     }
+
     return undefined;
   }
 
@@ -180,6 +189,7 @@ export class EvidenceRepository {
         {},
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(value);
     });
   }

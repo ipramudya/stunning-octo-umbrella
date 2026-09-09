@@ -32,6 +32,7 @@ function errorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
+
   return String(error);
 }
 
@@ -61,6 +62,7 @@ export class RegularAttendanceService {
       .update(JSON.stringify({ employeeId, ...request }))
       .digest('hex');
     let attempt;
+
     try {
       attempt = await this.attendance.beginAttempt(
         employeeId,
@@ -72,15 +74,19 @@ export class RegularAttendanceService {
       if (error instanceof RegularAttendancePersistenceError) {
         throw error;
       }
+
       throw new RegularAttendanceError('DEPENDENCY_UNAVAILABLE');
     }
+
     if (attempt.replay) {
       return { entry: attempt.replay, replayed: true };
     }
 
     let upload: EvidenceUpload | undefined;
+
     try {
       const time = jakartaTime(attempt.createdAt);
+
       upload = await this.zones.withAttendanceMutation(
         employeeId,
         time.oracleDate,
@@ -93,16 +99,21 @@ export class RegularAttendanceService {
             attempt.createdAt,
           );
           attendanceTime(attempt.createdAt, request.clockType);
+
           const prepared = await this.evidence.prepare(
             connection,
             employeeId,
             request.evidenceUploadId,
           );
+
           await this.validateLocation(connection, request);
+
           return prepared;
         },
       );
+
       const permanentVersion = await this.evidence.promote(upload);
+
       const entry = await this.zones.withAttendanceMutation(
         employeeId,
         time.oracleDate,
@@ -114,10 +125,12 @@ export class RegularAttendanceService {
             time.oracleDate,
             attempt.createdAt,
           );
+
           const distanceMeters = await this.validateLocation(
             connection,
             request,
           );
+
           const recordedAt = attempt.createdAt.toISOString();
           const entry: RegularAttendanceEntry = {
             id: randomUUID(),
@@ -140,15 +153,18 @@ export class RegularAttendanceService {
             evidenceId: request.evidenceUploadId,
             decision: null,
           };
+
           await this.evidence.attach(
             connection,
             request.evidenceUploadId,
             permanentVersion,
           );
           await this.attendance.record(connection, entry, idempotencyKey);
+
           return entry;
         },
       );
+
       this.evidence
         .cleanup(upload)
         .catch((error: unknown) =>
@@ -156,6 +172,7 @@ export class RegularAttendanceService {
             `staging cleanup deferred for ${upload?.id}: ${errorMessage(error)}`,
           ),
         );
+
       return { entry, replayed: false };
     } catch (error) {
       if (upload) {
@@ -167,10 +184,13 @@ export class RegularAttendanceService {
           );
         }
       }
+
       await this.attendance.failAttempt(employeeId, idempotencyKey);
+
       if (error instanceof AttendanceConflict) {
         throw new RegularAttendanceError('ATTENDANCE_ALREADY_EXISTS');
       }
+
       if (
         error instanceof RegularAttendanceError ||
         error instanceof RegularAttendancePersistenceError ||
@@ -178,6 +198,7 @@ export class RegularAttendanceService {
       ) {
         throw error;
       }
+
       throw new RegularAttendanceError('DEPENDENCY_UNAVAILABLE');
     }
   }
@@ -194,17 +215,21 @@ export class RegularAttendanceService {
       employeeId,
       workDate,
     );
+
     if (entries.some((entry) => entry.CLOCK_TYPE === clockType)) {
       throw new RegularAttendanceError('ATTENDANCE_ALREADY_EXISTS');
     }
+
     if (clockType === 'CLOCK_OUT') {
       const clockIn = entries.find(
         (entry) =>
           entry.CLOCK_TYPE === 'CLOCK_IN' && entry.STATUS === 'RECORDED',
       );
+
       if (!clockIn?.OCCURRED_AT) {
         throw new RegularAttendanceError('CLOCK_IN_REQUIRED');
       }
+
       if (clockIn.OCCURRED_AT.getTime() >= occurredAt.getTime()) {
         throw new RegularAttendanceError('CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN');
       }
@@ -220,18 +245,22 @@ export class RegularAttendanceService {
       request.latitude,
       request.longitude,
     );
+
     if (!zone.active) {
       throw new RegularAttendanceError('ATTENDANCE_ZONE_INACTIVE');
     }
+
     if (
       request.accuracyMeters <= 0 ||
       request.accuracyMeters > this.maximumAccuracy
     ) {
       throw new RegularAttendanceError('GPS_ACCURACY_EXCEEDS_LIMIT');
     }
+
     if (zone.distanceMeters > zone.radiusMeters) {
       throw new RegularAttendanceError('OUTSIDE_ATTENDANCE_ZONE');
     }
+
     return zone.distanceMeters;
   }
 }

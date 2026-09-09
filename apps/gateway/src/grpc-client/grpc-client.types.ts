@@ -37,6 +37,8 @@ import type {
 } from '@project/contracts';
 import type { Observable } from 'rxjs';
 
+export type GrpcTimestamp = { seconds: number; nanos: number };
+
 type UnaryGrpcMethod<Request, Response> = (
   request: Request,
   metadata: Metadata,
@@ -85,7 +87,9 @@ export type AttendanceGrpcClient = {
     AttendanceEntry
   >;
   createManualAttendance: UnaryGrpcMethod<
-    CreateManualAttendanceRequest,
+    Omit<CreateManualAttendanceRequest, 'claimedAt'> & {
+      claimedAt: GrpcTimestamp;
+    },
     AttendanceEntry
   >;
   listPendingManualAttendance: UnaryGrpcMethod<

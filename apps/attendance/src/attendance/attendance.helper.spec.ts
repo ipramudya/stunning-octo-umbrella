@@ -11,6 +11,7 @@ import {
 describe('attendance helpers', () => {
   it('extracts bearer tokens', () => {
     const metadata = new Metadata();
+
     metadata.set('authorization', 'Bearer access-token');
 
     expect(bearer(metadata)).toBe('access-token');

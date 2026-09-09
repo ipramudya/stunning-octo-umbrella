@@ -19,6 +19,7 @@ export function failure(
   const metadata = new Metadata();
 
   metadata.set('x-error-code', detail);
+
   if (retryAfter !== undefined) {
     metadata.set('retry-after', String(retryAfter));
   }

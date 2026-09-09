@@ -39,14 +39,17 @@ export class EmployeeAdminService {
   async authorize(token: string): Promise<Actor> {
     try {
       const claims = await this.tokens.verify(token, 'dexa-identity');
+
       if (!claims.roles.includes('HRD')) {
         fail('FORBIDDEN', status.PERMISSION_DENIED);
       }
+
       return { id: claims.sub };
     } catch (error) {
       if (error instanceof AuthError) {
         throw error;
       }
+
       fail('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
   }
@@ -63,26 +66,34 @@ export class EmployeeAdminService {
     requestedLimit: number;
   }) {
     await this.authorize(token);
+
     const limit = requestedLimit || 20;
+
     if (limit < 1 || limit > 100) {
       fail('VALIDATION_ERROR');
     }
+
     const q = query?.trim();
+
     if (q && Array.from(q).length > 120) {
       fail('VALIDATION_ERROR');
     }
+
     const rows = await this.employees.list(
       q || undefined,
       decodeCursor(cursor),
       limit,
     );
+
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items.at(-1);
     let nextCursor;
+
     if (hasNextPage && last) {
       nextCursor = encodeCursor(last);
     }
+
     return {
       items: items.map(profile),
       nextCursor,
@@ -92,25 +103,34 @@ export class EmployeeAdminService {
 
   async get(token: string, employeeId: string) {
     await this.authorize(token);
+
     return profile(await this.existing(employeeId));
   }
 
   async batchGet(token: string, employeeIds: string[]) {
     await this.authorize(token);
+
     const ids = [...new Set(employeeIds)];
+
     if (ids.length < 1 || ids.length > 100 || ids.some((id) => !id)) {
       fail('VALIDATION_ERROR');
     }
+
     const employees = await this.employees.findByIds(ids);
+
     if (employees.length !== ids.length) {
       fail('EMPLOYEE_DATA_INTEGRITY_ERROR', status.UNAVAILABLE);
     }
+
     const byId = new Map(employees.map((employee) => [employee.id, employee]));
+
     return ids.map((id) => {
       const employee = byId.get(id);
+
       if (!employee) {
         fail('EMPLOYEE_DATA_INTEGRITY_ERROR', status.UNAVAILABLE);
       }
+
       return profile(employee);
     });
   }
@@ -120,6 +140,7 @@ export class EmployeeAdminService {
     raw: Omit<EmployeeInput, 'passwordHash'> & { password: string },
   ) {
     const actor = await this.authorize(token);
+
     const input = {
       employeeNumber: required(raw.employeeNumber, 32).toUpperCase(),
       fullName: required(raw.fullName, 120),
@@ -128,6 +149,7 @@ export class EmployeeAdminService {
       password: password(raw.password),
     };
     const id = randomUUID();
+
     try {
       await this.employees.create(
         id,
@@ -137,6 +159,7 @@ export class EmployeeAdminService {
     } catch (error) {
       await this.mapUnique(error, input);
     }
+
     return profile(await this.existing(id));
   }
 
@@ -146,19 +169,25 @@ export class EmployeeAdminService {
     changes: { fullName?: string; email?: string | null },
   ) {
     const actor = await this.authorize(token);
+
     if (changes.fullName === undefined && changes.email === undefined) {
       fail('VALIDATION_ERROR');
     }
+
     let fullName;
+
     if (changes.fullName !== undefined) {
       fullName = required(changes.fullName, 120);
     }
+
     let normalizedEmail;
+
     if (changes.email === null) {
       normalizedEmail = null;
     } else {
       normalizedEmail = email(changes.email);
     }
+
     try {
       if (
         !(await this.employees.updateProfile({
@@ -172,17 +201,22 @@ export class EmployeeAdminService {
       }
     } catch (error) {
       const uniqueInput: { email?: string } = {};
+
       if (normalizedEmail) {
         uniqueInput.email = normalizedEmail;
       }
+
       await this.mapUnique(error, uniqueInput, employeeId);
     }
+
     return profile(await this.existing(employeeId));
   }
 
   async updatePhone(token: string, employeeId: string, rawPhone: string) {
     const actor = await this.authorize(token);
+
     const phoneNumber = phone(rawPhone);
+
     try {
       if (
         !(await this.employees.updatePhone(employeeId, phoneNumber, actor.id))
@@ -192,26 +226,33 @@ export class EmployeeAdminService {
     } catch (error) {
       await this.mapUnique(error, { phoneNumber }, employeeId);
     }
+
     await this.cleanup(employeeId);
+
     return profile(await this.existing(employeeId));
   }
 
   async resetPassword(token: string, employeeId: string, rawPassword: string) {
     const actor = await this.authorize(token);
+
     const passwordHash = await this.passwordHash(password(rawPassword));
+
     if (
       !(await this.employees.updatePassword(employeeId, passwordHash, actor.id))
     ) {
       fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     }
+
     await this.cleanup(employeeId);
   }
 
   private async existing(id: string) {
     const value = await this.employees.findById(id);
+
     if (!value) {
       fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND);
     }
+
     return value;
   }
 
@@ -240,11 +281,15 @@ export class EmployeeAdminService {
     if (!String(error).includes('ORA-00001')) {
       throw error;
     }
+
     const conflict = await this.employees.conflict(input, excludeId);
+
     let grpcStatus = status.INVALID_ARGUMENT;
+
     if (conflict) {
       grpcStatus = status.ALREADY_EXISTS;
     }
+
     fail(conflict ?? 'VALIDATION_ERROR', grpcStatus);
   }
 }

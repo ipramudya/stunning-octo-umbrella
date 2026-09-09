@@ -17,6 +17,7 @@ describe('gateway readiness', () => {
       client(HealthCheckResponse_ServingStatus.SERVING),
       client(HealthCheckResponse_ServingStatus.SERVING),
     );
+
     ready.onModuleInit();
     await expect(ready.isReady()).resolves.toBe(true);
 
@@ -24,6 +25,7 @@ describe('gateway readiness', () => {
       client(HealthCheckResponse_ServingStatus.NOT_SERVING),
       client(HealthCheckResponse_ServingStatus.SERVING),
     );
+
     unavailable.onModuleInit();
     await expect(unavailable.isReady()).resolves.toBe(false);
   });

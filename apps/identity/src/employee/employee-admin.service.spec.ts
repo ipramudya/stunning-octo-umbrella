@@ -28,6 +28,7 @@ function service(overrides: Partial<EmployeeRepository> = {}, roles = ['HRD']) {
   };
   const sessions = { revokeEmployee: vi.fn() };
   const tokens = { verify: vi.fn().mockResolvedValue({ sub: 'hrd', roles }) };
+
   return {
     value: new EmployeeAdminService(
       { get: vi.fn().mockReturnValue(1) } as unknown as ConfigService<
@@ -87,6 +88,7 @@ describe('EmployeeAdminService', () => {
 
   it('denies a delegated token without HRD', async () => {
     const { value } = service({}, ['EMPLOYEE']);
+
     await expect(value.get('token', 'employee')).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
@@ -94,11 +96,14 @@ describe('EmployeeAdminService', () => {
 
   it('keeps a committed phone correction valid when Redis cleanup fails', async () => {
     const changed = employee('DEX-001', 'employee');
+
     changed.phoneNumber = '+628999';
+
     const { value, sessions, employees } = service({
       updatePhone: vi.fn().mockResolvedValue(true),
       findById: vi.fn().mockResolvedValue(changed),
     });
+
     sessions.revokeEmployee.mockRejectedValue(new Error('redis unavailable'));
 
     await expect(

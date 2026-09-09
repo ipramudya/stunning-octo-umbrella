@@ -79,9 +79,11 @@ export class ManualDecisionController {
   ) {
     return this.call(request, reply, false, async (context) => {
       let order = AttendanceOrder.ATTENDANCE_ORDER_DESC;
+
       if (query.order === 'asc') {
         order = AttendanceOrder.ATTENDANCE_ORDER_ASC;
       }
+
       const result = await firstValueFrom(
         this.attendance
           .listAttendance(
@@ -97,6 +99,7 @@ export class ManualDecisionController {
           )
           .pipe(takeUntil(context.cancelled)),
       );
+
       const profiles = await this.profiles(
         result.items.flatMap((entry) => [
           entry.employeeId,
@@ -104,12 +107,15 @@ export class ManualDecisionController {
         ]),
         context,
       );
+
       return {
         items: result.items.map((entry) => {
           let reviewer;
+
           if (entry.decision?.decidedByEmployeeId) {
             reviewer = profiles.get(entry.decision.decidedByEmployeeId);
           }
+
           return attendanceEntryResponse(
             entry,
             requireProfile(profiles, entry.employeeId),
@@ -141,10 +147,12 @@ export class ManualDecisionController {
           )
           .pipe(takeUntil(context.cancelled)),
       );
+
       const profiles = await this.profiles(
         result.items.map((entry) => entry.employeeId),
         context,
       );
+
       return {
         items: result.items.map((entry) =>
           attendanceEntryResponse(
@@ -173,7 +181,9 @@ export class ManualDecisionController {
           .getManualAttendance({ entryId }, context.attendance, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
+
       const profiles = await this.profiles([entry.employeeId], context);
+
       return attendanceEntryResponse(
         entry,
         requireProfile(profiles, entry.employeeId),
@@ -190,15 +200,21 @@ export class ManualDecisionController {
   ) {
     return this.call(request, reply, false, async (context) => {
       const entry = await this.getEntry(entryId, context);
+
       const ids = [entry.employeeId];
+
       if (entry.decision?.decidedByEmployeeId) {
         ids.push(entry.decision.decidedByEmployeeId);
       }
+
       const profiles = await this.profiles(ids, context);
+
       let reviewer;
+
       if (entry.decision?.decidedByEmployeeId) {
         reviewer = profiles.get(entry.decision.decidedByEmployeeId);
       }
+
       return attendanceEntryResponse(
         entry,
         requireProfile(profiles, entry.employeeId),
@@ -221,6 +237,7 @@ export class ManualDecisionController {
       true,
       async (context) => {
         const entry = await this.getEntry(entryId, context);
+
         if (!entry.evidenceId) {
           fail(
             404,
@@ -230,6 +247,7 @@ export class ManualDecisionController {
             context.traceId,
           );
         }
+
         const result = await firstValueFrom(
           this.attendance
             .authorizeEvidenceAccess(
@@ -239,6 +257,7 @@ export class ManualDecisionController {
             )
             .pipe(takeUntil(context.cancelled)),
         );
+
         return { ...result, expiresAt: timestampIso(result.expiresAt) };
       },
       false,
@@ -298,15 +317,19 @@ export class ManualDecisionController {
           )
           .pipe(takeUntil(context.cancelled)),
       );
+
       const profiles = await this.profiles(
         [result.employeeId, result.decision?.decidedByEmployeeId ?? ''],
         context,
       );
+
       const reviewerId = result.decision?.decidedByEmployeeId;
       let reviewer;
+
       if (reviewerId) {
         reviewer = profiles.get(reviewerId);
       }
+
       return attendanceEntryResponse(
         result,
         requireProfile(profiles, result.employeeId),
@@ -325,6 +348,7 @@ export class ManualDecisionController {
 
   private async profiles(employeeIds: string[], context: CallContext) {
     const ids = [...new Set(employeeIds.filter(Boolean))];
+
     const responses = await Promise.all(
       Array.from({ length: Math.ceil(ids.length / 100) }, (_, index) =>
         firstValueFrom(
@@ -338,7 +362,9 @@ export class ManualDecisionController {
         ),
       ),
     );
+
     const profiles = responses.flatMap((response) => response.items);
+
     return new Map(profiles.map((profile) => [profile.id, profile]));
   }
 
@@ -379,8 +405,10 @@ export class ManualDecisionController {
     if (error instanceof HttpException) {
       throw error;
     }
+
     const code = grpcCode(error);
     const errorCode = grpcErrorCode(error);
+
     if (code === status.UNAUTHENTICATED) {
       fail(
         401,
@@ -390,6 +418,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.PERMISSION_DENIED) {
       fail(
         403,
@@ -399,6 +428,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.INVALID_ARGUMENT) {
       fail(
         400,
@@ -408,6 +438,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.NOT_FOUND) {
       fail(
         404,
@@ -417,6 +448,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.ALREADY_EXISTS) {
       fail(
         409,
@@ -426,6 +458,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.ABORTED) {
       reply.header('retry-after', grpcMetadata(error, 'retry-after') ?? '1');
       fail(
@@ -436,6 +469,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.FAILED_PRECONDITION) {
       fail(
         422,
@@ -445,6 +479,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     if (code === status.DEADLINE_EXCEEDED) {
       fail(
         504,
@@ -454,6 +489,7 @@ export class ManualDecisionController {
         traceId,
       );
     }
+
     fail(
       503,
       'DEPENDENCY_UNAVAILABLE',

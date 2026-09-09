@@ -33,6 +33,7 @@ export class AttendanceQueryRepository {
         },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(attendanceEntry);
     });
   }
@@ -43,19 +44,30 @@ export class AttendanceQueryRepository {
   ): Promise<AttendanceEntry | undefined> {
     return this.database.withConnection(async (connection) => {
       let employeeClause = '';
+
       if (employeeId) {
         employeeClause = ' AND employee_id = :employeeId';
       }
+
+      const binds: oracledb.BindParameters = { entryId };
+
+      if (employeeId) {
+        binds.employeeId = employeeId;
+      }
+
       const result = await connection.execute<AttendanceEntryRow>(
         `SELECT ${attendanceColumns} FROM attendance_entries
          WHERE id = :entryId${employeeClause}`,
-        { entryId, employeeId: employeeId || undefined },
+        binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       const row = result.rows?.[0];
+
       if (row) {
         return attendanceEntry(row);
       }
+
       return undefined;
     });
   }
@@ -66,6 +78,7 @@ export class AttendanceQueryRepository {
       dateFrom: oracleDate(filters.dateFrom),
       dateTo: oracleDate(filters.dateTo),
     };
+
     for (const [column, value] of [
       ['employee_id', filters.employeeId],
       ['source', filters.source],
@@ -77,11 +90,14 @@ export class AttendanceQueryRepository {
         binds[column] = value;
       }
     }
+
     if (filters.cursor) {
       let operator = '<';
+
       if (filters.order === 'ASC') {
         operator = '>';
       }
+
       clauses.push(`(work_date ${operator} :cursorDate
         OR (work_date = :cursorDate AND submitted_at ${operator} :cursorAt)
         OR (work_date = :cursorDate AND submitted_at = :cursorAt AND id ${operator} :cursorId))`);
@@ -92,6 +108,7 @@ export class AttendanceQueryRepository {
       };
       binds.cursorId = filters.cursor.id;
     }
+
     return this.database.withConnection(async (connection) => {
       const result = await connection.execute<AttendanceEntryRow>(
         `SELECT ${attendanceColumns} FROM attendance_entries
@@ -101,6 +118,7 @@ export class AttendanceQueryRepository {
         binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(attendanceEntry);
     });
   }

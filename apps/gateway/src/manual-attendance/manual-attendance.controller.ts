@@ -91,11 +91,15 @@ export class ManualAttendanceController {
             )
             .pipe(takeUntil(context.cancelled)),
         );
+
         let responseStatus = 201;
+
         if (entry.idempotentReplay) {
           responseStatus = 200;
         }
+
         reply.status(responseStatus);
+
         return this.attendanceResponse(entry);
       },
       failure: (error, traceId) =>
@@ -112,8 +116,10 @@ export class ManualAttendanceController {
     if (error instanceof HttpException) {
       throw error;
     }
+
     const code = grpcCode(error);
     const errorCode = grpcErrorCode(error);
+
     if (code === status.UNAUTHENTICATED) {
       fail(
         401,
@@ -123,9 +129,11 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.PERMISSION_DENIED) {
       fail(403, 'FORBIDDEN', 'Employee access is required', request, traceId);
     }
+
     if (code === status.INVALID_ARGUMENT) {
       fail(
         400,
@@ -135,6 +143,7 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.NOT_FOUND) {
       fail(
         404,
@@ -144,6 +153,7 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.ALREADY_EXISTS) {
       fail(
         409,
@@ -153,6 +163,7 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.ABORTED) {
       reply.header('retry-after', grpcMetadata(error, 'retry-after') ?? '1');
       fail(
@@ -163,6 +174,7 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.FAILED_PRECONDITION) {
       fail(
         422,
@@ -172,6 +184,7 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (code === status.DEADLINE_EXCEEDED) {
       fail(
         504,
@@ -181,12 +194,14 @@ export class ManualAttendanceController {
         traceId,
       );
     }
+
     if (
       code === status.UNAVAILABLE &&
       errorCode === 'EVIDENCE_FINALIZATION_FAILED'
     ) {
       fail(503, errorCode, 'Evidence finalization failed', request, traceId);
     }
+
     fail(
       503,
       'DEPENDENCY_UNAVAILABLE',

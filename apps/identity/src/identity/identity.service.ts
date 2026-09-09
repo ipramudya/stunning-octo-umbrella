@@ -41,7 +41,9 @@ export class IdentityAuthService {
     password: string,
   ): Promise<SessionCredentials> {
     const login = validateLogin(phoneNumber, password);
+
     const employee = await this.employees.findByPhone(login.phoneNumber);
+
     const dummyHash = await (this.dummyHash ??= hash(
       'invalid-password-placeholder',
       {
@@ -51,17 +53,21 @@ export class IdentityAuthService {
         parallelism: this.config.get('ARGON2_PARALLELISM', { infer: true }),
       },
     ));
+
     const validPassword = await this.passwordMatches(
       employee?.passwordHash ?? dummyHash,
       login.password,
     );
+
     if (!employee || !validPassword) {
       throw new AuthError('INVALID_CREDENTIALS', status.UNAUTHENTICATED);
     }
+
     const session = await this.sessions.create(
       employee.id,
       employee.credentialVersion,
     );
+
     return this.credentials(employee, session.sid, session.refreshToken);
   }
 
@@ -69,22 +75,30 @@ export class IdentityAuthService {
     if (!refreshToken) {
       throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
+
     const current = await this.sessions.getByRefreshToken(refreshToken);
+
     if (current) {
       const employee = await this.employees.findById(
         current.session.employeeId,
       );
+
       if (
         !employee ||
         employee.credentialVersion !== current.session.credentialVersion
       ) {
         await this.sessions.revoke(refreshToken);
+
         throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
       }
+
       const rotated = await this.sessions.rotate(refreshToken);
+
       return this.credentials(employee, rotated.sid, rotated.refreshToken);
     }
+
     await this.sessions.rotate(refreshToken);
+
     throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
   }
 
@@ -92,6 +106,7 @@ export class IdentityAuthService {
     if (refreshToken) {
       return this.sessions.revoke(refreshToken);
     }
+
     return Promise.resolve();
   }
 
@@ -100,12 +115,15 @@ export class IdentityAuthService {
     requestedAudiences: TokenAudience[] = [],
   ) {
     let claims;
+
     try {
       claims = await this.tokens.verify(accessToken, 'dexa-gateway');
     } catch {
       throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
+
     const requested = [...new Set(requestedAudiences)];
+
     if (
       requested.length !== requestedAudiences.length ||
       requested.length > 2 ||
@@ -113,20 +131,27 @@ export class IdentityAuthService {
     ) {
       throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
     }
+
     const session = await this.sessions.get(claims.sid);
+
     if (!session || session.employeeId !== claims.sub) {
       throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
+
     const employee = await this.employees.findById(session.employeeId);
+
     if (!employee || employee.credentialVersion !== session.credentialVersion) {
       throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
+
     const tokens: AudienceToken[] = await Promise.all(
       requested.map(async (audience) => {
         const audienceName = audienceNames.get(audience);
+
         if (!audienceName) {
           throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
         }
+
         return {
           audience,
           token: await this.tokens.sign({
@@ -139,6 +164,7 @@ export class IdentityAuthService {
         };
       }),
     );
+
     return { profile: profile(employee), sessionId: claims.sid, tokens };
   }
 

@@ -25,6 +25,7 @@ try {
   await connection.commit();
 } catch (error) {
   await connection.rollback();
+
   throw error;
 } finally {
   await connection.close();

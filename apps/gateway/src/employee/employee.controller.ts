@@ -198,13 +198,16 @@ export class EmployeeController {
     if (error instanceof HttpException) {
       throw error;
     }
+
     const code = grpcErrorCode(error);
     let invalidCode = 'VALIDATION_ERROR';
     let invalidDetail = 'Request validation failed';
+
     if (code === 'INVALID_CURSOR') {
       invalidCode = code;
       invalidDetail = 'The cursor is invalid';
     }
+
     const mappings: Partial<Record<status, [number, string, string]>> = {
       [status.INVALID_ARGUMENT]: [400, invalidCode, invalidDetail],
       [status.UNAUTHENTICATED]: [
@@ -232,12 +235,15 @@ export class EmployeeController {
     };
     const codeFromGrpc = grpcCode(error);
     let mapped;
+
     if (codeFromGrpc !== undefined) {
       mapped = mappings[codeFromGrpc];
     }
+
     if (mapped) {
       fail(...mapped, request, traceId);
     }
+
     fail(
       500,
       'INTERNAL_ERROR',

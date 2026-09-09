@@ -28,6 +28,7 @@ function parseRoles(value: unknown): InternalRole[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
+
   if (
     !value.every(
       (role): role is InternalRole => role === 'EMPLOYEE' || role === 'HRD',
@@ -35,6 +36,7 @@ function parseRoles(value: unknown): InternalRole[] | undefined {
   ) {
     return undefined;
   }
+
   return value;
 }
 
@@ -60,21 +62,28 @@ export async function verifyInternalAccess({
       requiredClaims: ['sub', 'sid', 'roles', 'iat', 'exp'],
     },
   );
+
   const hasExpectedHeader =
     protectedHeader.alg === 'EdDSA' && protectedHeader.typ === 'at+jwt';
+
   if (!hasExpectedHeader) {
     throw new Error('invalid access token');
   }
+
   if (!hasExpectedClaims(payload)) {
     throw new Error('invalid access token');
   }
+
   const roles = parseRoles(payload.roles);
+
   if (!roles) {
     throw new Error('invalid access token');
   }
+
   if (!requiredRoles.every((role) => roles.includes(role))) {
     throw new AccessForbiddenError();
   }
+
   return {
     ...payload,
     sub: payload.sub,

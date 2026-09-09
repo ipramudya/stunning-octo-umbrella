@@ -39,6 +39,7 @@ export class AttendanceAuthorizationService {
       if (error instanceof AccessForbiddenError) {
         failure(status.PERMISSION_DENIED, 'FORBIDDEN');
       }
+
       failure(status.UNAUTHENTICATED, 'AUTHENTICATION_REQUIRED');
     }
   }

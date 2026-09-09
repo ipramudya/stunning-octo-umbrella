@@ -55,6 +55,7 @@ export class AttendanceHistoryController {
     if (!entry.decision?.decidedByEmployeeId) {
       return null;
     }
+
     return {
       decidedByEmployeeId: entry.decision.decidedByEmployeeId,
       decidedAt: timestampIso(entry.decision.decidedAt),
@@ -82,6 +83,7 @@ export class AttendanceHistoryController {
         options,
       ),
     );
+
     return { items: result.items.map((entry) => this.response(entry)) };
   }
 
@@ -122,6 +124,7 @@ export class AttendanceHistoryController {
       failure: (error, traceId) => {
         const grpcStatus = grpcCode(error);
         const code = grpcErrorCode(error);
+
         if (grpcStatus === status.UNAUTHENTICATED) {
           fail(
             401,
@@ -131,6 +134,7 @@ export class AttendanceHistoryController {
             traceId,
           );
         }
+
         if (grpcStatus === status.PERMISSION_DENIED) {
           fail(
             403,
@@ -140,6 +144,7 @@ export class AttendanceHistoryController {
             traceId,
           );
         }
+
         if (grpcStatus === status.INVALID_ARGUMENT) {
           fail(
             400,
@@ -149,6 +154,7 @@ export class AttendanceHistoryController {
             traceId,
           );
         }
+
         if (grpcStatus === status.NOT_FOUND) {
           fail(
             404,
@@ -158,6 +164,7 @@ export class AttendanceHistoryController {
             traceId,
           );
         }
+
         if (grpcStatus === status.DEADLINE_EXCEEDED) {
           fail(
             504,
@@ -167,6 +174,7 @@ export class AttendanceHistoryController {
             traceId,
           );
         }
+
         fail(
           503,
           'DEPENDENCY_UNAVAILABLE',

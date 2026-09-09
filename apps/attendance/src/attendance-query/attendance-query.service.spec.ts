@@ -15,6 +15,7 @@ function subject() {
     get: vi.fn(),
     list: vi.fn().mockResolvedValue([]),
   };
+
   return {
     repository,
     service: new AttendanceQueryService(repository as never),
@@ -31,6 +32,7 @@ const request = {
 describe('attendance queries', () => {
   it('scopes employee detail to the authenticated employee', async () => {
     const { repository, service } = subject();
+
     repository.get.mockResolvedValue({ id: 'entry-1' });
 
     await expect(service.getEmployee('employee-1', 'entry-1')).resolves.toEqual(
@@ -41,6 +43,7 @@ describe('attendance queries', () => {
 
   it('rejects date ranges longer than 31 inclusive days', async () => {
     const { service } = subject();
+
     await expect(
       service.list({ ...request, dateTo: '2026-04-01' }),
     ).rejects.toEqual(new AttendanceQueryError('DATE_RANGE_TOO_LARGE'));

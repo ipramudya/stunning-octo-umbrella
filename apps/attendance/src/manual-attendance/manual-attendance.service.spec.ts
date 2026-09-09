@@ -37,6 +37,7 @@ function subject() {
     complete: vi.fn(),
     abort: vi.fn(),
   };
+
   return {
     repository,
     evidence,
@@ -57,7 +58,9 @@ describe('manual attendance', () => {
 
   it('creates a pending manual clock-out without requiring a clock-in', async () => {
     const { service, repository, evidence } = subject();
+
     const result = await service.create('employee-1', 'request-1', request);
+
     expect(result).toMatchObject({
       replay: false,
       entry: {
@@ -71,6 +74,7 @@ describe('manual attendance', () => {
 
   it('returns completed replays without touching evidence', async () => {
     const { service, repository, evidence } = subject();
+
     repository.claim.mockResolvedValue({
       kind: 'completed',
       response: { id: 'entry-1' },
@@ -86,6 +90,7 @@ describe('manual attendance', () => {
 
   it('releases the key and evidence when the singleton slot is taken', async () => {
     const { service, repository, evidence } = subject();
+
     repository.create.mockRejectedValue(new AttendanceConflict());
     await expect(
       service.create('employee-1', 'request-1', request),

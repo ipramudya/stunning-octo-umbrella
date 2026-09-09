@@ -37,6 +37,7 @@ try {
       { id: account.id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     if (existing.rows?.length) {
       continue;
     }
@@ -44,12 +45,14 @@ try {
     if (!account.password) {
       throw new Error('Demo account passwords are required');
     }
+
     const passwordHash = await hash(account.password, {
       type: 2,
       memoryCost: Number(process.env.ARGON2_MEMORY_COST ?? 19_456),
       timeCost: Number(process.env.ARGON2_TIME_COST ?? 2),
       parallelism: Number(process.env.ARGON2_PARALLELISM ?? 1),
     });
+
     await connection.execute(
       `INSERT INTO employees (id, employee_number, full_name, phone_number, password_hash)
        VALUES (:id, :employeeNumber, :fullName, :phoneNumber, :passwordHash)`,
@@ -61,6 +64,7 @@ try {
         passwordHash,
       },
     );
+
     for (const role of account.roles) {
       await connection.execute(
         'INSERT INTO employee_roles (employee_id, role) VALUES (:employeeId, :role)',
@@ -68,6 +72,7 @@ try {
       );
     }
   }
+
   await connection.commit();
 } finally {
   await connection.close();

@@ -27,7 +27,9 @@ export class AttendanceQueryController {
     metadata: Metadata,
   ): Promise<ListAttendanceResponse> {
     const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+
     const items = await this.queries.listEmployee(claims.sub, request.month);
+
     return { items: items.map(grpcEntry), hasNextPage: false };
   }
 
@@ -37,6 +39,7 @@ export class AttendanceQueryController {
     metadata: Metadata,
   ) {
     const claims = await this.authorization.authorize(metadata, ['EMPLOYEE']);
+
     return grpcEntry(
       await this.queries.getEmployee(claims.sub, request.entryId),
     );
@@ -45,13 +48,16 @@ export class AttendanceQueryController {
   @GrpcMethod('AttendanceService', 'ListAttendance')
   async listAttendance(request: ListAttendanceRequest, metadata: Metadata) {
     await this.authorization.authorize(metadata, ['HRD']);
+
     const result = await this.queries.list(request);
+
     return { ...result, items: result.items.map(grpcEntry) };
   }
 
   @GrpcMethod('AttendanceService', 'GetAttendance')
   async getAttendance(request: GetAttendanceRequest, metadata: Metadata) {
     await this.authorization.authorize(metadata, ['HRD']);
+
     return grpcEntry(await this.queries.get(request.entryId));
   }
 }

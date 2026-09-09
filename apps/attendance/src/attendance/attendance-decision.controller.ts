@@ -27,7 +27,9 @@ export class AttendanceDecisionController {
     metadata: Metadata,
   ) {
     await this.authorization.authorize(metadata, ['HRD']);
+
     const result = await this.decisions.list(request.cursor, request.limit);
+
     return { ...result, items: result.items.map(grpcEntry) };
   }
 
@@ -37,6 +39,7 @@ export class AttendanceDecisionController {
     metadata: Metadata,
   ) {
     await this.authorization.authorize(metadata, ['HRD']);
+
     return grpcEntry(await this.decisions.get(request.entryId));
   }
 
@@ -46,11 +49,15 @@ export class AttendanceDecisionController {
     metadata: Metadata,
   ) {
     const claims = await this.authorization.authorize(metadata, ['HRD']);
+
     const key = metadata.get('idempotency-key')[0];
+
     if (typeof key !== 'string' || key.length < 1 || key.length > 128) {
       failure(status.INVALID_ARGUMENT, 'IDEMPOTENCY_KEY_REQUIRED');
     }
+
     const result = await this.decisions.decide(claims.sub, key, request);
+
     return grpcEntry({ ...result.entry, idempotentReplay: result.replay });
   }
 }

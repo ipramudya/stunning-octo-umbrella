@@ -110,6 +110,7 @@ export class SessionStore implements OnModuleDestroy {
 
   private redis() {
     this.connection ??= this.client.connect().then(() => this.client);
+
     return this.connection;
   }
 
@@ -127,9 +128,11 @@ export class SessionStore implements OnModuleDestroy {
 
   private static parseSession(json: string): Session {
     const value: unknown = JSON.parse(json);
+
     if (!SessionStore.isRecord(value)) {
       throw new Error('invalid session');
     }
+
     const {
       employeeId,
       credentialVersion,
@@ -141,9 +144,11 @@ export class SessionStore implements OnModuleDestroy {
       typeof employeeId === 'string' && typeof credentialVersion === 'number';
     const hasTimestamps =
       typeof createdAt === 'number' && typeof expiresAt === 'number';
+
     if (!hasIdentity || !hasTimestamps || typeof refreshDigest !== 'string') {
       throw new Error('invalid session');
     }
+
     return {
       employeeId,
       credentialVersion,
@@ -160,6 +165,7 @@ export class SessionStore implements OnModuleDestroy {
     ) {
       throw new Error('invalid Redis response');
     }
+
     return value;
   }
 
@@ -172,6 +178,7 @@ export class SessionStore implements OnModuleDestroy {
     const sid = randomUUID();
     const ttl = this.config.get('REFRESH_TOKEN_TTL_SECONDS', { infer: true });
     const refreshDigest = SessionStore.digest(token);
+
     const result = await this.mutate(CREATE_SESSION, {
       keys: [`${employeePrefix}${employeeId}`],
       arguments: [
@@ -184,33 +191,43 @@ export class SessionStore implements OnModuleDestroy {
         String(ttl),
       ],
     });
+
     if (typeof result !== 'string') {
       throw new Error('invalid Redis response');
     }
+
     const session = SessionStore.parseSession(result);
+
     return { sid, session, refreshToken: token };
   }
 
   async get(sid: string) {
     const value = await (await this.redis()).get(`${sessionPrefix}${sid}`);
+
     if (value) {
       return SessionStore.parseSession(value);
     }
+
     return undefined;
   }
 
   async getByRefreshToken(token: string) {
     const client = await this.redis();
+
     const sid = await client.get(
       `${activePrefix}${SessionStore.digest(token)}`,
     );
+
     if (!sid) {
       return undefined;
     }
+
     const session = await this.get(sid);
+
     if (session) {
       return { sid, session };
     }
+
     return undefined;
   }
 
@@ -229,9 +246,11 @@ export class SessionStore implements OnModuleDestroy {
         ],
       }),
     );
+
     if (result[0] !== 'OK' || !result[1] || !result[2]) {
       throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
     }
+
     return {
       sid: result[2],
       session: SessionStore.parseSession(result[1]),
@@ -262,19 +281,24 @@ export class SessionStore implements OnModuleDestroy {
     options: { keys?: string[]; arguments: string[] },
   ) {
     const client = await this.redis();
+
     let sha = this.scriptShas.get(script);
+
     if (!sha) {
       sha = await client.scriptLoad(script);
       this.scriptShas.set(script, sha);
     }
+
     try {
       return await client.evalSha(sha, options);
     } catch (error) {
       if (!String(error).includes('NOSCRIPT')) {
         throw error;
       }
+
       sha = await client.scriptLoad(script);
       this.scriptShas.set(script, sha);
+
       return client.evalSha(sha, options);
     }
   }

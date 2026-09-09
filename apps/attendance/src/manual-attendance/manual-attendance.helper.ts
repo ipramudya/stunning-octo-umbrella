@@ -19,11 +19,13 @@ function jakartaDate(value: Date) {
       .formatToParts(value)
       .map((part) => [part.type, part.value]),
   );
+
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function utcDateValue(value: string) {
   const [year = 0, month = 0, day = 0] = value.split('-').map(Number);
+
   return Date.UTC(year, month - 1, day);
 }
 
@@ -49,9 +51,11 @@ const manualAttendanceStatus: Record<ManualAttendanceErrorCode, status> = {
 export class ManualAttendanceError extends AttendanceError {
   constructor(code: ManualAttendanceErrorCode) {
     let retryAfterSeconds;
+
     if (code === 'REQUEST_IN_PROGRESS') {
       retryAfterSeconds = 1;
     }
+
     super(code, manualAttendanceStatus[code], retryAfterSeconds);
   }
 }
@@ -66,26 +70,34 @@ export function validateManualAttendancePolicy(
   ) {
     throw new ManualAttendanceError('VALIDATION_ERROR');
   }
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(request.workDate)) {
     throw new ManualAttendanceError('VALIDATION_ERROR');
   }
+
   const workDateNumber = utcDateValue(request.workDate);
+
   if (
     new Date(workDateNumber).toISOString().slice(0, 10) !== request.workDate
   ) {
     throw new ManualAttendanceError('VALIDATION_ERROR');
   }
+
   const today = jakartaDate(now);
   const age = (utcDateValue(today) - workDateNumber) / 86_400_000;
+
   if (!Number.isInteger(age) || age < 0 || age > 7) {
     throw new ManualAttendanceError('MANUAL_DATE_OUT_OF_RANGE');
   }
+
   if (!request.claimedAt || Number.isNaN(request.claimedAt.getTime())) {
     throw new ManualAttendanceError('VALIDATION_ERROR');
   }
+
   if (jakartaDate(request.claimedAt) !== request.workDate) {
     throw new ManualAttendanceError('CLAIMED_AT_DATE_MISMATCH');
   }
+
   if (request.claimedAt.getTime() > now.getTime()) {
     throw new ManualAttendanceError('FUTURE_CLAIMED_AT');
   }

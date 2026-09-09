@@ -25,10 +25,12 @@ export function createHealthClientOptions({
 }): GrpcOptions {
   let servicePackage = 'dexa.attendance.v1';
   let serviceProto = ATTENDANCE_PROTO_PATH;
+
   if (service === 'identity') {
     servicePackage = 'dexa.identity.v1';
     serviceProto = IDENTITY_PROTO_PATH;
   }
+
   return {
     transport: Transport.GRPC,
     options: {

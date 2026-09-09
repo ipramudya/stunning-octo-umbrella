@@ -8,12 +8,17 @@ APP_ORIGIN="http://localhost:${GATEWAY_PORT}"
 export APP_ORIGIN COMPOSE_PROJECT_NAME GATEWAY_PORT MINIO_PORT
 
 cleanup() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    docker compose ps --all || true
+    docker compose logs --no-color --tail 100 || true
+  fi
   docker compose down --volumes --remove-orphans --timeout 10
 }
 trap cleanup EXIT INT TERM
 
 # A killed test run can bypass the trap. Remove it before allocating another stack.
-cleanup
+docker compose down --volumes --remove-orphans --timeout 10
 for service in identity attendance gateway; do
   docker compose build "$service"
 done

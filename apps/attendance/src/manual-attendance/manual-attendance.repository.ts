@@ -23,6 +23,7 @@ function isUniqueViolation(error: unknown) {
 
 function restoreResponse(body: string): AttendanceEntry {
   const value: unknown = JSON.parse(body);
+
   return AttendanceEntry.fromJSON(value);
 }
 
@@ -69,24 +70,31 @@ export class ManualAttendanceRepository {
           { employeeId, operation, key, hash },
         );
       });
+
       return { kind: 'new' };
     } catch (error) {
       if (!isUniqueViolation(error)) {
         throw error;
       }
+
       const record = await this.getClaim(employeeId, key);
+
       if (!record) {
         throw error;
       }
+
       if (record.REQUEST_HASH !== hash) {
         return { kind: 'mismatch' };
       }
+
       if (record.STATUS === 'IN_PROGRESS') {
         return { kind: 'in-progress' };
       }
+
       if (!record.RESPONSE_BODY) {
         throw new Error('idempotency response missing');
       }
+
       return {
         kind: 'completed',
         response: restoreResponse(record.RESPONSE_BODY),
@@ -124,6 +132,7 @@ export class ManualAttendanceRepository {
       evidenceUpload,
       permanentVersion,
     } = input;
+
     return this.zones.withAttendanceMutation(
       employeeId,
       workDate,
@@ -141,6 +150,7 @@ export class ManualAttendanceRepository {
             }
           },
         );
+
         if (!evidenceReady) {
           throw new Error('evidence upload disappeared');
         }
@@ -151,6 +161,7 @@ export class ManualAttendanceRepository {
           evidenceUpload.id,
           permanentVersion,
         );
+
         const completed = await connection.execute(
           `UPDATE idempotency_records
            SET status = 'COMPLETED', response_status = 201,
@@ -169,9 +180,11 @@ export class ManualAttendanceRepository {
             hash,
           },
         );
+
         if (completed.rowsAffected !== 1) {
           throw new Error('idempotency claim disappeared');
         }
+
         return entry;
       },
     );
@@ -188,6 +201,7 @@ export class ManualAttendanceRepository {
         { employeeId, operation, key },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return result.rows?.[0];
     });
   }
@@ -196,6 +210,7 @@ export class ManualAttendanceRepository {
     if (value === ClockType.CLOCK_TYPE_CLOCK_IN) {
       return 'CLOCK_IN';
     }
+
     return 'CLOCK_OUT';
   }
 

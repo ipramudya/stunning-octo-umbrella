@@ -8,15 +8,20 @@ const hrdLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000001',
   password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
 });
+
 assert.equal(hrdLogin.status, 200);
+
 const hrd = cookieJar(hrdLogin);
 
 const employeeLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000002',
   password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
 });
+
 assert.equal(employeeLogin.status, 200);
+
 const ordinary = cookieJar(employeeLogin);
+
 await expectProblem(
   await request('/api/v1/hrd/employees', 'GET', ordinary),
   403,
@@ -30,8 +35,11 @@ const createdResponse = await request('/api/v1/hrd/employees', 'POST', hrd, {
   email: 'TICKET04@EXAMPLE.COM',
   password,
 });
+
 assert.equal(createdResponse.status, 201);
+
 const created = await createdResponse.json();
+
 assert.equal(created.employeeNumber, 'DEXA-TICKET-04');
 assert.equal(created.fullName, 'Ticket Employee');
 assert.equal(created.email, 'ticket04@example.com');
@@ -80,8 +88,11 @@ const searchedResponse = await request(
   'GET',
   hrd,
 );
+
 assert.equal(searchedResponse.status, 200);
+
 const searched = await searchedResponse.json();
+
 assert.equal(searched.items.length, 1);
 assert.equal(searched.pageInfo.hasNextPage, false);
 assert.equal(searched.items[0].id, created.id);
@@ -91,24 +102,32 @@ const firstPageResponse = await request(
   'GET',
   hrd,
 );
+
 assert.equal(firstPageResponse.status, 200);
+
 const firstPage = await firstPageResponse.json();
+
 assert.equal(firstPage.items.length, 1);
 assert.equal(firstPage.pageInfo.hasNextPage, true);
 assert.ok(firstPage.pageInfo.nextCursor);
+
 const secondPageResponse = await request(
   `/api/v1/hrd/employees?limit=1&cursor=${encodeURIComponent(firstPage.pageInfo.nextCursor)}`,
   'GET',
   hrd,
 );
+
 assert.equal(secondPageResponse.status, 200);
+
 const secondPage = await secondPageResponse.json();
+
 assert.notEqual(secondPage.items[0].id, firstPage.items[0].id);
 await expectProblem(
   await request('/api/v1/hrd/employees?cursor=broken', 'GET', hrd),
   400,
   'INVALID_CURSOR',
 );
+
 const wrongCursor = Buffer.from(
   JSON.stringify({
     v: 1,
@@ -117,6 +136,7 @@ const wrongCursor = Buffer.from(
     id: created.id,
   }),
 ).toString('base64url');
+
 await expectProblem(
   await request(`/api/v1/hrd/employees?cursor=${wrongCursor}`, 'GET', hrd),
   400,
@@ -124,6 +144,7 @@ await expectProblem(
 );
 
 const detail = await request(`/api/v1/hrd/employees/${created.id}`, 'GET', hrd);
+
 assert.equal(detail.status, 200);
 assert.equal((await detail.json()).employeeNumber, 'DEXA-TICKET-04');
 await expectProblem(
@@ -133,6 +154,7 @@ await expectProblem(
   400,
   'VALIDATION_ERROR',
 );
+
 const updated = await request(
   `/api/v1/hrd/employees/${created.id}`,
   'PATCH',
@@ -142,6 +164,7 @@ const updated = await request(
     email: null,
   },
 );
+
 assert.equal(updated.status, 200);
 assert.equal((await updated.json()).email, undefined);
 
@@ -149,8 +172,11 @@ const createdLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280400000001',
   password,
 });
+
 assert.equal(createdLogin.status, 200);
+
 const stalePhoneSession = cookieJar(createdLogin);
+
 const phoneUpdate = await request(
   `/api/v1/hrd/employees/${created.id}/phone-number`,
   'PUT',
@@ -159,6 +185,7 @@ const phoneUpdate = await request(
     phoneNumber: '+6280400000009',
   },
 );
+
 assert.equal(phoneUpdate.status, 200);
 await expectProblem(
   await request('/api/v1/hrd/employees', 'GET', stalePhoneSession),
@@ -170,8 +197,11 @@ const relogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280400000009',
   password,
 });
+
 assert.equal(relogin.status, 200);
+
 const stalePasswordSession = cookieJar(relogin);
+
 const reset = await request(
   `/api/v1/hrd/employees/${created.id}/password`,
   'PUT',
@@ -180,6 +210,7 @@ const reset = await request(
     password: nextPassword,
   },
 );
+
 assert.equal(reset.status, 204);
 await expectProblem(
   await request('/api/v1/hrd/employees', 'GET', stalePasswordSession),

@@ -20,6 +20,7 @@ function errorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
+
   return String(error);
 }
 
@@ -63,26 +64,35 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
     request: CreateManualAttendanceRequest,
   ): Promise<{ entry: AttendanceEntry; replay: boolean }> {
     const now = new Date();
+
     validateManualAttendancePolicy(request, now);
+
     const hash = this.requestHash(employeeId, request);
+
     const claim = await this.repository.claim(employeeId, idempotencyKey, hash);
+
     if (claim.kind === 'mismatch') {
       throw new ManualAttendanceError('IDEMPOTENCY_KEY_REUSED');
     }
+
     if (claim.kind === 'in-progress') {
       throw new ManualAttendanceError('REQUEST_IN_PROGRESS');
     }
+
     if (claim.kind === 'completed') {
       return { entry: claim.response, replay: true };
     }
 
     let upload: EvidenceUpload | undefined;
+
     try {
       upload = await this.evidence.prepareStandalone(
         employeeId,
         request.evidenceUploadId,
       );
+
       const permanentVersion = await this.evidence.promote(upload);
+
       const entry: AttendanceEntry = {
         id: randomUUID(),
         employeeId,
@@ -101,6 +111,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
         evidenceId: request.evidenceUploadId,
         idempotentReplay: false,
       };
+
       const created = await this.repository.create({
         employeeId,
         key: idempotencyKey,
@@ -110,6 +121,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
         evidenceUpload: upload,
         permanentVersion,
       });
+
       try {
         await this.evidence.complete(upload);
       } catch (error) {
@@ -117,6 +129,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
           `staging evidence cleanup deferred for ${upload.id}: ${errorMessage(error)}`,
         );
       }
+
       return { entry: created, replay: false };
     } catch (error) {
       try {
@@ -128,6 +141,7 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
           `evidence cleanup deferred: ${errorMessage(cleanupError)}`,
         );
       }
+
       try {
         await this.repository.release(employeeId, idempotencyKey, hash);
       } catch (cleanupError) {
@@ -135,9 +149,11 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
           `idempotency cleanup deferred: ${errorMessage(cleanupError)}`,
         );
       }
+
       if (error instanceof AttendanceConflict) {
         throw new ManualAttendanceError('ATTENDANCE_ALREADY_EXISTS');
       }
+
       throw error;
     }
   }

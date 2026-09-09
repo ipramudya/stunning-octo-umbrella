@@ -16,6 +16,7 @@ function currentJakartaMonth() {
   const year = Number(parts.find((part) => part.type === 'year')?.value);
   const month = Number(parts.find((part) => part.type === 'month')?.value);
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
+
   return {
     dateFrom: `${prefix}-01`,
     dateTo: `${prefix}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, '0')}`,

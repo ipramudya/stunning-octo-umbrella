@@ -18,6 +18,7 @@ function subject() {
     decide: vi.fn().mockResolvedValue({ id: approve.entryId }),
     release: vi.fn(),
   };
+
   return {
     repository,
     service: new ManualDecisionService(repository as never),
@@ -27,6 +28,7 @@ function subject() {
 describe('manual attendance decisions', () => {
   it('returns exact completed replays without deciding again', async () => {
     const { repository, service } = subject();
+
     repository.claim.mockResolvedValue({
       kind: 'completed',
       response: { id: approve.entryId, status: 'RECORDED' },
@@ -43,6 +45,7 @@ describe('manual attendance decisions', () => {
 
   it('releases failed claims and preserves the domain error', async () => {
     const { repository, service } = subject();
+
     repository.decide.mockRejectedValue(
       new ManualDecisionPersistenceError('SELF_APPROVAL_FORBIDDEN'),
     );
@@ -59,6 +62,7 @@ describe('manual attendance decisions', () => {
 
   it('requires a rejection reason', async () => {
     const { service } = subject();
+
     await expect(
       service.decide('reviewer-1', 'key-1', {
         ...approve,

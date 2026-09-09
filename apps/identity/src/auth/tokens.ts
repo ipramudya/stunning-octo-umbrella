@@ -36,6 +36,7 @@ function parseRoles(value: unknown): RoleName[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
+
   if (
     !value.every(
       (role): role is RoleName => role === 'EMPLOYEE' || role === 'HRD',
@@ -43,6 +44,7 @@ function parseRoles(value: unknown): RoleName[] | undefined {
   ) {
     return undefined;
   }
+
   return value;
 }
 
@@ -64,18 +66,24 @@ async function assertToken({
     clockTolerance: 5,
     requiredClaims: ['sub', 'sid', 'roles', 'iat', 'exp'],
   });
+
   const hasExpectedHeader =
     protectedHeader.alg === 'EdDSA' && protectedHeader.typ === 'at+jwt';
+
   if (!hasExpectedHeader) {
     throw new Error('invalid access token');
   }
+
   if (!hasExpectedClaims(payload, audience)) {
     throw new Error('invalid access token');
   }
+
   const roles = parseRoles(payload.roles);
+
   if (!roles) {
     throw new Error('invalid access token');
   }
+
   return {
     ...payload,
     sub: payload.sub,
@@ -93,7 +101,9 @@ export class TokenService {
 
   constructor(config: ConfigService<Environment, true>) {
     this.issuer = config.get('JWT_ISSUER', { infer: true });
+
     const pkiDir = config.get('PKI_DIR', { infer: true });
+
     this.privateKey = importPKCS8(
       readFileSync(join(pkiDir, 'identity-signing.key'), 'utf8'),
       'EdDSA',

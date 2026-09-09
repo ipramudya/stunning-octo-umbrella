@@ -16,14 +16,18 @@ function repository(
     ) => {
       try {
         const result = await work(connection);
+
         await commit();
+
         return result;
       } catch (error) {
         await rollback();
+
         throw error;
       }
     },
   };
+
   return {
     repository: new AttendanceZoneRepository(
       database as unknown as OracleDatabase,

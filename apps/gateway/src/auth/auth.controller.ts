@@ -51,6 +51,7 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const context = this.context(request, reply, true);
+
     await this.limit({
       scope: 'login:phone',
       subject: rateKey(body.phoneNumber.trim()),
@@ -69,13 +70,16 @@ export class AuthController {
       reply,
       traceId: context.traceId,
     });
+
     try {
       const result = await firstValueFrom(
         this.identity
           .login(body, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
+
       this.setCredentials(reply, result);
+
       return publicProfile(result.profile);
     } catch (error) {
       this.grpcFailure({
@@ -94,6 +98,7 @@ export class AuthController {
   ) {
     const context = this.context(request, reply, true);
     const refreshToken = cookies(request).dexa_refresh ?? '';
+
     await this.limit({
       scope: 'refresh:token',
       subject: rateKey(refreshToken),
@@ -112,12 +117,14 @@ export class AuthController {
       reply,
       traceId: context.traceId,
     });
+
     try {
       const result = await firstValueFrom(
         this.identity
           .refreshSession({ refreshToken }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
+
       this.setCredentials(reply, result);
       reply.status(204);
     } catch (error) {
@@ -136,6 +143,7 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const context = this.context(request, reply, true);
+
     try {
       await firstValueFrom(
         this.identity
@@ -151,6 +159,7 @@ export class AuthController {
         `Session revocation could not be confirmed traceId=${context.traceId}`,
       );
     }
+
     reply.header('set-cookie', [
       this.cookie({ name: 'dexa_access', value: '', path: '/api', maxAge: 0 }),
       this.cookie({
@@ -169,16 +178,19 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const context = this.context(request, reply, false);
+
     context.metadata.set(
       'authorization',
       `Bearer ${cookies(request).dexa_access ?? ''}`,
     );
+
     try {
       const result = await firstValueFrom(
         this.identity
           .authorizeAccess({ audiences: [] }, context.metadata, context.options)
           .pipe(takeUntil(context.cancelled)),
       );
+
       await this.limit({
         scope: 'authenticated',
         subject: result.sessionId,
@@ -188,6 +200,7 @@ export class AuthController {
         reply,
         traceId: context.traceId,
       });
+
       return publicProfile(result.profile);
     } catch (error) {
       this.grpcFailure({
@@ -205,7 +218,9 @@ export class AuthController {
     unsafe: boolean,
   ) {
     const traceId = randomUUID();
+
     reply.header('x-correlation-id', traceId);
+
     if (
       unsafe &&
       request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
@@ -218,8 +233,11 @@ export class AuthController {
         traceId,
       });
     }
+
     const metadata = new Metadata();
+
     metadata.set('x-correlation-id', traceId);
+
     return {
       metadata,
       traceId,
@@ -263,6 +281,7 @@ export class AuthController {
           traceId,
         });
       }
+
       this.fail({
         statusCode: 503,
         code: 'DEPENDENCY_UNAVAILABLE',
@@ -305,9 +324,11 @@ export class AuthController {
       new URL(this.config.get('APP_ORIGIN', { infer: true })).hostname,
     );
     let secure = '; Secure';
+
     if (localhost) {
       secure = '';
     }
+
     return `${name}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secure}`;
   }
 
@@ -325,7 +346,9 @@ export class AuthController {
     if (error instanceof HttpException) {
       throw error;
     }
+
     const codeFromGrpc = grpcCode(error);
+
     if (codeFromGrpc === status.UNAUTHENTICATED) {
       if (operation === 'login') {
         this.fail({
@@ -336,6 +359,7 @@ export class AuthController {
           traceId,
         });
       }
+
       this.fail({
         statusCode: 401,
         code: 'AUTHENTICATION_REQUIRED',
@@ -344,6 +368,7 @@ export class AuthController {
         traceId,
       });
     }
+
     if (codeFromGrpc === status.INVALID_ARGUMENT) {
       this.fail({
         statusCode: 400,
@@ -353,6 +378,7 @@ export class AuthController {
         traceId,
       });
     }
+
     if (codeFromGrpc === status.UNAVAILABLE) {
       this.fail({
         statusCode: 503,
@@ -362,6 +388,7 @@ export class AuthController {
         traceId,
       });
     }
+
     if (codeFromGrpc === status.DEADLINE_EXCEEDED) {
       this.fail({
         statusCode: 504,
@@ -371,6 +398,7 @@ export class AuthController {
         traceId,
       });
     }
+
     this.fail({
       statusCode: 500,
       code: 'INTERNAL_ERROR',

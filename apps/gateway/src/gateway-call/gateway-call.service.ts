@@ -32,7 +32,9 @@ export class GatewayCallService {
       idempotent = false,
     } = call;
     const traceId = request.id || randomUUID();
+
     reply.header('x-correlation-id', traceId);
+
     if (
       unsafe &&
       request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
@@ -42,9 +44,11 @@ export class GatewayCallService {
 
     const idempotencyHeader = request.headers['idempotency-key'];
     let idempotencyKey: string | undefined;
+
     if (typeof idempotencyHeader === 'string') {
       idempotencyKey = idempotencyHeader;
     }
+
     if (idempotent && (!idempotencyKey || idempotencyKey.length > 128)) {
       fail(
         400,
@@ -56,17 +60,21 @@ export class GatewayCallService {
     }
 
     const access = new Metadata();
+
     access.set('authorization', `Bearer ${cookies(request).dexa_access ?? ''}`);
     access.set('x-correlation-id', traceId);
-    const options = { deadline: Date.now() + 3_000 };
+
     const cancelled = fromEvent(request.raw, 'aborted');
 
     try {
       const authorization = await firstValueFrom(
         this.identity
-          .authorizeAccess({ audiences: [...audiences] }, access, options)
+          .authorizeAccess({ audiences: [...audiences] }, access, {
+            deadline: Date.now() + 3_000,
+          })
           .pipe(takeUntil(cancelled)),
       );
+
       if (rateLimited) {
         await this.rateLimiter.consume({
           scope: 'authenticated',
@@ -75,36 +83,46 @@ export class GatewayCallService {
           windowSeconds: 60,
         });
       }
+
       const tokens = new Map(
         authorization.tokens.map(({ audience, token }) => [audience, token]),
       );
+      const options = { deadline: Date.now() + 3_000 };
       const context: GatewayCallContext = {
         metadata: (audience: TokenAudience) => {
           const token = tokens.get(audience);
+
           if (!token || !audiences.includes(audience)) {
             throw new Error('missing delegated token');
           }
+
           const metadata = new Metadata();
+
           metadata.set('authorization', `Bearer ${token}`);
           metadata.set('x-correlation-id', traceId);
+
           if (idempotent && idempotencyKey) {
             metadata.set('idempotency-key', idempotencyKey);
           }
+
           return metadata;
         },
         options,
         cancelled,
         traceId,
       };
+
       return await call.operation(context);
     } catch (error) {
       if (error instanceof RateLimitError) {
         reply.header('retry-after', error.retryAfter);
         fail(429, 'RATE_LIMIT_EXCEEDED', 'Too many requests', request, traceId);
       }
+
       if (call.failure) {
         call.failure(error, traceId);
       }
+
       throw error;
     }
   }

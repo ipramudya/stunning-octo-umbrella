@@ -13,17 +13,22 @@ import {
 
 function zoneRequest(path, jar, method = 'GET', body) {
   const headers = {};
+
   if (jar) {
     headers.cookie = cookieHeader(jar);
   }
+
   if (body) {
     headers['content-type'] = 'application/json';
     headers.origin = origin;
   }
+
   const options = { method, headers };
+
   if (body) {
     options.body = JSON.stringify(body);
   }
+
   return fetch(`${baseUrl}${path}`, options);
 }
 
@@ -41,7 +46,9 @@ const hrd = cookieJar(
 );
 
 assert.equal((await zoneRequest('/api/v1/attendance-zone')).status, 401);
+
 const initial = await zoneRequest('/api/v1/attendance-zone', employee);
+
 assert.equal(initial.status, 200);
 assert.deepEqual(await initial.json(), {
   name: 'Titan Center',
@@ -60,6 +67,7 @@ const update = {
   radiusMeters: 650,
   active: false,
 };
+
 assert.equal(
   (await zoneRequest('/api/v1/hrd/attendance-zone', employee, 'PATCH', update))
     .status,
@@ -74,25 +82,29 @@ assert.equal(
   ).status,
   400,
 );
+
 const updated = await zoneRequest(
   '/api/v1/hrd/attendance-zone',
   hrd,
   'PATCH',
   update,
 );
+
 assert.equal(updated.status, 200);
 assert.deepEqual(await updated.json(), update);
 
 composeExec(['attendance', 'node', 'apps/attendance/dist/scripts/seed.js'], {
   stdio: 'inherit',
 });
+
 const preserved = await zoneRequest('/api/v1/attendance-zone', employee);
+
 assert.deepEqual(await preserved.json(), update);
 
 const databaseCheck = `
 import assert from "node:assert/strict";
 import oracledb from "oracledb";
-import { AttendanceConflict, AttendanceZoneRepository } from "./apps/attendance/dist/attendance-zone.js";
+import { AttendanceConflict, AttendanceZoneRepository } from "./apps/attendance/dist/attendance-zone/attendance-zone.repository.js";
 
 const config = { user: process.env.ORACLE_USER, password: process.env.ORACLE_PASSWORD, connectString: process.env.ORACLE_CONNECT_STRING };
 const connection = await oracledb.getConnection(config);
@@ -159,6 +171,7 @@ try {
   await connection.close();
 }
 `;
+
 composeExec(
   ['attendance', 'node', '--input-type=module', '-e', databaseCheck],
   {
@@ -174,6 +187,7 @@ const restore = {
   radiusMeters: 500,
   active: true,
 };
+
 assert.equal(
   (await zoneRequest('/api/v1/hrd/attendance-zone', hrd, 'PATCH', restore))
     .status,

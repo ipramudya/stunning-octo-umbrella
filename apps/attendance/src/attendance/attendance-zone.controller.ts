@@ -27,6 +27,7 @@ export class AttendanceZoneController {
     metadata: Metadata,
   ): Promise<AttendanceZone> {
     await this.authorization.authorize(metadata);
+
     return this.zones.get();
   }
 
@@ -36,10 +37,13 @@ export class AttendanceZoneController {
     metadata: Metadata,
   ): Promise<AttendanceZone> {
     const claims = await this.authorization.authorize(metadata, ['HRD']);
+
     const parsed = updateSchema.safeParse(request);
+
     if (!parsed.success) {
       failure(status.INVALID_ARGUMENT, 'VALIDATION_ERROR');
     }
+
     return this.zones.update(parsed.data, claims.sub);
   }
 }

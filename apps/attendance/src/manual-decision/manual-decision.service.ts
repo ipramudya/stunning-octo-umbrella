@@ -39,9 +39,11 @@ const manualDecisionStatus: Record<ManualDecisionErrorCode, status> = {
 export class ManualDecisionError extends AttendanceError {
   constructor(code: ManualDecisionErrorCode) {
     let retryAfterSeconds;
+
     if (code === 'REQUEST_IN_PROGRESS') {
       retryAfterSeconds = 1;
     }
+
     super(code, manualDecisionStatus[code], retryAfterSeconds);
   }
 }
@@ -58,13 +60,16 @@ export class ManualDecisionService {
     if (!value) {
       return undefined;
     }
+
     try {
       const parsed: unknown = JSON.parse(
         Buffer.from(value, 'base64url').toString('utf8'),
       );
+
       if (!this.isRecord(parsed)) {
         throw new Error('invalid cursor');
       }
+
       const { v, endpoint, submittedAt, id } = parsed;
       const hasExpectedMetadata =
         v === 1 && endpoint === 'pending-manual-attendance';
@@ -72,13 +77,17 @@ export class ManualDecisionService {
         typeof submittedAt === 'string' && typeof id === 'string';
       const hasExpectedShape =
         Object.keys(parsed).sort().join(',') === 'endpoint,id,submittedAt,v';
+
       if (!hasExpectedMetadata || !hasExpectedFields || !hasExpectedShape) {
         throw new Error('invalid cursor');
       }
+
       const date = new Date(submittedAt);
+
       if (Number.isNaN(date.getTime())) {
         throw new Error('invalid cursor');
       }
+
       return { submittedAt: date, id };
     } catch {
       throw new ManualDecisionError('INVALID_CURSOR');
@@ -89,6 +98,7 @@ export class ManualDecisionService {
     if (!value.submittedAt) {
       throw new Error('attendance timestamp missing');
     }
+
     return Buffer.from(
       JSON.stringify({
         v: 1,
@@ -115,17 +125,22 @@ export class ManualDecisionService {
 
   async list(cursor: string | undefined, requestedLimit: number) {
     const limit = requestedLimit || 20;
+
     if (limit < 1 || limit > 100) {
       throw new ManualDecisionError('VALIDATION_ERROR');
     }
+
     const rows = await this.repository.list(this.decodeCursor(cursor), limit);
+
     const hasNextPage = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items.at(-1);
     let nextCursor;
+
     if (hasNextPage && last) {
       nextCursor = this.encodeCursor(last);
     }
+
     return {
       items,
       nextCursor,
@@ -135,9 +150,11 @@ export class ManualDecisionService {
 
   async get(entryId: string) {
     const value = await this.repository.get(entryId);
+
     if (!value) {
       throw new ManualDecisionError('ATTENDANCE_ENTRY_NOT_FOUND');
     }
+
     return value;
   }
 
@@ -154,7 +171,9 @@ export class ManualDecisionService {
     ) {
       throw new ManualDecisionError('VALIDATION_ERROR');
     }
+
     const reason = request.reason?.trim();
+
     if (
       request.decision ===
       ManualAttendanceDecision.MANUAL_ATTENDANCE_DECISION_REJECT
@@ -167,16 +186,21 @@ export class ManualDecisionService {
     }
 
     const hash = this.requestHash({ ...request, reason });
+
     const claim = await this.repository.claim(reviewerId, key, hash);
+
     if (claim.kind === 'mismatch') {
       throw new ManualDecisionError('IDEMPOTENCY_KEY_REUSED');
     }
+
     if (claim.kind === 'in-progress') {
       throw new ManualDecisionError('REQUEST_IN_PROGRESS');
     }
+
     if (claim.kind === 'completed') {
       return { entry: claim.response, replay: true };
     }
+
     try {
       const decided = await this.repository.decide({
         reviewerId,
@@ -186,12 +210,15 @@ export class ManualDecisionService {
         key,
         hash,
       });
+
       return { entry: decided, replay: false };
     } catch (error) {
       await this.repository.release(reviewerId, key, hash);
+
       if (error instanceof ManualDecisionPersistenceError) {
         throw new ManualDecisionError(error.code);
       }
+
       throw error;
     }
   }

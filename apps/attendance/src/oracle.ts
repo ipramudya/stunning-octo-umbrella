@@ -31,6 +31,7 @@ export class OracleDatabase implements OnModuleDestroy {
           .catch(callback);
       },
     });
+
     return this.pool;
   }
 
@@ -38,6 +39,7 @@ export class OracleDatabase implements OnModuleDestroy {
     work: (connection: oracledb.Connection) => Promise<T>,
   ) {
     const connection = await (await this.getPool()).getConnection();
+
     try {
       return await work(connection);
     } finally {
@@ -51,10 +53,13 @@ export class OracleDatabase implements OnModuleDestroy {
     return this.withConnection(async (connection) => {
       try {
         const result = await work(connection);
+
         await connection.commit();
+
         return result;
       } catch (error) {
         await connection.rollback();
+
         throw error;
       }
     });

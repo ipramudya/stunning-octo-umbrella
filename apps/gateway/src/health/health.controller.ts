@@ -21,6 +21,7 @@ export class HealthController {
     if (!(await this.readiness.isReady())) {
       throw new ServiceUnavailableException({ status: 'not_ready' });
     }
+
     return { status: 'ready' };
   }
 }

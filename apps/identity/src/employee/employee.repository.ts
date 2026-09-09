@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import oracledb, { type Connection } from 'oracledb';
+import oracledb from 'oracledb';
 
 import { OracleDatabase } from '../oracle.js';
 import type {
@@ -20,9 +20,11 @@ function role(value: string): value is RoleName {
 
 function employee(row: EmployeeRow): Employee {
   const roles = row.ROLES.split(',');
+
   if (!roles.every(role)) {
     throw new Error('employee has an invalid role');
   }
+
   return {
     id: row.ID,
     employeeNumber: row.EMPLOYEE_NUMBER,
@@ -51,9 +53,11 @@ export class EmployeeRepository {
     if (ids.length === 0) {
       return [];
     }
+
     const binds = Object.fromEntries(
       ids.map((id, index) => [`id${index}`, id]),
     );
+
     return this.database.withConnection(async (connection) => {
       const result = await connection.execute<EmployeeRow>(
         `SELECT ${employeeColumns} FROM employees e
@@ -61,6 +65,7 @@ export class EmployeeRepository {
         binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(employee);
     });
   }
@@ -74,11 +79,14 @@ export class EmployeeRepository {
       const escaped = query?.replace(/[\\%_]/g, '\\$&');
       let prefix = null;
       let contains = null;
+
       if (escaped) {
         const normalized = escaped.toUpperCase();
+
         prefix = `${normalized}%`;
         contains = `%${normalized}%`;
       }
+
       const result = await connection.execute<EmployeeRow>(
         `SELECT ${employeeColumns}
            FROM employees e
@@ -98,12 +106,13 @@ export class EmployeeRepository {
         },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       return (result.rows ?? []).map(employee);
     });
   }
 
   async create(id: string, input: EmployeeInput, actorId: string) {
-    await this.transaction(async (connection) => {
+    await this.database.withTransaction(async (connection) => {
       await connection.execute(
         `INSERT INTO employees
           (id, employee_number, full_name, phone_number, email, password_hash, created_by, updated_by)
@@ -136,7 +145,7 @@ export class EmployeeRepository {
     email: string | null | undefined;
     actorId: string;
   }) {
-    return this.transaction(async (connection) => {
+    return this.database.withTransaction(async (connection) => {
       const result = await connection.execute(
         `UPDATE employees SET
            full_name = COALESCE(:full_name, full_name),
@@ -151,6 +160,7 @@ export class EmployeeRepository {
           id,
         },
       );
+
       return result.rowsAffected === 1;
     });
   }
@@ -197,16 +207,21 @@ export class EmployeeRepository {
         },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       const row = result.rows?.[0];
+
       if (!row) {
         return undefined;
       }
+
       if (input.employeeNumber === row.EMPLOYEE_NUMBER) {
         return 'EMPLOYEE_NUMBER_ALREADY_EXISTS';
       }
+
       if (input.phoneNumber === row.PHONE_NUMBER) {
         return 'PHONE_NUMBER_ALREADY_EXISTS';
       }
+
       return 'EMAIL_ALREADY_EXISTS';
     });
   }
@@ -222,11 +237,12 @@ export class EmployeeRepository {
     value: string;
     actorId: string;
   }) {
-    return this.transaction(async (connection) => {
+    return this.database.withTransaction(async (connection) => {
       const result = await connection.execute(
         `UPDATE employees SET ${sql}, updated_at = SYSTIMESTAMP, updated_by = :actor WHERE id = :id`,
         { value, actor: actorId, id },
       );
+
       return result.rowsAffected === 1;
     });
   }
@@ -241,24 +257,14 @@ export class EmployeeRepository {
         { value },
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
+
       const row = result.rows?.[0];
+
       if (row) {
         return employee(row);
       }
-      return undefined;
-    });
-  }
 
-  private async transaction<T>(work: (connection: Connection) => Promise<T>) {
-    return this.database.withConnection(async (connection) => {
-      try {
-        const value = await work(connection);
-        await connection.commit();
-        return value;
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      }
+      return undefined;
     });
   }
 }

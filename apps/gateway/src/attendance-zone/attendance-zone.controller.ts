@@ -57,6 +57,7 @@ export class AttendanceZoneController {
           metadata,
           context.options,
         );
+
         if (body) {
           response = this.attendance.updateAttendanceZone(
             body,
@@ -64,6 +65,7 @@ export class AttendanceZoneController {
             context.options,
           );
         }
+
         return firstValueFrom(response.pipe(takeUntil(context.cancelled)));
       },
       failure: (error, traceId) =>

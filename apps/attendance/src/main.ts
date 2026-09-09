@@ -19,6 +19,7 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter(),
   );
+
   const config = app.get(ConfigService<Environment, true>);
   const pkiDir = config.get('PKI_DIR', { infer: true });
 

@@ -25,11 +25,13 @@ export class AttendanceEvidenceController {
     metadata: Metadata,
   ) {
     const claims = await this.authorization.authorize(metadata);
+
     const result = await this.evidence.authorizeUpload(
       { employeeId: claims.sub, roles: claims.roles },
       request.contentType,
       request.sizeBytes,
     );
+
     return { ...result, expiresAt: grpcTimestamp(result.expiresAt) };
   }
 
@@ -39,10 +41,12 @@ export class AttendanceEvidenceController {
     metadata: Metadata,
   ) {
     const claims = await this.authorization.authorize(metadata);
+
     const result = await this.evidence.authorizeAccess(
       { employeeId: claims.sub, roles: claims.roles },
       request.evidenceId,
     );
+
     return { ...result, expiresAt: grpcTimestamp(result.expiresAt) };
   }
 }

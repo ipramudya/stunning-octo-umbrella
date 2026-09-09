@@ -17,9 +17,11 @@ export function requireProfile(
   employeeId: string,
 ) {
   const profile = profiles.get(employeeId);
+
   if (!profile) {
     throw new Error(`employee profile missing: ${employeeId}`);
   }
+
   return profile;
 }
 
@@ -27,6 +29,7 @@ export function attendanceSource(value: AttendanceListDto['source']) {
   if (value === 'REGULAR') {
     return AttendanceSource.ATTENDANCE_SOURCE_REGULAR;
   }
+
   if (value === 'MANUAL') {
     return AttendanceSource.ATTENDANCE_SOURCE_MANUAL;
   }
@@ -36,9 +39,11 @@ export function attendanceStatus(value: AttendanceListDto['status']) {
   if (value === 'PENDING_REVIEW') {
     return AttendanceStatus.ATTENDANCE_STATUS_PENDING_REVIEW;
   }
+
   if (value === 'RECORDED') {
     return AttendanceStatus.ATTENDANCE_STATUS_RECORDED;
   }
+
   if (value === 'REJECTED') {
     return AttendanceStatus.ATTENDANCE_STATUS_REJECTED;
   }
@@ -48,6 +53,7 @@ export function clockType(value: AttendanceListDto['clockType']) {
   if (value === 'CLOCK_IN') {
     return ClockType.CLOCK_TYPE_CLOCK_IN;
   }
+
   if (value === 'CLOCK_OUT') {
     return ClockType.CLOCK_TYPE_CLOCK_OUT;
   }
@@ -65,6 +71,7 @@ function clockTypeName(value: ClockType) {
   if (value === ClockType.CLOCK_TYPE_CLOCK_IN) {
     return 'CLOCK_IN';
   }
+
   return 'CLOCK_OUT';
 }
 
@@ -72,6 +79,7 @@ function sourceName(value: AttendanceSource) {
   if (value === AttendanceSource.ATTENDANCE_SOURCE_MANUAL) {
     return 'MANUAL';
   }
+
   return 'REGULAR';
 }
 
@@ -79,6 +87,7 @@ function timestampOrNull(value: Date | undefined) {
   if (value) {
     return timestampIso(value);
   }
+
   return null;
 }
 
@@ -89,6 +98,7 @@ function decisionResponse(
   if (!entry.decision || !reviewer) {
     return null;
   }
+
   return {
     decidedAt: timestampIso(entry.decision.decidedAt),
     reviewer: person(reviewer),

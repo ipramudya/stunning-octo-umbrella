@@ -55,15 +55,18 @@ export class RegularAttendanceRepository {
     try {
       return await this.database.withTransaction(async (connection) => {
         const current = await this.attempt(connection, employeeId, key);
+
         if (current && current.EXPIRES_AT.getTime() > Date.now()) {
           if (current.REQUEST_HASH !== requestHash) {
             throw new RegularAttendancePersistenceError(
               'IDEMPOTENCY_KEY_REUSED',
             );
           }
+
           if (current.STATUS === 'IN_PROGRESS') {
             throw new RegularAttendancePersistenceError('REQUEST_IN_PROGRESS');
           }
+
           if (!current.RESPONSE_BODY) {
             throw new Error('missing replay response');
           }
@@ -72,8 +75,10 @@ export class RegularAttendanceRepository {
           const replay: RegularAttendanceEntry = JSON.parse(
             current.RESPONSE_BODY,
           );
+
           return { createdAt: current.CREATED_AT, replay };
         }
+
         if (current) {
           await connection.execute(
             `DELETE FROM idempotency_records
@@ -82,6 +87,7 @@ export class RegularAttendanceRepository {
             { employeeId, operation, key },
           );
         }
+
         await connection.execute(
           `INSERT INTO idempotency_records (
              actor_employee_id, operation, idempotency_key, request_hash,
@@ -102,6 +108,7 @@ export class RegularAttendanceRepository {
             },
           },
         );
+
         return { createdAt };
       });
     } catch (error) {
@@ -112,6 +119,7 @@ export class RegularAttendanceRepository {
       ) {
         return this.beginAttempt(employeeId, key, requestHash, createdAt);
       }
+
       throw error;
     }
   }
@@ -146,10 +154,13 @@ export class RegularAttendanceRepository {
       { latitude, longitude },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     const row = result.rows?.[0];
+
     if (!row) {
       throw new Error('attendance zone is missing');
     }
+
     return {
       active: row.ACTIVE === 1,
       radiusMeters: row.RADIUS_METERS,
@@ -229,6 +240,7 @@ export class RegularAttendanceRepository {
         fetchInfo: { RESPONSE_BODY: { type: oracledb.STRING } },
       },
     );
+
     return result.rows?.[0];
   }
 }

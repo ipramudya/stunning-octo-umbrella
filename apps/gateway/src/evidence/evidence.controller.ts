@@ -43,6 +43,7 @@ export class EvidenceController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     reply.status(201);
+
     return this.call({ operation: 'upload', body, request, reply });
   }
 
@@ -84,6 +85,7 @@ export class EvidenceController {
         let response: Observable<
           EvidenceUploadAuthorization | EvidenceAccessAuthorization
         >;
+
         if (operation === 'upload' && 'contentType' in body) {
           response = this.attendance.authorizeEvidenceUpload(
             body,
@@ -99,9 +101,11 @@ export class EvidenceController {
         } else {
           throw new Error('invalid evidence operation');
         }
+
         const result = await firstValueFrom(
           response.pipe(takeUntil(context.cancelled)),
         );
+
         return { ...result, expiresAt: timestampIso(result.expiresAt) };
       },
       failure: (error, traceId) =>

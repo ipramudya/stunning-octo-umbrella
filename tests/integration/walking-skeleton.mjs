@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { baseUrl } from './auth-http.mjs';
 
 const response = await fetch(`${baseUrl}/health/ready`);
+
 assert.equal(
   response.status,
   200,
@@ -26,6 +27,7 @@ const redis = execFileSync(
   ],
   { encoding: 'utf8' },
 );
+
 assert.match(redis, /PONG/);
 
 const oracle = execFileSync(
@@ -44,6 +46,7 @@ const oracle = execFileSync(
     input: 'SET HEADING OFF FEEDBACK OFF\nSELECT 1 FROM dual;\nEXIT\n',
   },
 );
+
 assert.match(oracle, /1/);
 
 console.log('Walking skeleton integration check passed.');

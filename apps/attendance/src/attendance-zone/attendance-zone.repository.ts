@@ -42,6 +42,7 @@ export class AttendanceZoneRepository {
           employeeId: { val: employeeId, type: oracledb.STRING, maxSize: 36 },
         },
       );
+
       return this.select(connection);
     });
   }
@@ -66,6 +67,7 @@ export class AttendanceZoneRepository {
             workDate: { val: workDate, type: oracledb.DATE },
           },
         );
+
         return work(connection);
       });
     } catch (error) {
@@ -76,6 +78,7 @@ export class AttendanceZoneRepository {
       ) {
         throw new AttendanceConflict('attendance action already exists');
       }
+
       throw error;
     }
   }
@@ -87,10 +90,13 @@ export class AttendanceZoneRepository {
       {},
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
+
     const row = result.rows?.[0];
+
     if (!row) {
       throw new Error('attendance zone is missing');
     }
+
     return {
       name: row.NAME,
       address: row.ADDRESS,

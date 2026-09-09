@@ -18,7 +18,7 @@ describe('manual attendance contract', () => {
       }),
     ).toMatchObject({
       clockType: ClockType.CLOCK_TYPE_CLOCK_IN,
-      claimedAt: new Date('2026-09-08T01:15:00.123Z'),
+      claimedAt: { seconds: 1_788_830_100, nanos: 123_000_000 },
     });
   });
 });
