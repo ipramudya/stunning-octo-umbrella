@@ -209,6 +209,12 @@ const orderedClassMembers = {
   },
 };
 
+const typeDeclarations = new Set([
+  'TSDeclareFunction',
+  'TSInterfaceDeclaration',
+  'TSTypeAliasDeclaration',
+]);
+
 const explicitDefaultComponent = {
   meta: {
     messages: {
@@ -248,10 +254,24 @@ const explicitDefaultComponent = {
           return;
         }
 
-        const firstDeclaration = node.body.find(
-          (statement) =>
-            statement.type !== 'ImportDeclaration' && !statement.directive,
-        );
+        const firstDeclaration = node.body.find((statement) => {
+          if (
+            statement.type === 'ImportDeclaration' ||
+            statement.directive ||
+            typeDeclarations.has(statement.type)
+          ) {
+            return false;
+          }
+
+          if (statement.type === 'ExportNamedDeclaration') {
+            return (
+              statement.exportKind !== 'type' &&
+              !typeDeclarations.has(statement.declaration?.type)
+            );
+          }
+
+          return true;
+        });
 
         if (defaultExport !== firstDeclaration) {
           context.report({

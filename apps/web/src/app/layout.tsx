@@ -3,10 +3,14 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 import { AgentationDevTools } from './agentation';
+import { inter, manropeHeading } from './fonts';
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="id">
+    <html
+      lang="id"
+      className={`${inter.variable} ${manropeHeading.variable} font-sans`}
+    >
       <body>
         {children}
         <AgentationDevTools />
