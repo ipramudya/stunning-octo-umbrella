@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import type { OnApplicationBootstrap } from '@nestjs/common';
+import type {
+  OnApplicationBootstrap,
+  OnApplicationShutdown,
+} from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import type { Connection } from 'oracledb';
 
+import { RegularAttendanceRepository } from '../regular-attendance/regular-attendance.repository.js';
 import { EvidenceStore } from './evidence-store.js';
 import {
   accessLifetimeSeconds,
@@ -17,7 +21,13 @@ import { EvidenceRepository } from './evidence.repository.js';
 type EvidenceAuthorization = { employeeId: string; roles: string[] };
 
 @Injectable()
-export class EvidenceService implements OnApplicationBootstrap {
+export class EvidenceService
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
+  recoveryComplete = false;
+  private cleanupTimer?: NodeJS.Timeout;
+  private cleanupRunning = false;
+
   private expectedMagic(contentType: string, bytes: Uint8Array) {
     const expected =
       contentType === 'image/jpeg'
@@ -38,19 +48,49 @@ export class EvidenceService implements OnApplicationBootstrap {
   constructor(
     private readonly repository: EvidenceRepository,
     private readonly store: EvidenceStore,
+    private readonly attendance: RegularAttendanceRepository,
   ) {}
 
   async onApplicationBootstrap() {
     await this.repository.removeExpiredUploads();
+    await this.attendance.cleanupAttempts();
+    let complete = true;
     for (const upload of await this.repository.finalizingUploads()) {
       try {
         await this.removePermanent(upload);
         await this.repository.recover(upload);
       } catch (error) {
+        complete = false;
         this.logger.warn(
           `evidence recovery deferred for ${upload.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+    }
+    this.recoveryComplete = complete;
+    this.cleanupTimer ??= setInterval(
+      () => void this.scheduledCleanup(),
+      60 * 60 * 1_000,
+    ).unref();
+  }
+
+  onApplicationShutdown() {
+    clearInterval(this.cleanupTimer);
+  }
+
+  private async scheduledCleanup() {
+    if (this.cleanupRunning) {
+      return;
+    }
+    this.cleanupRunning = true;
+    try {
+      await this.repository.removeExpiredUploads();
+      await this.attendance.cleanupExpiredAttempts();
+    } catch (error) {
+      this.logger.warn(
+        `scheduled cleanup deferred: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      this.cleanupRunning = false;
     }
   }
 

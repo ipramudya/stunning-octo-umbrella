@@ -3,6 +3,11 @@ name: dexa
 x-app: &app
   restart: unless-stopped
   init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
 
 x-attendance-environment: &attendance-environment
   JWT_ISSUER: ${JWT_ISSUER:-dexa-identity}
@@ -28,7 +33,7 @@ x-identity-environment: &identity-environment
 
 services:
   pki-init:
-    image: alpine/openssl:latest
+    image: alpine/openssl:3.5.4@sha256:42c7389ef077aed0eb4e96d0abbd094083d701bbaff1313073b061c0c9cd8278
     entrypoint: ['/bin/sh', '/init.sh']
     restart: 'no'
     volumes:
@@ -38,7 +43,7 @@ services:
       - identity-pki:/pki/identity
 
   oracle:
-    image: gvenzl/oracle-free:latest
+    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
     restart: unless-stopped
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
@@ -52,7 +57,7 @@ services:
       - oracle-data:/opt/oracle/oradata
 
   identity-schema:
-    image: gvenzl/oracle-free:latest
+    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
     restart: 'no'
     depends_on:
       oracle:
@@ -71,7 +76,7 @@ services:
       - ./infra/oracle/create-identity-schema.sql:/schema.sql:ro
 
   attendance-schema:
-    image: gvenzl/oracle-free:latest
+    image: gvenzl/oracle-free:23.26.0-slim-faststart@sha256:a72748b7ecd651182bf64c01d26ec728b1e654191aab7c8d3e40c94cf444a3fc
     restart: 'no'
     depends_on:
       oracle:
@@ -138,7 +143,7 @@ services:
       DEMO_HRD_PASSWORD: ${DEMO_HRD_PASSWORD:-DexaAdministrator1!}
 
   redis:
-    image: redis:alpine
+    image: redis:8.4.0-alpine@sha256:4eec4565e45aa0b3966554c866bc73211e281b0b3d89fe9a33c982e6faca809d
     command:
       - /bin/sh
       - -c
@@ -164,7 +169,7 @@ services:
       - redis-data:/data
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     command: ['server', '/data', '--console-address', ':9001']
     restart: unless-stopped
     environment:
@@ -173,8 +178,30 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
     ports:
       - '${MINIO_PORT:-9000}:9000'
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 3s
+      retries: 20
     volumes:
       - minio-data:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    restart: 'no'
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing local/attendance-evidence &&
+        mc version enable local/attendance-evidence &&
+        mc ilm rule add --expire-days 1 --noncurrent-expire-days 1 --prefix staging/ local/attendance-evidence
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
 
   identity:
     <<: *app
@@ -215,8 +242,8 @@ services:
     depends_on:
       attendance-seed:
         condition: service_completed_successfully
-      minio:
-        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
       pki-init:
         condition: service_completed_successfully
     environment:

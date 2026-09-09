@@ -25,6 +25,14 @@ export class RegularAttendanceRepository {
     );
   }
 
+  async cleanupExpiredAttempts() {
+    await this.database.withTransaction((connection) =>
+      connection.execute(
+        `DELETE FROM idempotency_records WHERE expires_at <= SYSTIMESTAMP`,
+      ),
+    );
+  }
+
   // The compound idempotency identity stays explicit at the SQL boundary.
   // oxlint-disable-next-line max-params
   async beginAttempt(

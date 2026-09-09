@@ -23,7 +23,7 @@ export class ProblemFilter implements ExceptionFilter {
     const response =
       exception instanceof HttpException ? exception.getResponse() : undefined;
     const supplied = isProblem(response) ? response : undefined;
-    const traceId = supplied?.traceId ?? randomUUID();
+    const traceId = supplied?.traceId ?? request.id ?? randomUUID();
     const clientError = status >= 400 && status < 500;
     const title = STATUS_CODES[status] ?? 'Bad Request';
     const code = clientProblemCodes[status] ?? 'VALIDATION_ERROR';

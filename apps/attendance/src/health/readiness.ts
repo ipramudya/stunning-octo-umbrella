@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import type { Environment } from '../config/config-typedef.js';
+import { EvidenceService } from '../evidence/evidence.service.js';
 import { OracleDatabase } from '../oracle.js';
 
 function canConnect(host: string, port: number): Promise<boolean> {
@@ -25,9 +26,13 @@ export class ReadinessService {
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly database: OracleDatabase,
+    private readonly evidence: EvidenceService,
   ) {}
 
   async isReady(): Promise<boolean> {
+    if (!this.evidence.recoveryComplete) {
+      return false;
+    }
     const minio = new URL(this.config.get('MINIO_ENDPOINT', { infer: true }));
     try {
       const [minioReady] = await Promise.all([

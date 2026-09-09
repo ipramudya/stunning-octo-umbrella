@@ -26,6 +26,7 @@ function subject() {
     finalizing: vi.fn(),
     attached: vi.fn(),
     reset: vi.fn(),
+    recover: vi.fn(),
     removeExpiredUploads: vi.fn(),
     finalizingUploads: vi.fn().mockResolvedValue([]),
   };
@@ -50,10 +51,19 @@ function subject() {
     copy: vi.fn(),
     remove: vi.fn(),
   };
+  const attendance = {
+    cleanupAttempts: vi.fn(),
+    cleanupExpiredAttempts: vi.fn(),
+  };
   return {
     repository,
     store,
-    service: new EvidenceService(repository as never, store as never),
+    attendance,
+    service: new EvidenceService(
+      repository as never,
+      store as never,
+      attendance as never,
+    ),
   };
 }
 
@@ -62,6 +72,20 @@ describe('EvidenceService', () => {
     const { service, repository } = subject();
     await service.onApplicationBootstrap();
     expect(repository.removeExpiredUploads).toHaveBeenCalledOnce();
+    expect(service.recoveryComplete).toBe(true);
+  });
+
+  it('stays unready while finalization recovery is deferred', async () => {
+    const { service, repository, store } = subject();
+    repository.finalizingUploads.mockResolvedValue([
+      { ...upload, status: 'FINALIZING', permanentKey: 'evidence/upload-1' },
+    ]);
+    store.stat.mockRejectedValue(new Error('minio unavailable'));
+    repository.recover.mockRejectedValue(new Error('oracle unavailable'));
+
+    await service.onApplicationBootstrap();
+
+    expect(service.recoveryComplete).toBe(false);
   });
 
   it('authorizes only bounded JPEG or PNG uploads', async () => {

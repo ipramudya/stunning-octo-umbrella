@@ -38,7 +38,7 @@ export class GatewayCallService implements OnModuleInit {
       unsafe = false,
       idempotent = false,
     } = call;
-    const traceId = randomUUID();
+    const traceId = request.id || randomUUID();
     reply.header('x-correlation-id', traceId);
     if (
       unsafe &&

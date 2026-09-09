@@ -1,7 +1,6 @@
 // oxlint-disable max-params
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { OnApplicationBootstrap } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Connection } from 'oracledb';
@@ -32,7 +31,7 @@ export type RegularAttendanceRequest = {
 };
 
 @Injectable()
-export class RegularAttendanceService implements OnApplicationBootstrap {
+export class RegularAttendanceService {
   private readonly logger = new Logger(RegularAttendanceService.name);
   private readonly maximumAccuracy: number;
 
@@ -45,10 +44,6 @@ export class RegularAttendanceService implements OnApplicationBootstrap {
     this.maximumAccuracy = config.get('ATTENDANCE_MAX_GPS_ACCURACY_METERS', {
       infer: true,
     });
-  }
-
-  async onApplicationBootstrap() {
-    await this.attendance.cleanupAttempts();
   }
 
   async create(
