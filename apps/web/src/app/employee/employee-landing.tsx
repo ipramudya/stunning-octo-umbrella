@@ -1,6 +1,12 @@
 'use client';
 
-import { Clock01Icon, ClockCheckIcon } from '@hugeicons/core-free-icons';
+import {
+  Clock01Icon,
+  ClockCheckIcon,
+  Logout01Icon,
+  MoreVerticalIcon,
+  UserEdit01Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 
@@ -21,11 +27,37 @@ const hasClockedIn = false;
 export const EmployeeLanding = () => (
   <CenteredPage>
     <div className="flex flex-col">
-      <header>
-        <p className="text-sm text-muted-foreground">{today}</p>
-        <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
-          Selamat pagi, Rina
-        </h1>
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">{today}</p>
+          <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
+            Selamat pagi, Rina
+          </h1>
+        </div>
+        <details className="group relative">
+          <summary
+            aria-label="Buka menu akun"
+            className="grid size-10 cursor-pointer list-none place-items-center border border-border text-muted-foreground marker:content-none hover:text-foreground"
+          >
+            <HugeiconsIcon aria-hidden="true" icon={MoreVerticalIcon} />
+          </summary>
+          <div className="absolute end-0 z-10 mt-2 w-48 border border-border bg-card p-1 shadow-sm">
+            <button
+              className="flex min-h-10 w-full items-center gap-2 px-3 text-start text-sm hover:bg-muted"
+              type="button"
+            >
+              <HugeiconsIcon aria-hidden="true" icon={UserEdit01Icon} />
+              Perbarui profil
+            </button>
+            <button
+              className="flex min-h-10 w-full items-center gap-2 px-3 text-start text-sm text-destructive hover:bg-destructive/10"
+              type="button"
+            >
+              <HugeiconsIcon aria-hidden="true" icon={Logout01Icon} />
+              Keluar
+            </button>
+          </div>
+        </details>
       </header>
 
       <section
@@ -51,19 +83,42 @@ export const EmployeeLanding = () => (
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <Button className="h-12 w-full" disabled={hasClockedIn} type="button">
-            <HugeiconsIcon aria-hidden="true" icon={ClockCheckIcon} />
-            Clock in
-          </Button>
-          <Button
-            className="h-12 w-full"
-            disabled={!hasClockedIn}
-            type="button"
-            variant="outline"
-          >
-            <HugeiconsIcon aria-hidden="true" icon={Clock01Icon} />
-            Clock out
-          </Button>
+          {hasClockedIn ? (
+            <Button className="h-12 w-full" disabled type="button">
+              <HugeiconsIcon aria-hidden="true" icon={ClockCheckIcon} />
+              Clock in
+            </Button>
+          ) : (
+            <Link
+              className={cn(buttonVariants(), 'h-12 w-full')}
+              href="/employee/clock/clock-in"
+            >
+              <HugeiconsIcon aria-hidden="true" icon={ClockCheckIcon} />
+              Clock in
+            </Link>
+          )}
+          {hasClockedIn ? (
+            <Link
+              className={cn(
+                buttonVariants({ variant: 'outline' }),
+                'h-12 w-full',
+              )}
+              href="/employee/clock/clock-out"
+            >
+              <HugeiconsIcon aria-hidden="true" icon={Clock01Icon} />
+              Clock out
+            </Link>
+          ) : (
+            <Button
+              className="h-12 w-full"
+              disabled
+              type="button"
+              variant="outline"
+            >
+              <HugeiconsIcon aria-hidden="true" icon={Clock01Icon} />
+              Clock out
+            </Button>
+          )}
         </div>
       </section>
 
