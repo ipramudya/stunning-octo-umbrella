@@ -15,8 +15,16 @@ import {
   monthPattern,
 } from './attendance-query.constant.js';
 import type { AttendanceCursor } from './attendance-query.entity.js';
-import { AttendanceQueryError } from './attendance-query.error.js';
 import { AttendanceQueryRepository } from './attendance-query.repository.js';
+
+export class AttendanceQueryError extends Error {
+  constructor(
+    readonly code: string,
+    readonly grpcStatus = status.INVALID_ARGUMENT,
+  ) {
+    super(code);
+  }
+}
 
 const cursorSchema = z.object({
   workDate: z.string().regex(datePattern),

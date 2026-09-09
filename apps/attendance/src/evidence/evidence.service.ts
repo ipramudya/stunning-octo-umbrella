@@ -15,8 +15,13 @@ import {
   uploadLifetimeSeconds,
 } from './evidence.constant.js';
 import type { EvidenceUpload } from './evidence.entity.js';
-import { EvidenceError } from './evidence.error.js';
 import { EvidenceRepository } from './evidence.repository.js';
+
+export class EvidenceError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 type EvidenceAuthorization = { employeeId: string; roles: string[] };
 

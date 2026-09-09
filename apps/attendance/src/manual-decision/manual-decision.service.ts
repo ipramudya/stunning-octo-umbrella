@@ -6,8 +6,13 @@ import {
   type DecideManualAttendanceRequest,
 } from '@project/contracts';
 
-import { ManualDecisionError } from './manual-decision.error.js';
 import { ManualDecisionRepository } from './manual-decision.repository.js';
+
+export class ManualDecisionError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 type Cursor = { submittedAt: Date; id: string };
 

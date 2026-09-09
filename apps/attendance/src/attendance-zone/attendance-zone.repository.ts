@@ -4,7 +4,8 @@ import oracledb, { type Connection } from 'oracledb';
 
 import { OracleDatabase } from '../oracle.js';
 import type { ZoneRow } from './attendance-zone.entity.js';
-import { AttendanceConflict } from './attendance-zone.error.js';
+
+export class AttendanceConflict extends Error {}
 
 @Injectable()
 export class AttendanceZoneRepository {

@@ -6,7 +6,7 @@ import {
 } from '@project/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AttendanceQueryError } from './attendance-query.error.js';
+import { AttendanceQueryError } from './attendance-query.service.js';
 import { AttendanceQueryService } from './attendance-query.service.js';
 
 function subject() {

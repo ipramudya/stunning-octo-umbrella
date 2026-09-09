@@ -1,7 +1,7 @@
 import { ManualAttendanceDecision } from '@project/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ManualDecisionError } from './manual-decision.error.js';
+import { ManualDecisionError } from './manual-decision.service.js';
 import { ManualDecisionService } from './manual-decision.service.js';
 
 const approve = {

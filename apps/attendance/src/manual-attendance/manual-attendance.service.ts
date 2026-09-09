@@ -9,10 +9,10 @@ import {
   type CreateManualAttendanceRequest,
 } from '@project/contracts';
 
-import { AttendanceConflict } from '../attendance-zone/attendance-zone.error.js';
+import { AttendanceConflict } from '../attendance-zone/attendance-zone.repository.js';
 import type { EvidenceUpload } from '../evidence/evidence.entity.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
-import { ManualAttendanceError } from './manual-attendance.error.js';
+import { ManualAttendanceError } from './manual-attendance.helper.js';
 import { validateManualAttendancePolicy } from './manual-attendance.helper.js';
 import { ManualAttendanceRepository } from './manual-attendance.repository.js';
 

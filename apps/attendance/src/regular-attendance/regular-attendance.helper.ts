@@ -1,5 +1,4 @@
 import type { ClockType } from './regular-attendance.entity.js';
-import { RegularAttendanceError } from './regular-attendance.error.js';
 
 const jakartaFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
@@ -11,6 +10,12 @@ const jakartaFormatter = new Intl.DateTimeFormat('en-CA', {
   second: '2-digit',
   hourCycle: 'h23',
 });
+
+export class RegularAttendanceError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 export function jakartaTime(now: Date) {
   const parts = Object.fromEntries(

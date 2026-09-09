@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { EvidenceUpload } from './evidence.entity.js';
-import { EvidenceError } from './evidence.error.js';
+import { EvidenceError } from './evidence.service.js';
 import { EvidenceService } from './evidence.service.js';
 
 const authorization = { employeeId: 'employee-1', roles: ['EMPLOYEE'] };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { RegularAttendanceError } from './regular-attendance.error.js';
+import { RegularAttendanceError } from './regular-attendance.helper.js';
 import { attendanceTime, jakartaTime } from './regular-attendance.helper.js';
 
 describe('regular attendance time policy', () => {

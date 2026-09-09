@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { OracleDatabase } from '../oracle.js';
-import { AttendanceConflict } from './attendance-zone.error.js';
+import { AttendanceConflict } from './attendance-zone.repository.js';
 import { AttendanceZoneRepository } from './attendance-zone.repository.js';
 
 function repository(

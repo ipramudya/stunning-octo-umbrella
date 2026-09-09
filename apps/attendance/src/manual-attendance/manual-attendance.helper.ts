@@ -3,8 +3,6 @@ import {
   type CreateManualAttendanceRequest,
 } from '@project/contracts';
 
-import { ManualAttendanceError } from './manual-attendance.error.js';
-
 const jakartaDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
   year: 'numeric',
@@ -24,6 +22,12 @@ function jakartaDate(value: Date) {
 function utcDateValue(value: string) {
   const [year = 0, month = 0, day = 0] = value.split('-').map(Number);
   return Date.UTC(year, month - 1, day);
+}
+
+export class ManualAttendanceError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
 }
 
 export function validateManualAttendancePolicy(

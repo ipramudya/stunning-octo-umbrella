@@ -1,7 +1,7 @@
 import { ClockType } from '@project/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AttendanceConflict } from '../attendance-zone/attendance-zone.error.js';
+import { AttendanceConflict } from '../attendance-zone/attendance-zone.repository.js';
 import { ManualAttendanceService } from './manual-attendance.service.js';
 
 const now = new Date('2026-09-08T03:00:00.000Z');

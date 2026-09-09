@@ -8,7 +8,12 @@ import type {
   RegularAttendanceEntry,
   ZoneRow,
 } from './regular-attendance.entity.js';
-import { RegularAttendancePersistenceError } from './regular-attendance.error.js';
+
+export class RegularAttendancePersistenceError extends Error {
+  constructor(readonly code: 'IDEMPOTENCY_KEY_REUSED' | 'REQUEST_IN_PROGRESS') {
+    super(code);
+  }
+}
 
 const operation = 'CREATE_REGULAR_ATTENDANCE';
 

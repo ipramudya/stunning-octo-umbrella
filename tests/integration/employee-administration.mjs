@@ -1,44 +1,8 @@
-// The HTTP helper mirrors fetch arguments used throughout this executable check.
-// oxlint-disable max-params
 import assert from 'node:assert/strict';
 
-import {
-  baseUrl,
-  cookieHeader,
-  cookieJar,
-  origin,
-  post,
-} from './auth-http.mjs';
+import { cookieJar, expectProblem, post, request } from './auth-http.mjs';
 const password = 'EmployeeInitial1!';
 const nextPassword = 'EmployeeChanged1!';
-
-function request(path, method, jar, body) {
-  const headers = { cookie: cookieHeader(jar) };
-  if (method !== 'GET') {
-    headers.origin = origin;
-  }
-  if (body !== undefined) {
-    headers['content-type'] = 'application/json';
-  }
-  const options = { method, headers };
-  if (body !== undefined) {
-    options.body = JSON.stringify(body);
-  }
-  return fetch(`${baseUrl}${path}`, options);
-}
-
-async function expectProblem(response, status, code) {
-  assert.equal(response.status, status);
-  assert.match(
-    response.headers.get('content-type') ?? '',
-    /^application\/problem\+json/,
-  );
-  const value = await response.json();
-  assert.equal(value.code, code);
-  assert.ok(value.traceId);
-  assert.equal(JSON.stringify(value).includes('ORA-'), false);
-  return value;
-}
 
 const hrdLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000001',

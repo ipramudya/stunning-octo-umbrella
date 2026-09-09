@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import compression from '@fastify/compress';
 import helmet from '@fastify/helmet';
 import { HttpException, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +25,6 @@ async function bootstrap() {
   const config = app.get(ConfigService<Environment, true>);
   app.useGlobalFilters(new ProblemFilter());
   app.enableVersioning({ type: VersioningType.URI, prefix: 'api/v' });
-  await app.register(compression);
   await app.register(helmet);
   app
     .getHttpAdapter()

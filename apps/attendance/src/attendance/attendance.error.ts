@@ -1,10 +1,10 @@
 import { status, Metadata } from '@grpc/grpc-js';
 import { RpcException } from '@nestjs/microservices';
 
-import { AttendanceQueryError } from '../attendance-query/attendance-query.error.js';
-import { EvidenceError } from '../evidence/evidence.error.js';
-import { ManualDecisionError } from '../manual-decision/manual-decision.error.js';
-import { RegularAttendanceError } from '../regular-attendance/regular-attendance.error.js';
+import { AttendanceQueryError } from '../attendance-query/attendance-query.service.js';
+import { EvidenceError } from '../evidence/evidence.service.js';
+import { ManualDecisionError } from '../manual-decision/manual-decision.service.js';
+import { RegularAttendanceError } from '../regular-attendance/regular-attendance.helper.js';
 
 export function failure(
   code: number,

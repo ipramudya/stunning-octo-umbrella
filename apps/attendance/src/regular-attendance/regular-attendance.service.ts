@@ -5,21 +5,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Connection } from 'oracledb';
 
-import { AttendanceConflict } from '../attendance-zone/attendance-zone.error.js';
+import { AttendanceConflict } from '../attendance-zone/attendance-zone.repository.js';
 import { AttendanceZoneRepository } from '../attendance-zone/attendance-zone.repository.js';
 import type { Environment } from '../config/config-typedef.js';
 import type { EvidenceUpload } from '../evidence/evidence.entity.js';
-import { EvidenceError } from '../evidence/evidence.error.js';
+import { EvidenceError } from '../evidence/evidence.service.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
 import type {
   ClockType,
   RegularAttendanceEntry,
 } from './regular-attendance.entity.js';
-import {
-  RegularAttendanceError,
-  RegularAttendancePersistenceError,
-} from './regular-attendance.error.js';
+import { RegularAttendanceError } from './regular-attendance.helper.js';
 import { attendanceTime, jakartaTime } from './regular-attendance.helper.js';
+import { RegularAttendancePersistenceError } from './regular-attendance.repository.js';
 import { RegularAttendanceRepository } from './regular-attendance.repository.js';
 
 export type RegularAttendanceRequest = {

@@ -27,9 +27,9 @@ import { AttendanceQueryService } from '../attendance-query/attendance-query.ser
 import { AttendanceZoneRepository } from '../attendance-zone/attendance-zone.repository.js';
 import { verifyInternalAccess } from '../auth/internal-token.js';
 import type { Environment } from '../config/config-typedef.js';
-import { EvidenceError } from '../evidence/evidence.error.js';
+import { EvidenceError } from '../evidence/evidence.service.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
-import { ManualAttendanceError } from '../manual-attendance/manual-attendance.error.js';
+import { ManualAttendanceError } from '../manual-attendance/manual-attendance.helper.js';
 import { ManualAttendanceService } from '../manual-attendance/manual-attendance.service.js';
 import { ManualDecisionService } from '../manual-decision/manual-decision.service.js';
 import { RegularAttendanceService } from '../regular-attendance/regular-attendance.service.js';
