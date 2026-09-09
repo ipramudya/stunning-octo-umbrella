@@ -16,6 +16,13 @@ export const environmentSchema = z.object({
   HTTP_PORT: port.default(3000),
   IDENTITY_GRPC_SERVER_NAME: z.string().default('identity'),
   IDENTITY_GRPC_URL: endpoint.default('localhost:50051'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
+  OPENAPI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   PKI_DIR: z.string().default(resolve(process.cwd(), '.local/dev/pki')),
   RATE_LIMIT_REDIS_PASSWORD: z.string().min(1).default('DexaRateLimit1!'),
   RATE_LIMIT_REDIS_URL: z.url().default('redis://localhost:6379'),

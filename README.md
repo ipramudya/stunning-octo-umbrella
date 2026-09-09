@@ -14,6 +14,8 @@ Gateway endpoints:
 
 - Liveness: http://localhost:3000/health/live
 - Readiness: http://localhost:3000/health/ready
+- API documentation: http://localhost:3000/api/docs
+- OpenAPI document: http://localhost:3000/api/openapi.json
 
 ## Stop
 

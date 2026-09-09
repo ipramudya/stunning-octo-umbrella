@@ -11,6 +11,7 @@ import {
 
 import { AppModule } from './app.module.js';
 import type { Environment } from './config/config-typedef.js';
+import { configureOpenApi } from './openapi.js';
 import { ProblemFilter } from './problem/problem.filter.js';
 
 async function bootstrap() {
@@ -27,6 +28,14 @@ async function bootstrap() {
 
   app.useGlobalFilters(new ProblemFilter());
   app.enableVersioning({ type: VersioningType.URI, prefix: 'api/v' });
+
+  if (
+    config.get('NODE_ENV', { infer: true }) !== 'production' ||
+    config.get('OPENAPI_ENABLED', { infer: true })
+  ) {
+    configureOpenApi(app);
+  }
+
   await app.register(helmet);
   app
     .getHttpAdapter()

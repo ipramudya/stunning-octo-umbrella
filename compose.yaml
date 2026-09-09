@@ -278,6 +278,7 @@ services:
       HOST: 0.0.0.0
       HTTP_PORT: 3000
       IDENTITY_GRPC_URL: identity:50051
+      OPENAPI_ENABLED: 'true'
       PKI_DIR: /app/.local/pki
       RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:-DexaRateLimit1!}
       RATE_LIMIT_REDIS_URL: redis://redis:6379
