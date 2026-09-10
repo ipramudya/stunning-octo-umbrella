@@ -56,19 +56,21 @@ export class EvidenceStore implements OnModuleInit {
       await this.internal.makeBucket(this.bucket);
     }
 
-    await this.internal.setBucketVersioning(this.bucket, { Status: 'Enabled' });
-    await this.internal.setBucketLifecycle(this.bucket, {
-      Rule: [
-        {
-          ID: 'expire-staging-evidence',
-          Status: 'Enabled',
-          Filter: { Prefix: 'staging/' },
-          Expiration: { Days: 1 },
-          NoncurrentVersionExpiration: { NoncurrentDays: 1 },
-          AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
-        },
-      ],
-    });
+    await Promise.all([
+      this.internal.setBucketVersioning(this.bucket, { Status: 'Enabled' }),
+      this.internal.setBucketLifecycle(this.bucket, {
+        Rule: [
+          {
+            ID: 'expire-staging-evidence',
+            Status: 'Enabled',
+            Filter: { Prefix: 'staging/' },
+            Expiration: { Days: 1 },
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 },
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+          },
+        ],
+      }),
+    ]);
   }
 
   authorizeUpload(key: string, expiresSeconds: number) {

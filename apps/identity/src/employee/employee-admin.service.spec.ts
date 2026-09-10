@@ -7,6 +7,15 @@ import { EmployeeAdminService } from './employee-admin.service.js';
 import type { Employee } from './employee.entity.js';
 import type { EmployeeRepository } from './employee.repository.js';
 
+function deferredFailure() {
+  let reject: (reason?: unknown) => void = () => undefined;
+  const promise = new Promise<undefined>((_done, fail) => {
+    reject = fail;
+  });
+
+  return { promise, reject };
+}
+
 const employee = (employeeNumber: string, id: string): Employee => ({
   id,
   employeeNumber,
@@ -89,13 +98,16 @@ describe('EmployeeAdminService', () => {
       findById: vi.fn().mockResolvedValue(changed),
     });
 
-    sessions.revokeEmployee.mockRejectedValue(new Error('redis unavailable'));
+    const cleanup = deferredFailure();
 
-    await expect(
-      value.updatePhone('hrd', 'employee', '+628999'),
-    ).resolves.toMatchObject({
-      phoneNumber: '+628999',
-    });
+    sessions.revokeEmployee.mockReturnValue(cleanup.promise);
+
+    const response = value.updatePhone('hrd', 'employee', '+628999');
+
+    await vi.waitFor(() => expect(employees.findById).toHaveBeenCalledOnce());
+    cleanup.reject(new Error('redis unavailable'));
+
+    await expect(response).resolves.toMatchObject({ phoneNumber: '+628999' });
     expect(employees.updatePhone).toHaveBeenCalledOnce();
     expect(sessions.revokeEmployee).toHaveBeenCalledWith('employee');
   });

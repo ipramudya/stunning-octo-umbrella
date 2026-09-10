@@ -4,6 +4,15 @@ import type { EvidenceUpload } from './evidence.entity.js';
 import { EvidenceError } from './evidence.service.js';
 import { EvidenceService } from './evidence.service.js';
 
+function deferred<T>() {
+  let resolve: (value: T | PromiseLike<T>) => void = () => undefined;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+
+  return { promise, resolve };
+}
+
 const authorization = { employeeId: 'employee-1', roles: ['EMPLOYEE'] };
 const upload: EvidenceUpload = {
   id: 'upload-1',
@@ -62,12 +71,23 @@ function subject() {
 describe('EvidenceService', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('cleans expired uploads when recovery starts', async () => {
+  it('cleans expired uploads while recovery starts', async () => {
     const { service, repository } = subject();
+    const cleanup = deferred<undefined>();
 
-    await service.onApplicationBootstrap();
+    repository.removeExpiredUploads.mockReturnValue(cleanup.promise);
+
+    const recovery = service.onApplicationBootstrap();
+
+    await vi.waitFor(() =>
+      expect(repository.finalizingUploads).toHaveBeenCalledOnce(),
+    );
+    cleanup.resolve(undefined);
+    await recovery;
+
     expect(repository.removeExpiredUploads).toHaveBeenCalledOnce();
     expect(service.recoveryComplete).toBe(true);
+    service.onApplicationShutdown();
   });
 
   it('stays unready while finalization recovery is deferred', async () => {
@@ -111,7 +131,7 @@ describe('EvidenceService', () => {
   });
 
   it('authorizes only bounded JPEG or PNG uploads', async () => {
-    const { service, repository } = subject();
+    const { service, repository, store } = subject();
 
     await expect(
       service.authorizeUpload(authorization, 'text/plain', 8),
@@ -119,9 +139,24 @@ describe('EvidenceService', () => {
       code: 'EVIDENCE_INVALID',
     });
 
-    const result = await service.authorizeUpload(authorization, 'image/png', 8);
+    const created = deferred<undefined>();
+    const authorized = deferred<string>();
 
-    expect(result).toMatchObject({ method: 'PUT', url: 'http://upload' });
+    repository.create.mockReturnValue(created.promise);
+    store.authorizeUpload.mockReturnValue(authorized.promise);
+
+    const response = service.authorizeUpload(authorization, 'image/png', 8);
+
+    await vi.waitFor(() =>
+      expect(store.authorizeUpload).toHaveBeenCalledOnce(),
+    );
+    created.resolve(undefined);
+    authorized.resolve('http://upload');
+
+    await expect(response).resolves.toMatchObject({
+      method: 'PUT',
+      url: 'http://upload',
+    });
     expect(repository.create).toHaveBeenCalledOnce();
   });
 

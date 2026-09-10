@@ -35,17 +35,15 @@ export class IdentityAuthService {
   ): Promise<SessionCredentials> {
     const login = validateLogin(phoneNumber, password);
 
-    const employee = await this.employees.findByPhone(login.phoneNumber);
-
-    const dummyHash = await (this.dummyHash ??= hash(
-      'invalid-password-placeholder',
-      {
+    const [employee, dummyHash] = await Promise.all([
+      this.employees.findByPhone(login.phoneNumber),
+      (this.dummyHash ??= hash('invalid-password-placeholder', {
         type: argon2id,
         memoryCost: this.config.get('ARGON2_MEMORY_COST', { infer: true }),
         timeCost: this.config.get('ARGON2_TIME_COST', { infer: true }),
         parallelism: this.config.get('ARGON2_PARALLELISM', { infer: true }),
-      },
-    ));
+      })),
+    ]);
 
     const validPassword = await this.passwordMatches(
       employee?.passwordHash ?? dummyHash,

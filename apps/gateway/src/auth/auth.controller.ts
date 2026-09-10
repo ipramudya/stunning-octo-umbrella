@@ -52,19 +52,20 @@ export class AuthController {
     const context = this.context(request, reply, true);
 
     await this.limit({
-      scope: 'login:phone',
-      subject: rateKey(body.phoneNumber.trim()),
-      maximum: 5,
-      windowSeconds: 900,
-      request,
-      reply,
-      traceId: context.traceId,
-    });
-    await this.limit({
-      scope: 'login:ip',
-      subject: rateKey(request.ip),
-      maximum: 20,
-      windowSeconds: 900,
+      checks: [
+        {
+          scope: 'login:phone',
+          subject: rateKey(body.phoneNumber.trim()),
+          maximum: 5,
+          windowSeconds: 900,
+        },
+        {
+          scope: 'login:ip',
+          subject: rateKey(request.ip),
+          maximum: 20,
+          windowSeconds: 900,
+        },
+      ],
       request,
       reply,
       traceId: context.traceId,
@@ -90,19 +91,20 @@ export class AuthController {
     const refreshToken = cookies(request).dexa_refresh ?? '';
 
     await this.limit({
-      scope: 'refresh:token',
-      subject: rateKey(refreshToken),
-      maximum: 10,
-      windowSeconds: 60,
-      request,
-      reply,
-      traceId: context.traceId,
-    });
-    await this.limit({
-      scope: 'refresh:ip',
-      subject: rateKey(request.ip),
-      maximum: 30,
-      windowSeconds: 60,
+      checks: [
+        {
+          scope: 'refresh:token',
+          subject: rateKey(refreshToken),
+          maximum: 10,
+          windowSeconds: 60,
+        },
+        {
+          scope: 'refresh:ip',
+          subject: rateKey(request.ip),
+          maximum: 30,
+          windowSeconds: 60,
+        },
+      ],
       request,
       reply,
       traceId: context.traceId,
@@ -172,10 +174,14 @@ export class AuthController {
     );
 
     await this.limit({
-      scope: 'authenticated',
-      subject: result.sessionId,
-      maximum: 120,
-      windowSeconds: 60,
+      checks: [
+        {
+          scope: 'authenticated',
+          subject: result.sessionId,
+          maximum: 120,
+          windowSeconds: 60,
+        },
+      ],
       request,
       reply,
       traceId: context.traceId,
@@ -213,43 +219,40 @@ export class AuthController {
   }
 
   private async limit({
-    scope,
-    subject,
-    maximum,
-    windowSeconds,
+    checks,
     request,
     reply,
     traceId,
   }: {
-    scope: string;
-    subject: string;
-    maximum: number;
-    windowSeconds: number;
+    checks: Parameters<RateLimiter['consume']>[0][];
     request: FastifyRequest;
     reply: FastifyReply;
     traceId: string;
   }) {
-    try {
-      await this.rateLimiter.consume({
-        scope,
-        subject,
-        maximum,
-        windowSeconds,
-      });
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        reply.header('retry-after', error.retryAfter);
-        fail(429, 'RATE_LIMIT_EXCEEDED', 'Too many requests', request, traceId);
-      }
+    const results = await Promise.allSettled(
+      checks.map((check) => this.rateLimiter.consume(check)),
+    );
 
-      fail(
-        503,
-        'DEPENDENCY_UNAVAILABLE',
-        'The service is temporarily unavailable',
-        request,
-        traceId,
-      );
+    const failure = results.find((result) => result.status === 'rejected');
+
+    if (!failure) {
+      return;
     }
+
+    const error: unknown = failure.reason;
+
+    if (error instanceof RateLimitError) {
+      reply.header('retry-after', error.retryAfter);
+      fail(429, 'RATE_LIMIT_EXCEEDED', 'Too many requests', request, traceId);
+    }
+
+    fail(
+      503,
+      'DEPENDENCY_UNAVAILABLE',
+      'The service is temporarily unavailable',
+      request,
+      traceId,
+    );
   }
 
   private setCredentials(reply: FastifyReply, credentials: SessionCredentials) {

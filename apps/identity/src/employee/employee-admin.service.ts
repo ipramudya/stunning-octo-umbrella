@@ -184,9 +184,12 @@ export class EmployeeAdminService {
       await this.mapUnique(error, { phoneNumber }, employeeId);
     }
 
-    await this.cleanup(employeeId);
+    const [updated] = await Promise.all([
+      this.existing(employeeId),
+      this.cleanup(employeeId),
+    ]);
 
-    return profile(await this.existing(employeeId));
+    return profile(updated);
   }
 
   async resetPassword(

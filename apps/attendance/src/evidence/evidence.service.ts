@@ -61,8 +61,12 @@ export class EvidenceService
   ) {}
 
   async onApplicationBootstrap() {
-    await this.repository.removeExpiredUploads();
-    this.recoveryComplete = await this.recoverFinalizingUploads();
+    const [, recoveryComplete] = await Promise.all([
+      this.repository.removeExpiredUploads(),
+      this.recoverFinalizingUploads(),
+    ]);
+
+    this.recoveryComplete = recoveryComplete;
     this.cleanupTimer ??= setInterval(
       () => void this.scheduledCleanup(),
       60 * 60 * 1_000,
@@ -94,23 +98,26 @@ export class EvidenceService
     const expiresAt = new Date(Date.now() + uploadLifetimeSeconds * 1000);
     const stagingKey = `staging/${authorization.employeeId}/${id}`;
 
-    await this.repository.create({
-      id,
-      employeeId: authorization.employeeId,
-      status: 'AUTHORIZED',
-      declaredContentType: contentType,
-      declaredSizeBytes: sizeBytes,
-      stagingKey,
-      stagingVersion: null,
-      permanentKey: null,
-      permanentVersion: null,
-      expiresAt,
-    });
+    const [, url] = await Promise.all([
+      this.repository.create({
+        id,
+        employeeId: authorization.employeeId,
+        status: 'AUTHORIZED',
+        declaredContentType: contentType,
+        declaredSizeBytes: sizeBytes,
+        stagingKey,
+        stagingVersion: null,
+        permanentKey: null,
+        permanentVersion: null,
+        expiresAt,
+      }),
+      this.store.authorizeUpload(stagingKey, uploadLifetimeSeconds),
+    ]);
 
     return {
       uploadId: id,
       method: 'PUT',
-      url: await this.store.authorizeUpload(stagingKey, uploadLifetimeSeconds),
+      url,
       headers: { 'Content-Type': contentType },
       expiresAt,
     };
@@ -294,8 +301,12 @@ export class EvidenceService
     this.cleanupRunning = true;
 
     try {
-      await this.repository.removeExpiredUploads();
-      this.recoveryComplete = await this.recoverFinalizingUploads();
+      const [, recoveryComplete] = await Promise.all([
+        this.repository.removeExpiredUploads(),
+        this.recoverFinalizingUploads(),
+      ]);
+
+      this.recoveryComplete = recoveryComplete;
     } catch (error) {
       this.logger.warn(`scheduled cleanup deferred: ${String(error)}`);
     } finally {
