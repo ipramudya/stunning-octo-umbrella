@@ -13,7 +13,11 @@ const phoneSchema = z
   .trim()
   .max(16)
   .regex(/^\+62[0-9]+$/);
-const passwordSchema = z.literal('Password123');
+const passwordSchema = z.string().refine((value) => {
+  const length = Array.from(value).length;
+
+  return length >= 12 && length <= 128;
+});
 const emailSchema = z.email().max(254);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

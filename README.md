@@ -4,10 +4,10 @@ Backend walking skeleton for the Dexa work-from-home attendance technical test.
 
 ## Run
 
-Docker Compose builds the applications and starts Oracle Free, Redis, MinIO, Identity, Attendance, and Gateway. No `.env` file is required.
+Docker Compose builds the applications and starts Oracle Free, Redis, MinIO, Identity, Attendance, Gateway, and Web using the tracked demo configuration in `.env.demo`.
 
 ```bash
-docker compose up --build --wait
+npm run compose:up
 ```
 
 Gateway endpoints:
@@ -20,14 +20,14 @@ Gateway endpoints:
 ## Stop
 
 ```bash
-docker compose down --volumes
+npm run compose:down
 ```
 
-Optional local overrides are documented in `.env.example`.
+To use local overrides, copy `.env.demo` to `.env` and run commands with `COMPOSE_ENV_FILE=.env`.
 
 ## Review and operate
 
-`docker compose up --build --wait` is the release review path. It needs only Docker: Compose generates the local PKI, initializes both Oracle schemas, applies migrations and seeds, and configures the private, versioned MinIO bucket and staging lifecycle. Published ports are limited to Gateway and the direct evidence upload endpoint.
+`npm run compose:up` is the release review path. It needs only Docker: Compose generates the local PKI, initializes both Oracle schemas, applies migrations and seeds, and configures the private, versioned MinIO bucket and staging lifecycle. Published ports are limited to Gateway and the direct evidence upload endpoint.
 
 - `/health/live` checks only that the process event loop can answer.
 - `/health/ready` checks required databases, Redis, MinIO, schema capabilities, downstream mTLS, and Attendance evidence recovery.

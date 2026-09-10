@@ -7,43 +7,50 @@ import type { Environment } from '../config/config-typedef.js';
 import type { EmployeeRepository } from '../employee/employee.repository.js';
 import { IdentityAuthService } from './identity.service.js';
 
+const argon = vi.hoisted(() => ({ hash: vi.fn(), verify: vi.fn() }));
+
+vi.mock('argon2', () => ({
+  argon2id: 2,
+  hash: argon.hash,
+  verify: argon.verify,
+}));
+
+function deferredFailure() {
+  let reject: (reason?: unknown) => void = () => undefined;
+  const promise = new Promise<never>((_done, fail) => {
+    reject = fail;
+  });
+
+  return { promise, reject };
+}
+
 describe('IdentityAuthService', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('accepts Password123 for an existing employee', async () => {
-    const employee = {
-      id: 'employee',
-      employeeNumber: 'DEX-001',
-      fullName: 'Employee',
-      phoneNumber: '+6280000000002',
-      passwordHash: 'unused',
-      credentialVersion: 1,
-      roles: ['EMPLOYEE'],
-    };
-    const sessions = {
-      create: vi
-        .fn()
-        .mockResolvedValue({ sid: 'session', refreshToken: 'refresh' }),
-    };
-    const tokens = { sign: vi.fn().mockResolvedValue('access') };
+  it('starts employee lookup and dummy hashing concurrently', async () => {
+    const lookup = deferredFailure();
+    const employees = { findByPhone: vi.fn().mockReturnValue(lookup.promise) };
     const service = new IdentityAuthService(
-      { get: vi.fn().mockReturnValue(900) } as unknown as ConfigService<
+      { get: vi.fn().mockReturnValue(1) } as unknown as ConfigService<
         Environment,
         true
       >,
-      {
-        findByPhone: vi.fn().mockResolvedValue(employee),
-      } as unknown as EmployeeRepository,
-      sessions as unknown as SessionStore,
-      tokens as unknown as TokenService,
+      employees as unknown as EmployeeRepository,
+      {} as unknown as SessionStore,
+      {} as unknown as TokenService,
     );
 
-    await expect(
-      service.login(employee.phoneNumber, 'Password123'),
-    ).resolves.toMatchObject({
-      accessToken: 'access',
-      refreshToken: 'refresh',
-    });
+    argon.hash.mockResolvedValue('dummy-hash');
+
+    const login = service.login('+6280000000002', 'valid-password');
+
+    await vi.waitFor(() => expect(argon.hash).toHaveBeenCalledOnce());
+    expect(employees.findByPhone).toHaveBeenCalledOnce();
+
+    const stopped = expect(login).rejects.toThrow('stop');
+
+    lookup.reject(new Error('stop'));
+    await stopped;
   });
 
   it('rejects a session after the employee credential version changes', async () => {

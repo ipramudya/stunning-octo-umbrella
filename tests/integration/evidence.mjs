@@ -26,7 +26,7 @@ const employeeId = (await profileResponse.json()).id;
 const hrd = cookieJar(
   await post('/api/v1/auth/login', {
     phoneNumber: '+6280000000001',
-    password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
+    password: process.env.DEMO_HRD_PASSWORD,
   }),
 );
 const otherPassword = 'EvidenceOther1!';

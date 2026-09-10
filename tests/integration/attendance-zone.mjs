@@ -35,13 +35,13 @@ function zoneRequest(path, jar, method = 'GET', body) {
 const employee = cookieJar(
   await post('/api/v1/auth/login', {
     phoneNumber: '+6280000000002',
-    password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
+    password: process.env.DEMO_EMPLOYEE_PASSWORD,
   }),
 );
 const hrd = cookieJar(
   await post('/api/v1/auth/login', {
     phoneNumber: '+6280000000001',
-    password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
+    password: process.env.DEMO_HRD_PASSWORD,
   }),
 );
 

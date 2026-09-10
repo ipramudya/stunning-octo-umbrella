@@ -10,25 +10,25 @@ x-app: &app
     - no-new-privileges:true
 
 x-attendance-environment: &attendance-environment
-  JWT_ISSUER: ${JWT_ISSUER:-dexa-identity}
+  JWT_ISSUER: ${JWT_ISSUER:?Use npm run compose:up}
   ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
-  ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:-DexaAttendance1!}
+  ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:?Use npm run compose:up}
   ORACLE_USER: DEXA_ATTENDANCE
   PKI_DIR: /app/.local/pki
-  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-dexaadmin}
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?Use npm run compose:up}
   MINIO_EVIDENCE_BUCKET: attendance-evidence
-  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Use npm run compose:up}
 
 x-identity-environment: &identity-environment
-  ARGON2_MEMORY_COST: ${ARGON2_MEMORY_COST:-19456}
-  ARGON2_PARALLELISM: ${ARGON2_PARALLELISM:-1}
-  ARGON2_TIME_COST: ${ARGON2_TIME_COST:-2}
-  JWT_ISSUER: ${JWT_ISSUER:-dexa-identity}
+  ARGON2_MEMORY_COST: ${ARGON2_MEMORY_COST:?Use npm run compose:up}
+  ARGON2_PARALLELISM: ${ARGON2_PARALLELISM:?Use npm run compose:up}
+  ARGON2_TIME_COST: ${ARGON2_TIME_COST:?Use npm run compose:up}
+  JWT_ISSUER: ${JWT_ISSUER:?Use npm run compose:up}
   ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
-  ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:-DexaIdentity1!}
+  ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:?Use npm run compose:up}
   ORACLE_USER: DEXA_IDENTITY
   PKI_DIR: /app/.local/pki
-  REDIS_PASSWORD: ${REDIS_PASSWORD:-DexaRedis1!}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Use npm run compose:up}
   REDIS_URL: redis://redis:6379
 
 services:
@@ -46,7 +46,7 @@ services:
     image: gvenzl/oracle-free:23.26.0-faststart
     restart: unless-stopped
     environment:
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Use npm run compose:up}
     healthcheck:
       test: ['CMD', 'healthcheck.sh']
       interval: 10s
@@ -70,8 +70,8 @@ services:
         sqlplus -s system/"$$ORACLE_PASSWORD"@//oracle:1521/FREEPDB1
         @/schema.sql "$$IDENTITY_ORACLE_PASSWORD"
     environment:
-      IDENTITY_ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:-DexaIdentity1!}
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+      IDENTITY_ORACLE_PASSWORD: ${IDENTITY_ORACLE_PASSWORD:?Use npm run compose:up}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Use npm run compose:up}
     volumes:
       - ./infra/oracle/create-identity-schema.sql:/schema.sql:ro
 
@@ -89,8 +89,8 @@ services:
         sqlplus -s system/"$$ORACLE_PASSWORD"@//oracle:1521/FREEPDB1
         @/schema.sql "$$ATTENDANCE_ORACLE_PASSWORD"
     environment:
-      ATTENDANCE_ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:-DexaAttendance1!}
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-DexaOracle1!}
+      ATTENDANCE_ORACLE_PASSWORD: ${ATTENDANCE_ORACLE_PASSWORD:?Use npm run compose:up}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Use npm run compose:up}
     volumes:
       - ./infra/oracle/create-attendance-schema.sql:/schema.sql:ro
 
@@ -131,8 +131,8 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *identity-environment
-      DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD:-DexaEmployee1!}
-      DEMO_HRD_PASSWORD: ${DEMO_HRD_PASSWORD:-DexaAdministrator1!}
+      DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD:?Use npm run compose:up}
+      DEMO_HRD_PASSWORD: ${DEMO_HRD_PASSWORD:?Use npm run compose:up}
 
   redis:
     image: redis:8.4.0-alpine
@@ -145,14 +145,14 @@ services:
         exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction
         --aclfile /tmp/users.acl
     environment:
-      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:-DexaRateLimit1!}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-DexaRedis1!}
+      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:?Use npm run compose:up}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Use npm run compose:up}
     restart: unless-stopped
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          "redis-cli --user identity -a '${REDIS_PASSWORD:-DexaRedis1!}' --no-auth-warning ping",
+          "redis-cli --user identity -a '${REDIS_PASSWORD:?Use npm run compose:up}' --no-auth-warning ping",
         ]
       interval: 5s
       timeout: 3s
@@ -165,11 +165,11 @@ services:
     command: ['server', '/data', '--console-address', ':9001']
     restart: unless-stopped
     environment:
-      MINIO_API_CORS_ALLOW_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${APP_ORIGIN:?Use npm run compose:up}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Use npm run compose:up}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Use npm run compose:up}
     ports:
-      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_PORT:?Use npm run compose:up}:9000'
     healthcheck:
       test: ['CMD', 'mc', 'ready', 'local']
       interval: 5s
@@ -192,8 +192,8 @@ services:
         mc version enable local/attendance-evidence &&
         mc ilm rule add --expire-days 1 --noncurrent-expire-days 1 --prefix staging/ local/attendance-evidence
     environment:
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-DexaMinio1!}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dexaadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Use npm run compose:up}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Use npm run compose:up}
 
   identity:
     <<: *app
@@ -250,7 +250,7 @@ services:
       HOST: 0.0.0.0
       HTTP_PORT: 3002
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_PUBLIC_ENDPOINT: http://localhost:${MINIO_PORT:-9000}
+      MINIO_PUBLIC_ENDPOINT: http://localhost:${MINIO_PORT:?Use npm run compose:up}
     volumes:
       - attendance-pki:/app/.local/pki:ro
     healthcheck:
@@ -279,14 +279,14 @@ services:
       identity:
         condition: service_healthy
     environment:
-      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+      APP_ORIGIN: ${APP_ORIGIN:?Use npm run compose:up}
       ATTENDANCE_GRPC_URL: attendance:50052
       HOST: 0.0.0.0
       HTTP_PORT: 3000
       IDENTITY_GRPC_URL: identity:50051
       OPENAPI_ENABLED: 'true'
       PKI_DIR: /app/.local/pki
-      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:-DexaRateLimit1!}
+      RATE_LIMIT_REDIS_PASSWORD: ${RATE_LIMIT_REDIS_PASSWORD:?Use npm run compose:up}
       RATE_LIMIT_REDIS_URL: redis://redis:6379
     volumes:
       - gateway-pki:/app/.local/pki:ro
@@ -302,7 +302,7 @@ services:
       timeout: 3s
       retries: 20
     ports:
-      - '${GATEWAY_PORT:-3001}:3000'
+      - '${GATEWAY_PORT:?Use npm run compose:up}:3000'
 
   web:
     <<: *app
@@ -327,7 +327,7 @@ services:
       timeout: 3s
       retries: 20
     ports:
-      - '${WEB_PORT:-3000}:3000'
+      - '${WEB_PORT:?Use npm run compose:up}:3000'
 
 volumes:
   attendance-pki:

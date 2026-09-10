@@ -21,7 +21,7 @@ async function problem(response, status, code) {
 
 const employeeLogin = await post('/api/v1/auth/login', {
   phoneNumber: '  +6280000000002  ',
-  password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
+  password: process.env.DEMO_EMPLOYEE_PASSWORD,
 });
 
 assert.equal(employeeLogin.status, 200);
@@ -203,7 +203,7 @@ await problem(await me(jar), 401, 'AUTHENTICATION_REQUIRED');
 
 const staleLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000002',
-  password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
+  password: process.env.DEMO_EMPLOYEE_PASSWORD,
 });
 
 assert.equal(staleLogin.status, 200);
@@ -247,7 +247,7 @@ assert.equal(wrongPassword.detail, unknownPhone.detail);
 
 const hrdLogin = await post('/api/v1/auth/login', {
   phoneNumber: '+6280000000001',
-  password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
+  password: process.env.DEMO_HRD_PASSWORD,
 });
 
 assert.equal(hrdLogin.status, 200);

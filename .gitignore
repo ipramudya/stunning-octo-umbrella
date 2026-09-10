@@ -10,7 +10,7 @@ skills-lock.json
 PRODUCT.md
 .env
 .env.*
-!.env.example
+!.env.demo
 playwright-report/
 test-results/
 .DS_Store

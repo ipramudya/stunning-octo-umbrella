@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 
 import { composeExec, cookieJar, me, post } from './auth-http.mjs';
 
-const password = process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!';
+const password = process.env.DEMO_HRD_PASSWORD;
 
 async function login() {
   const response = await post('/api/v1/auth/login', {

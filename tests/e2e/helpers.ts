@@ -2,12 +2,22 @@ import { execFileSync } from 'node:child_process';
 
 import { expect, type Page } from '@playwright/test';
 
+function env(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+
+  return value;
+}
+
 export const employee = {
-  password: process.env.DEMO_EMPLOYEE_PASSWORD ?? 'DexaEmployee1!',
+  password: env('DEMO_EMPLOYEE_PASSWORD'),
   phoneNumber: '+6280000000002',
 };
 export const hrd = {
-  password: process.env.DEMO_HRD_PASSWORD ?? 'DexaAdministrator1!',
+  password: env('DEMO_HRD_PASSWORD'),
   phoneNumber: '+6280000000001',
 };
 

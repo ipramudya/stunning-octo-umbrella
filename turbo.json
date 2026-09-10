@@ -8,13 +8,12 @@
       "outputs": []
     },
     "build": {
-      "dependsOn": ["@project/contracts#generate", "^build"],
+      "dependsOn": ["^build"],
       "env": ["GATEWAY_URL", "NEXT_DIST_DIR", "NODE_ENV"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "contracts:check": {
-      "cache": false,
-      "dependsOn": ["generate"]
+      "cache": false
     },
     "dev": {
       "cache": false,
@@ -28,10 +27,10 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["@project/contracts#generate", "^build"]
+      "dependsOn": ["^build"]
     },
     "typecheck": {
-      "dependsOn": ["@project/contracts#generate", "^build"],
+      "dependsOn": ["^build"],
       "outputs": []
     }
   }

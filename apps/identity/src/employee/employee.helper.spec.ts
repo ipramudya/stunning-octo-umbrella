@@ -26,7 +26,7 @@ describe('employee helpers', () => {
     expect(phone('  +6280000000001  ')).toBe('+6280000000001');
     expect(email('  EMPLOYEE@EXAMPLE.COM  ')).toBe('employee@example.com');
     expect(email('  ')).toBeUndefined();
-    expect(password('password1234')).toBe('password1234');
+    expect(password('valid-password')).toBe('valid-password');
 
     expect(() => required(' ', 20)).toThrow('VALIDATION_ERROR');
     expect(() => phone('+1')).toThrow('VALIDATION_ERROR');
