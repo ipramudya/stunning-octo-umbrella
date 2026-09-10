@@ -1,5 +1,6 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { apiReference } from '@scalar/nestjs-api-reference';
 
 export function configureOpenApi(app: NestFastifyApplication) {
   const document = SwaggerModule.createDocument(
@@ -16,5 +17,13 @@ export function configureOpenApi(app: NestFastifyApplication) {
 
   SwaggerModule.setup('api/docs', app, document, {
     jsonDocumentUrl: 'api/openapi.json',
+    ui: false,
   });
+  app.use(
+    '/api/docs',
+    apiReference({
+      url: '/api/openapi.json',
+      withFastify: true,
+    }),
+  );
 }
