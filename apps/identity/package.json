@@ -7,6 +7,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
+    "lint": "oxlint src --deny-warnings --report-unused-disable-directives --format=agent",
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

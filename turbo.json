@@ -3,11 +3,16 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "env": ["GATEWAY_URL", "NEXT_DIST_DIR", "NODE_ENV"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
       "cache": false,
+      "dependsOn": ["^build"],
       "persistent": true
+    },
+    "lint": {
+      "outputs": []
     },
     "test": {
       "dependsOn": ["^build"]

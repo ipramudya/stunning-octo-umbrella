@@ -4,9 +4,12 @@
 .pi
 .agents
 .zed
+**/.next
 **/dist
 **/node_modules
 coverage
+playwright-report
+test-results
 tests
 .env
 *.md

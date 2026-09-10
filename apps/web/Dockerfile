@@ -1,31 +1,42 @@
-FROM node:24-alpine AS build
+FROM node:24-alpine AS pruner
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-COPY apps/gateway/package.json apps/gateway/package.json
-COPY apps/identity/package.json apps/identity/package.json
-COPY apps/attendance/package.json apps/attendance/package.json
-COPY apps/web/package.json apps/web/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
-
-RUN npm ci --ignore-scripts --legacy-peer-deps
+RUN npm install --global turbo@2.10.12
 
 COPY . .
+
+RUN turbo prune web --docker
+
+FROM node:24-alpine AS build
 
 ENV GATEWAY_URL=http://gateway:3000
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build -w web
+WORKDIR /app
 
-FROM node:24-alpine
+COPY --from=pruner /app/out/json/ ./
+
+RUN npm ci --ignore-scripts --legacy-peer-deps
+
+COPY --from=pruner /app/out/full/ ./
+
+RUN --mount=type=cache,target=/app/.turbo \
+  npx turbo run build --filter=web
+
+FROM alpine:3.23
 
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
 ENV PORT=3000
 
+RUN apk add --no-cache libstdc++ \
+  && addgroup --gid 1000 --system node \
+  && adduser --uid 1000 --system --ingroup node node
+
 WORKDIR /app
 
+COPY --from=build /usr/local/bin/node /usr/local/bin/node
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
 

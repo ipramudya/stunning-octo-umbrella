@@ -15,7 +15,7 @@
     "dev": "turbo run dev",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint . --deny-warnings --report-unused-disable-directives --format=agent",
+    "lint": "oxlint scripts tests playwright.config.ts --deny-warnings --report-unused-disable-directives --format=agent && turbo run lint",
     "start:attendance": "npm run start -w @project/attendance",
     "start:gateway": "npm run start -w @project/gateway",
     "start:identity": "npm run start -w @project/identity",
