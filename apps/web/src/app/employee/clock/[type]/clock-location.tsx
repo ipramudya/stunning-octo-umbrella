@@ -16,7 +16,12 @@ const findAddress = async (url: string) => {
   return locationSchema.parse(await response.json()).display_name;
 };
 
-export function ClockLocation() {
+export function ClockLocation({
+  onLocation,
+}: {
+  onLocation: (coordinates: GeolocationCoordinates | null) => void;
+}) {
+  const notifyLocation = React.useEffectEvent(onLocation);
   const [coordinates, setCoordinates] = React.useState<string>();
   const [locationError, setLocationError] = React.useState(false);
   const {
@@ -27,11 +32,13 @@ export function ClockLocation() {
   React.useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        notifyLocation(coords);
         setCoordinates(
           `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}`,
         );
       },
       () => {
+        notifyLocation(null);
         setLocationError(true);
       },
       { enableHighAccuracy: true },

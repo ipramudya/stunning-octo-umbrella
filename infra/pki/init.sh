@@ -2,6 +2,24 @@
 set -eu
 
 umask 077
+
+if [ -s /pki/gateway/gateway.crt ] &&
+  [ -s /pki/gateway/gateway.key ] &&
+  [ -s /pki/gateway/ca.crt ] &&
+  [ -s /pki/identity/identity.crt ] &&
+  [ -s /pki/identity/identity.key ] &&
+  [ -s /pki/identity/ca.crt ] &&
+  [ -s /pki/identity/server-ca.crt ] &&
+  [ -s /pki/identity/identity-signing.key ] &&
+  [ -s /pki/identity/identity-signing.pub ] &&
+  [ -s /pki/attendance/attendance.crt ] &&
+  [ -s /pki/attendance/attendance.key ] &&
+  [ -s /pki/attendance/ca.crt ] &&
+  [ -s /pki/attendance/server-ca.crt ] &&
+  [ -s /pki/attendance/identity-signing.pub ]; then
+  exit 0
+fi
+
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 

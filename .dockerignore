@@ -1,7 +1,12 @@
 .git
 .local
 .turbo
+.pi
+.agents
+.zed
 **/dist
 **/node_modules
 coverage
+tests
 .env
+*.md

@@ -1,20 +1,17 @@
 import { notFound } from 'next/navigation';
-import React from 'react';
 
 import { ManualAttendanceForm } from './manual-attendance-form';
 
 export default async function ManualAttendancePage({
   params,
-}: PageProps<'/employee/manual/[type]'>) {
+}: {
+  params: Promise<{ type: string }>;
+}) {
   const { type } = await params;
 
   if (type !== 'clock-in' && type !== 'clock-out') {
     notFound();
   }
 
-  return (
-    <React.Suspense>
-      <ManualAttendanceForm type={type} />
-    </React.Suspense>
-  );
+  return <ManualAttendanceForm type={type} />;
 }

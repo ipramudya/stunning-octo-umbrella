@@ -1,54 +1,38 @@
 'use client';
 
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 import React from 'react';
+import useSWR from 'swr';
 
 import { CenteredPage } from '@/components/layout/centered-page';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { MonthNavigation } from '@/components/month-navigation';
+import { buttonVariants } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { calendarMonth, dateKey, shiftMonth } from '@/lib/calendar';
+import { employeeAttendanceListSchema } from '@/lib/contracts';
+import type { EmployeeAttendanceList } from '@/lib/contracts';
 import { cn } from '@/lib/utils';
 
 const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-
-const formatter = new Intl.DateTimeFormat('id-ID', {
-  month: 'long',
+const timeFormatter = new Intl.DateTimeFormat('id-ID', {
+  hour: '2-digit',
+  minute: '2-digit',
   timeZone: 'Asia/Jakarta',
-  year: 'numeric',
 });
-
-const dateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const startOfMonth = (date: Date) =>
-  new Date(date.getFullYear(), date.getMonth(), 1);
-
 export function AttendanceCalendar() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const attendance = new Map(
-    [-6, -5, -4, -3, -2, -1].map((daysAgo, index) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + daysAgo);
-      return [
-        dateKey(date),
-        {
-          clockIn: `08:${String(index + 1).padStart(2, '0')}`,
-          clockOut: '17:00',
-        },
-      ];
-    }),
+  const [month, setMonth] = React.useState(() => shiftMonth(today, 0));
+  const monthKey = dateKey(month).slice(0, 7);
+  const { data, error, isLoading } = useSWR<EmployeeAttendanceList, Error>(
+    `/me/attendance?month=${monthKey}`,
+    async (path: string) => await api(path, employeeAttendanceListSchema),
   );
-  const [month, setMonth] = React.useState(() => startOfMonth(today));
-  const firstWeekday = (month.getDay() + 6) % 7;
-  const daysInMonth = new Date(
-    month.getFullYear(),
-    month.getMonth() + 1,
-    0,
-  ).getDate();
-  const cells = Array.from(
-    { length: Math.ceil((firstWeekday + daysInMonth) / 7) * 7 },
-    (_, index) => index - firstWeekday + 1,
-  );
+  const { cells, daysInMonth } = calendarMonth(month);
+  const attendance = Map.groupBy(data?.items ?? [], (entry) => entry.workDate);
+
   return (
     <CenteredPage>
       <div>
@@ -63,47 +47,23 @@ export function AttendanceCalendar() {
           Kembali
         </Link>
 
-        <header className="mt-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Riwayat absensi</p>
-            <h1 className="mt-1 font-heading text-2xl font-semibold tracking-tight">
-              {formatter.format(month)}
-            </h1>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              aria-label="Bulan sebelumnya"
-              onClick={() => {
-                setMonth(
-                  (current) =>
-                    new Date(current.getFullYear(), current.getMonth() - 1, 1),
-                );
-              }}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <HugeiconsIcon aria-hidden="true" icon={ArrowLeft01Icon} />
-            </Button>
-            <Button
-              aria-label="Bulan berikutnya"
-              onClick={() => {
-                setMonth(
-                  (current) =>
-                    new Date(current.getFullYear(), current.getMonth() + 1, 1),
-                );
-              }}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <HugeiconsIcon aria-hidden="true" icon={ArrowRight01Icon} />
-            </Button>
-          </div>
-        </header>
+        <MonthNavigation
+          eyebrow="Riwayat absensi"
+          month={month}
+          onNext={() => {
+            setMonth((current) => shiftMonth(current, 1));
+          }}
+          onPrevious={() => {
+            setMonth((current) => shiftMonth(current, -1));
+          }}
+        />
 
+        {error !== undefined && (
+          <p className="mt-4 text-sm text-destructive">{error.message}</p>
+        )}
         <section
-          aria-label={`Kalender absensi ${formatter.format(month)}`}
+          aria-busy={isLoading}
+          aria-label={`Kalender absensi ${monthKey}`}
           className="mt-6"
         >
           <div className="grid grid-cols-7 border border-b-0 border-border text-center text-xs text-muted-foreground">
@@ -114,22 +74,23 @@ export function AttendanceCalendar() {
             ))}
           </div>
           <div className="grid grid-cols-7 border-s border-t border-border">
-            {cells.map((day, index) => {
+            {cells.map((day) => {
               const date = new Date(month.getFullYear(), month.getMonth(), day);
               const isOutsideMonth = day < 1 || day > daysInMonth;
               const isToday = dateKey(date) === dateKey(today);
-              const entry = attendance.get(dateKey(date));
+              const entries = attendance.get(dateKey(date)) ?? [];
               let cellClassName =
                 'min-h-24 border-e border-b border-border bg-background p-1.5';
               if (isOutsideMonth) {
                 cellClassName =
                   'min-h-24 border-e border-b border-border bg-muted/70';
-              } else if (entry) {
+              } else if (entries.length > 0) {
                 cellClassName =
                   'min-h-24 border-e border-b border-border bg-card p-1.5';
               }
+
               return (
-                <div className={cellClassName} key={index}>
+                <div className={cellClassName} key={dateKey(date)}>
                   {!isOutsideMonth && (
                     <>
                       <span
@@ -141,22 +102,28 @@ export function AttendanceCalendar() {
                       >
                         {day}
                       </span>
-                      {entry && (
-                        <div className="mt-2 space-y-1 text-[10px] leading-3">
-                          <p className="flex gap-1">
-                            <span className="text-muted-foreground">In</span>
+                      <div className="mt-2 space-y-1 text-[10px] leading-3">
+                        {entries.map((entry) => (
+                          <Link
+                            className="flex gap-1 underline"
+                            href={`/employee/attendance/${entry.id}`}
+                            key={entry.id}
+                          >
+                            <span className="text-muted-foreground">
+                              {entry.clockType === 'CLOCK_IN' ? 'In' : 'Out'}
+                            </span>
                             <time className="text-foreground/80">
-                              {entry.clockIn}
+                              {timeFormatter.format(
+                                new Date(
+                                  entry.occurredAt ??
+                                    entry.claimedAt ??
+                                    entry.submittedAt,
+                                ),
+                              )}
                             </time>
-                          </p>
-                          <p className="flex gap-1">
-                            <span className="text-muted-foreground">Out</span>
-                            <time className="text-foreground/80">
-                              {entry.clockOut}
-                            </time>
-                          </p>
-                        </div>
-                      )}
+                          </Link>
+                        ))}
+                      </div>
                     </>
                   )}
                 </div>

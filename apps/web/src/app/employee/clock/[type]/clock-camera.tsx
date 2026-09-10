@@ -4,7 +4,12 @@ import { Camera01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import React from 'react';
 
-export function ClockCamera() {
+export function ClockCamera({
+  onStream,
+}: {
+  onStream: (stream: MediaStream | null) => void;
+}) {
+  const notifyStream = React.useEffectEvent(onStream);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [cameraError, setCameraError] = React.useState<string>();
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -27,6 +32,7 @@ export function ClockCamera() {
         }
         streamRef.current = activeStream;
         setStream(activeStream);
+        notifyStream(activeStream);
       } catch {
         if (!disposed) {
           setCameraError('Kamera tidak tersedia. Periksa izin kamera Anda.');
@@ -36,6 +42,7 @@ export function ClockCamera() {
     void requestCamera();
     return () => {
       disposed = true;
+      notifyStream(null);
       for (const track of streamRef.current?.getTracks() ?? []) {
         track.stop();
       }

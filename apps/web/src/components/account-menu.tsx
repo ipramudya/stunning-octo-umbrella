@@ -2,6 +2,8 @@
 
 import { Logout01Icon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { useRouter } from 'next/navigation';
+import { mutate } from 'swr';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,8 +19,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { api } from '@/lib/api';
+import { emptySchema } from '@/lib/contracts';
 
 export function AccountMenu() {
+  const router = useRouter();
+
+  async function logout() {
+    await api('/auth/logout', emptySchema, { method: 'POST' });
+    await mutate(() => true, undefined, { revalidate: false });
+    router.replace('/login');
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -36,7 +48,12 @@ export function AccountMenu() {
           <HugeiconsIcon aria-hidden="true" icon={MoreVerticalIcon} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-28">
-          <DropdownMenuItem variant="destructive">
+          <DropdownMenuItem
+            onClick={() => {
+              void logout();
+            }}
+            variant="destructive"
+          >
             <HugeiconsIcon aria-hidden="true" icon={Logout01Icon} />
             Keluar
           </DropdownMenuItem>
@@ -63,6 +80,9 @@ export function AccountMenu() {
           <div className="p-4 pt-0">
             <Button
               className="w-full justify-start"
+              onClick={() => {
+                void logout();
+              }}
               type="button"
               variant="destructive"
             >

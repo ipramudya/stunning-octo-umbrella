@@ -4,7 +4,9 @@ import { ClockSubmission } from './clock-submission';
 
 export default async function ClockSubmissionPage({
   params,
-}: PageProps<'/employee/clock/[type]'>) {
+}: {
+  params: Promise<{ type: string }>;
+}) {
   const { type } = await params;
 
   if (type !== 'clock-in' && type !== 'clock-out') {

@@ -161,7 +161,7 @@ export class AuthController {
     }
 
     reply.header('set-cookie', [
-      this.cookie({ name: 'dexa_access', value: '', path: '/api', maxAge: 0 }),
+      this.cookie({ name: 'dexa_access', value: '', path: '/', maxAge: 0 }),
       this.cookie({
         name: 'dexa_refresh',
         value: '',
@@ -297,7 +297,7 @@ export class AuthController {
       this.cookie({
         name: 'dexa_access',
         value: credentials.accessToken,
-        path: '/api',
+        path: '/',
         maxAge: 900,
       }),
       this.cookie({

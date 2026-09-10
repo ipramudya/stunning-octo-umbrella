@@ -42,6 +42,7 @@ export function createHealthClientOptions({
         readFileSync(join(pkiDir, 'gateway.key')),
         readFileSync(join(pkiDir, 'gateway.crt')),
       ),
+      loader: { arrays: true },
       package: ['grpc.health.v1', servicePackage],
       protoPath: [HEALTH_PROTO_PATH, serviceProto],
       url: address,

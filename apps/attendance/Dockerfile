@@ -8,11 +8,18 @@ COPY packages/contracts/package.json packages/contracts/package.json
 RUN npm ci --ignore-scripts --legacy-peer-deps
 COPY . .
 RUN npm run build -w @project/contracts && npm run build -w @project/attendance
-RUN npm prune --ignore-scripts --omit=dev --legacy-peer-deps
-
 FROM node:24-alpine
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=build --chown=node:node /app /app
+COPY package.json package-lock.json ./
+COPY apps/attendance/package.json apps/attendance/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+RUN npm ci --ignore-scripts --omit=dev --legacy-peer-deps \
+  --workspace @project/attendance --workspace @project/contracts
+COPY --from=build --chown=node:node /app/apps/attendance/dist apps/attendance/dist
+COPY --from=build --chown=node:node /app/apps/attendance/migrations apps/attendance/migrations
+COPY --from=build --chown=node:node /app/packages/contracts/dist packages/contracts/dist
+COPY --from=build --chown=node:node /app/packages/contracts/proto packages/contracts/proto
+COPY --from=build --chown=node:node /app/scripts/oracle-migrate.mjs scripts/oracle-migrate.mjs
 USER node
 CMD ["node", "apps/attendance/dist/main.js"]

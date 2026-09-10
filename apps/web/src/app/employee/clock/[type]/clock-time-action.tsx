@@ -11,7 +11,15 @@ const timeFormatter = new Intl.DateTimeFormat('id-ID', {
   timeZone: 'Asia/Jakarta',
 });
 
-export function ClockTimeAction({ action }: { action: string }) {
+export function ClockTimeAction({
+  action,
+  disabled,
+  onClick,
+}: {
+  action: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
   const [time, setTime] = React.useState(() =>
     timeFormatter.format(new Date()),
   );
@@ -24,7 +32,12 @@ export function ClockTimeAction({ action }: { action: string }) {
     };
   }, []);
   return (
-    <Button className="mt-4 h-14 w-full flex-col gap-0.5" type="button">
+    <Button
+      className="mt-4 h-14 w-full flex-col gap-0.5"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
       <span className="text-xs font-normal">{action}</span>
       <time className="font-heading text-base font-semibold tabular-nums">
         {time}
