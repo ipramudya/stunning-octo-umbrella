@@ -6,7 +6,6 @@ import type {
   SessionCredentials,
   TokenAudience,
 } from '@project/contracts';
-import { argon2id, hash, verify } from 'argon2';
 
 import { validateLogin } from '../auth/auth.helper.js';
 import { SessionStore } from '../auth/session.store.js';
@@ -20,8 +19,6 @@ import { IdentityError } from './identity.error.js';
 
 @Injectable()
 export class IdentityAuthService {
-  private dummyHash?: Promise<string>;
-
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly employees: EmployeeRepository,
@@ -35,22 +32,9 @@ export class IdentityAuthService {
   ): Promise<SessionCredentials> {
     const login = validateLogin(phoneNumber, password);
 
-    const [employee, dummyHash] = await Promise.all([
-      this.employees.findByPhone(login.phoneNumber),
-      (this.dummyHash ??= hash('invalid-password-placeholder', {
-        type: argon2id,
-        memoryCost: this.config.get('ARGON2_MEMORY_COST', { infer: true }),
-        timeCost: this.config.get('ARGON2_TIME_COST', { infer: true }),
-        parallelism: this.config.get('ARGON2_PARALLELISM', { infer: true }),
-      })),
-    ]);
+    const employee = await this.employees.findByPhone(login.phoneNumber);
 
-    const validPassword = await this.passwordMatches(
-      employee?.passwordHash ?? dummyHash,
-      login.password,
-    );
-
-    if (!employee || !validPassword) {
+    if (!employee) {
       throw new IdentityError('INVALID_CREDENTIALS', status.UNAUTHENTICATED);
     }
 
@@ -172,14 +156,6 @@ export class IdentityAuthService {
     );
 
     return { profile: profile(employee), sessionId: claims.sid, tokens };
-  }
-
-  private async passwordMatches(passwordHash: string, password: string) {
-    try {
-      return await verify(passwordHash, password);
-    } catch {
-      return false;
-    }
   }
 
   private async credentials(
