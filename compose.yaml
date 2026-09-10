@@ -310,10 +310,13 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        GATEWAY_URL: ${GATEWAY_URL:?Use npm run compose:up}
     depends_on:
       gateway:
         condition: service_healthy
     environment:
+      GATEWAY_URL: ${GATEWAY_URL:?Use npm run compose:up}
       NEXT_TELEMETRY_DISABLED: 1
     healthcheck:
       test:

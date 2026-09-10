@@ -115,7 +115,7 @@ assert.equal(
   ).status,
   200,
 );
-assert.equal((await access(employee, upload.uploadId)).status, 409);
+assert.equal((await access(employee, upload.uploadId)).status, 422);
 assert.equal((await access(other, upload.uploadId)).status, 404);
 
 const finalize = `

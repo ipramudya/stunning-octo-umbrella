@@ -14,7 +14,7 @@ const password = z.string().refine(
     return length >= 12 && length <= 128;
   },
   {
-    message: 'Password must contain 12 to 128 Unicode characters',
+    message: 'Kata sandi harus terdiri dari 12 sampai 128 karakter',
   },
 );
 const email = z.union([z.literal(''), z.email().max(254)]);

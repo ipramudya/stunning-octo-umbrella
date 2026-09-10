@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 
-import { credentials, loadPackageDefinition, Metadata } from '@grpc/grpc-js';
-import { loadSync } from '@grpc/proto-loader';
+import {
+  credentials,
+  loadPackageDefinition,
+  Metadata,
+} from '/app/node_modules/@grpc/grpc-js/build/src/index.js';
+import { loadSync } from '/app/node_modules/@grpc/proto-loader/build/src/index.js';
 
 const accessToken = process.argv[2];
 const certificateName = process.argv[3] ?? 'gateway';

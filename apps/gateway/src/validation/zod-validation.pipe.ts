@@ -13,13 +13,13 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
 
     throw new BadRequestException({
       type: 'about:blank',
-      title: 'Bad Request',
+      title: 'Permintaan tidak valid',
       status: 400,
-      detail: 'Request validation failed',
+      detail: 'Data yang dikirim tidak valid',
       code: 'VALIDATION_ERROR',
       errors: result.error.issues.map((issue) => ({
         field: issue.path.join('.'),
-        message: issue.message,
+        message: 'Nilai tidak valid',
       })),
     });
   }

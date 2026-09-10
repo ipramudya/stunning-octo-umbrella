@@ -17,27 +17,26 @@ test('attendance outage is explained and the page recovers', async ({
   try {
     await page.reload();
     await expect(
-      page.getByText(
-        /The (request timed out|service is temporarily unavailable)/u,
-      ),
+      page.getByText(/(Waktu permintaan habis|Layanan sedang tidak tersedia)/u),
     ).toBeVisible();
   } finally {
     compose('start', 'attendance');
   }
 
   await expect
-    .poll(async () => {
-      const response = await page.request.get(
-        `${process.env.GATEWAY_URL}/health/ready`,
-      );
+    .poll(
+      async () => {
+        const response = await page.request.get(
+          `${process.env.GATEWAY_URL}/health/ready`,
+        );
 
-      return response.ok();
-    })
+        return response.ok();
+      },
+      { timeout: 20_000 },
+    )
     .toBe(true);
   await page.reload();
   await expect(
-    page.getByText(
-      /The (request timed out|service is temporarily unavailable)/u,
-    ),
+    page.getByText(/(Waktu permintaan habis|Layanan sedang tidak tersedia)/u),
   ).toHaveCount(0);
 });

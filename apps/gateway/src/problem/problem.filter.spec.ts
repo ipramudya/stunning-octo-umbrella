@@ -25,7 +25,7 @@ describe('ProblemFilter', () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'VALIDATION_ERROR',
-        title: 'Not Found',
+        title: 'Data tidak ditemukan',
         status: 404,
       }),
     );
@@ -61,6 +61,37 @@ describe('ProblemFilter', () => {
     );
   });
 
+  it('returns actionable attendance failure details', () => {
+    const send = vi.fn();
+    const reply = {
+      header: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      send,
+    };
+    const host = {
+      switchToHttp: () => ({
+        getRequest: () => ({ url: '/api/v1/me/attendance/regular' }),
+        getResponse: () => reply,
+      }),
+    } as unknown as ArgumentsHost;
+    const metadata = new Metadata();
+
+    metadata.set('x-error-code', 'OUTSIDE_ATTENDANCE_ZONE');
+    new ProblemFilter().catch(
+      { code: status.FAILED_PRECONDITION, metadata },
+      host,
+    );
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'OUTSIDE_ATTENDANCE_ZONE',
+        detail: 'Anda berada di luar zona absensi',
+        status: 422,
+      }),
+    );
+  });
+
   it('redacts unexpected errors', () => {
     const send = vi.fn();
     const reply = {
@@ -81,7 +112,7 @@ describe('ProblemFilter', () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'INTERNAL_ERROR',
-        detail: 'An unexpected error occurred',
+        detail: 'Terjadi kesalahan yang tidak terduga',
         status: 500,
       }),
     );

@@ -50,12 +50,7 @@ assert.equal(current.status, 200);
 assert.equal((await current.json()).id, employee.id);
 
 const internalToken = composeExec(
-  [
-    'gateway',
-    'node',
-    '/app/tests/integration/request-internal-token.mjs',
-    jar.dexa_access,
-  ],
+  ['gateway', 'node', '/tmp/request-internal-token.mjs', jar.dexa_access],
   { encoding: 'utf8' },
 ).trim();
 
@@ -65,7 +60,7 @@ assert.throws(() =>
     [
       'attendance',
       'node',
-      '/app/tests/integration/request-internal-token.mjs',
+      '/tmp/request-internal-token.mjs',
       jar.dexa_access,
       'attendance',
     ],
@@ -101,7 +96,7 @@ const identityToken = composeExec(
   [
     'gateway',
     'node',
-    '/app/tests/integration/request-internal-token.mjs',
+    '/tmp/request-internal-token.mjs',
     jar.dexa_access,
     'gateway',
     'TOKEN_AUDIENCE_IDENTITY',

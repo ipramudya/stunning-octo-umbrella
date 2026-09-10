@@ -72,7 +72,7 @@ test('manual attendance is validated, submitted, listed, and approved', async ({
   await expect(page.getByText('Pilih jam kerja.')).toBeVisible();
   await expect(page.getByText('Alasan wajib diisi.')).toBeVisible();
 
-  await page.getByLabel('Tanggal kerja').fill(workDate);
+  await page.getByLabel('Tanggal kerja').fill('2000-01-12');
   await page.getByLabel('Jam kerja').fill('08:00');
   await page.getByLabel('Alasan').fill('Kendala jaringan saat memulai kerja.');
   await page.getByRole('button', { name: 'Buka peta' }).click();
@@ -83,7 +83,14 @@ test('manual attendance is validated, submitted, listed, and approved', async ({
     name: 'attendance.png',
   });
   await page.getByRole('button', { name: 'Kirim pengajuan' }).click();
+  await expect(
+    page.getByText(
+      'Tanggal absensi manual berada di luar rentang yang diizinkan',
+    ),
+  ).toBeVisible();
 
+  await page.getByLabel('Tanggal kerja').fill(workDate);
+  await page.getByRole('button', { name: 'Kirim pengajuan' }).click();
   await expectPath(page, '/employee/history');
 
   const historyEntry = page.locator('a[href^="/employee/attendance/"]').first();

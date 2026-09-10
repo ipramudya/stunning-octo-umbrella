@@ -12,7 +12,8 @@ RUN turbo prune web --docker
 # Build the standalone Next.js server from the reduced workspace.
 FROM node:24-alpine AS build
 
-ENV GATEWAY_URL=http://gateway:3000
+ARG GATEWAY_URL
+ENV GATEWAY_URL=$GATEWAY_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app

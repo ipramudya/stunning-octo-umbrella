@@ -34,19 +34,63 @@ const grpcHttpStatus: Partial<Record<grpcStatus, number>> = {
 };
 
 const problemDetails: Partial<Record<string, string>> = {
-  ATTENDANCE_NOT_FOUND: 'Attendance entry was not found',
-  ATTENDANCE_ENTRY_NOT_FOUND: 'Attendance entry was not found',
-  AUTHENTICATION_REQUIRED: 'Authentication is required',
-  DEPENDENCY_UNAVAILABLE: 'The service is temporarily unavailable',
-  DOWNSTREAM_TIMEOUT: 'The request timed out',
-  EMPLOYEE_NOT_FOUND: 'Employee was not found',
-  EVIDENCE_NOT_FOUND: 'Evidence was not found',
-  FORBIDDEN: 'Access is forbidden',
-  INVALID_CREDENTIALS: 'Phone number or password is incorrect',
-  INVALID_CURSOR: 'The cursor is invalid',
-  REQUEST_IN_PROGRESS: 'The request is already in progress',
-  VALIDATION_ERROR: 'Request validation failed',
+  ATTENDANCE_ALREADY_EXISTS: 'Absensi sudah tercatat',
+  ATTENDANCE_ENTRY_NOT_FOUND: 'Data absensi tidak ditemukan',
+  ATTENDANCE_NOT_FOUND: 'Data absensi tidak ditemukan',
+  ATTENDANCE_WINDOW_CLOSED:
+    'Waktu absensi berada di luar jadwal yang diizinkan',
+  ATTENDANCE_ZONE_INACTIVE: 'Zona absensi sedang tidak aktif',
+  AUTHENTICATION_REQUIRED: 'Silakan masuk terlebih dahulu',
+  CLAIMED_AT_DATE_MISMATCH: 'Tanggal dan waktu absensi tidak sesuai',
+  CLOCK_IN_REQUIRED: 'Clock in harus dilakukan terlebih dahulu',
+  CLOCK_OUT_MUST_BE_AFTER_CLOCK_IN: 'Waktu clock out harus setelah clock in',
+  DATE_RANGE_TOO_LARGE: 'Rentang tanggal terlalu panjang',
+  DEPENDENCY_UNAVAILABLE: 'Layanan sedang tidak tersedia',
+  DOWNSTREAM_TIMEOUT: 'Waktu permintaan habis',
+  EMAIL_ALREADY_EXISTS: 'Email sudah digunakan',
+  EMPLOYEE_DATA_INTEGRITY_ERROR: 'Data karyawan tidak valid',
+  EMPLOYEE_NOT_FOUND: 'Karyawan tidak ditemukan',
+  EMPLOYEE_NUMBER_ALREADY_EXISTS: 'Nomor karyawan sudah digunakan',
+  ENTRY_NOT_PENDING_REVIEW: 'Pengajuan sudah diproses',
+  EVIDENCE_ALREADY_ATTACHED: 'Bukti foto sudah digunakan',
+  EVIDENCE_EXPIRED: 'Masa berlaku bukti foto telah habis',
+  EVIDENCE_FINALIZATION_FAILED: 'Bukti foto gagal disimpan',
+  EVIDENCE_INVALID: 'Bukti foto tidak valid',
+  EVIDENCE_NOT_FOUND: 'Bukti foto tidak ditemukan',
+  EVIDENCE_NOT_UPLOADED: 'Bukti foto belum diunggah',
+  FORBIDDEN: 'Anda tidak memiliki izin untuk tindakan ini',
+  FUTURE_CLAIMED_AT: 'Waktu absensi tidak boleh berada di masa depan',
+  GPS_ACCURACY_EXCEEDS_LIMIT: 'Akurasi lokasi terlalu rendah',
+  IDEMPOTENCY_KEY_REUSED:
+    'Permintaan yang sama telah digunakan untuk data berbeda',
+  INVALID_CREDENTIALS: 'Nomor telepon atau kata sandi salah',
+  INVALID_CURSOR: 'Posisi halaman tidak valid',
+  MANUAL_DATE_OUT_OF_RANGE:
+    'Tanggal absensi manual berada di luar rentang yang diizinkan',
+  OUTSIDE_ATTENDANCE_ZONE: 'Anda berada di luar zona absensi',
+  PHONE_NUMBER_ALREADY_EXISTS: 'Nomor telepon sudah digunakan',
+  RATE_LIMIT_EXCEEDED: 'Terlalu banyak permintaan. Coba lagi nanti',
+  REQUEST_IN_PROGRESS: 'Permintaan sedang diproses',
+  SELF_APPROVAL_FORBIDDEN: 'Anda tidak dapat menyetujui pengajuan sendiri',
+  VALIDATION_ERROR: 'Data yang dikirim tidak valid',
 };
+
+const problemTitles: Partial<Record<number, string>> = {
+  400: 'Permintaan tidak valid',
+  401: 'Autentikasi diperlukan',
+  403: 'Akses ditolak',
+  404: 'Data tidak ditemukan',
+  409: 'Konflik data',
+  422: 'Data tidak dapat diproses',
+  429: 'Terlalu banyak permintaan',
+  500: 'Kesalahan internal server',
+  503: 'Layanan tidak tersedia',
+  504: 'Waktu permintaan habis',
+};
+
+function problemTitle(status: number) {
+  return problemTitles[status] ?? STATUS_CODES[status] ?? 'Terjadi kesalahan';
+}
 
 function grpcProblem({
   exception,
@@ -82,7 +126,7 @@ function grpcProblem({
     reply.header('retry-after', grpcMetadata(exception, 'retry-after') ?? '1');
   }
 
-  const title = STATUS_CODES[status] ?? 'Internal Server Error';
+  const title = problemTitle(status);
 
   return {
     type: 'about:blank',
@@ -121,7 +165,7 @@ export class ProblemFilter implements ExceptionFilter {
       problem = supplied;
       status = supplied.status;
     } else if (status >= 400 && status < 500) {
-      const title = STATUS_CODES[status] ?? 'Bad Request';
+      const title = problemTitle(status);
 
       problem = {
         type: 'about:blank',
@@ -135,9 +179,9 @@ export class ProblemFilter implements ExceptionFilter {
     } else {
       problem = {
         type: 'about:blank',
-        title: 'Internal Server Error',
+        title: 'Kesalahan internal server',
         status,
-        detail: 'An unexpected error occurred',
+        detail: 'Terjadi kesalahan yang tidak terduga',
         instance: request.url,
         code: 'INTERNAL_ERROR',
         traceId,

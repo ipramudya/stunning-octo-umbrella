@@ -17,7 +17,7 @@ test('invalid credentials show an actionable error', async ({ page }) => {
   });
 
   await expect(
-    page.getByText('Phone number or password is incorrect'),
+    page.getByText('Nomor telepon atau kata sandi salah'),
   ).toBeVisible();
   await expectPath(page, '/login');
 });

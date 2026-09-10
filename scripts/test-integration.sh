@@ -38,6 +38,8 @@ compose down --volumes --remove-orphans --timeout 10
 prune_integration_images
 compose build identity attendance gateway
 compose up --detach --wait --wait-timeout 180 gateway
+compose exec -T gateway sh -c 'cat > /tmp/request-internal-token.mjs' < tests/integration/request-internal-token.mjs
+compose exec -T attendance sh -c 'cat > /tmp/request-internal-token.mjs' < tests/integration/request-internal-token.mjs
 run_node tests/integration/walking-skeleton.mjs
 run_node tests/integration/authentication.mjs
 run_node tests/integration/employee-administration.mjs
