@@ -12,6 +12,8 @@ export default defineConfig({
     'src/components/ui/dropdown-menu.tsx',
     'src/components/ui/map.tsx',
     'src/components/ui/popover.tsx',
+    'src/components/ui/select.tsx',
+    'src/components/ui/switch.tsx',
   ],
   jsPlugins: ['../../packages/oxc/lint-plugin.mjs'],
   rules: {

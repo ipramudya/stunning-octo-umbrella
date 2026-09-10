@@ -107,10 +107,13 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
             Geser penanda ke lokasi Anda
           </h1>
         </header>
-        <section className="mt-6 overflow-hidden border border-border bg-card">
+        <section
+          className="mt-6 overflow-hidden border border-border bg-card"
+          style={{ height: 384 }}
+        >
           <Map
             center={[coordinate.longitude, coordinate.latitude]}
-            className="h-96 outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+            className="h-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
             onViewportChange={({ center }) => {
               setAddress('Memuat alamat...');
               setCoordinate({ latitude: center[1], longitude: center[0] });
