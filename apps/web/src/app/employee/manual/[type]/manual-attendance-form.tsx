@@ -14,13 +14,12 @@ import { cn } from '@/lib/utils';
 
 type ClockType = 'clock-in' | 'clock-out';
 
-export const ManualAttendanceForm = ({ type }: { type: ClockType }) => {
+export function ManualAttendanceForm({ type }: { type: ClockType }) {
   const searchParams = useSearchParams();
   const action = type === 'clock-in' ? 'Clock in' : 'Clock out';
   const address = searchParams.get('address') ?? '';
   const latitude = searchParams.get('latitude') ?? '';
   const longitude = searchParams.get('longitude') ?? '';
-
   return (
     <CenteredPage>
       <div>
@@ -101,4 +100,4 @@ export const ManualAttendanceForm = ({ type }: { type: ClockType }) => {
       </div>
     </CenteredPage>
   );
-};
+}

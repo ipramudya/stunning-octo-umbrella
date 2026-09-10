@@ -19,9 +19,8 @@ interface DatePickerProps {
   required?: boolean;
 }
 
-export const DatePicker = ({ id, name, required }: DatePickerProps) => {
+export function DatePicker({ id, name, required }: DatePickerProps) {
   const [date, setDate] = React.useState<Date>();
-
   return (
     <Popover>
       <PopoverTrigger
@@ -48,4 +47,4 @@ export const DatePicker = ({ id, name, required }: DatePickerProps) => {
       />
     </Popover>
   );
-};
+}

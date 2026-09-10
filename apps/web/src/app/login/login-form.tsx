@@ -18,10 +18,9 @@ interface FieldErrors {
   phone?: string;
 }
 
-export const LoginForm = () => {
+export function LoginForm() {
   const [errors, setErrors] = React.useState<FieldErrors>({});
   const [showPassword, setShowPassword] = React.useState(false);
-
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -30,7 +29,6 @@ export const LoginForm = () => {
     const phone = typeof phoneValue === 'string' ? phoneValue : '';
     const password = typeof passwordValue === 'string' ? passwordValue : '';
     const nextErrors: FieldErrors = {};
-
     if (!/^\+62[0-9]+$/u.test(phone)) {
       nextErrors.phone = 'Gunakan nomor Indonesia dengan awalan +62.';
     }
@@ -41,10 +39,8 @@ export const LoginForm = () => {
       setErrors(nextErrors);
       return;
     }
-
     setErrors({});
   };
-
   return (
     <CenteredPage>
       <section
@@ -176,4 +172,4 @@ export const LoginForm = () => {
       </section>
     </CenteredPage>
   );
-};
+}

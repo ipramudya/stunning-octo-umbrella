@@ -29,12 +29,14 @@ const CalendarDayButton = ({
     <Button
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString()}
+      data-day={day.date.toLocaleDateString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+      })}
       data-selected-single={
-        modifiers.selected &&
-        !modifiers.range_start &&
-        !modifiers.range_end &&
-        !modifiers.range_middle
+        (modifiers.selected ?? false) &&
+        !(modifiers.range_start ?? false) &&
+        !(modifiers.range_end ?? false) &&
+        !(modifiers.range_middle ?? false)
       }
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
@@ -118,8 +120,8 @@ const Calendar = ({
       showOutsideDays={showOutsideDays}
       className={cn(
         'group/calendar bg-background p-2 [--cell-size:--spacing(7)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
-        String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
-        String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
+        'rtl:**:[.rdp-button\\_next>svg]:rotate-180',
+        'rtl:**:[.rdp-button\\_previous>svg]:rotate-180',
         className,
       )}
       captionLayout={captionLayout}
@@ -149,7 +151,7 @@ const Calendar = ({
         ),
         day: cn(
           'group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)',
-          props.showWeekNumber
+          (props.showWeekNumber ?? false)
             ? '[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)'
             : '[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)',
           defaultClassNames.day,

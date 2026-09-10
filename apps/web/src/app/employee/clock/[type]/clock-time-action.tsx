@@ -11,21 +11,18 @@ const timeFormatter = new Intl.DateTimeFormat('id-ID', {
   timeZone: 'Asia/Jakarta',
 });
 
-export const ClockTimeAction = ({ action }: { action: string }) => {
+export function ClockTimeAction({ action }: { action: string }) {
   const [time, setTime] = React.useState(() =>
     timeFormatter.format(new Date()),
   );
-
   React.useEffect(() => {
     const interval = window.setInterval(() => {
       setTime(timeFormatter.format(new Date()));
     }, 1000);
-
     return () => {
       window.clearInterval(interval);
     };
   }, []);
-
   return (
     <Button className="mt-4 h-14 w-full flex-col gap-0.5" type="button">
       <span className="text-xs font-normal">{action}</span>
@@ -34,4 +31,4 @@ export const ClockTimeAction = ({ action }: { action: string }) => {
       </time>
     </Button>
   );
-};
+}

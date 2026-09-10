@@ -17,19 +17,17 @@ interface FileUploadProps {
   onChange?: (file: File | null) => void;
 }
 
-export const FileUpload = ({
+export function FileUpload({
   accept = 'image/jpeg,image/png',
   className,
   onChange,
-}: FileUploadProps) => {
+}: FileUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
-
   const selectFile = (nextFile: File | null) => {
     setFile(nextFile);
     onChange?.(nextFile);
   };
-
   return (
     <div
       className={cn(
@@ -39,6 +37,7 @@ export const FileUpload = ({
     >
       <input
         accept={accept}
+        aria-label="Unggah foto"
         className="sr-only"
         onChange={(event) => {
           selectFile(event.target.files?.[0] ?? null);
@@ -88,4 +87,4 @@ export const FileUpload = ({
       )}
     </div>
   );
-};
+}

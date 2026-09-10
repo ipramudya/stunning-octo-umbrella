@@ -19,27 +19,25 @@ const formatter = new Intl.DateTimeFormat('id-ID', {
 
 const dateKey = (date: Date) => date.toISOString().slice(0, 10);
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-
-const attendance = new Map(
-  [-6, -5, -4, -3, -2, -1].map((daysAgo, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + daysAgo);
-    return [
-      dateKey(date),
-      {
-        clockIn: `08:${String(index + 1).padStart(2, '0')}`,
-        clockOut: '17:00',
-      },
-    ];
-  }),
-);
-
 const startOfMonth = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), 1);
 
-export const AttendanceCalendar = () => {
+export function AttendanceCalendar() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const attendance = new Map(
+    [-6, -5, -4, -3, -2, -1].map((daysAgo, index) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() + daysAgo);
+      return [
+        dateKey(date),
+        {
+          clockIn: `08:${String(index + 1).padStart(2, '0')}`,
+          clockOut: '17:00',
+        },
+      ];
+    }),
+  );
   const [month, setMonth] = React.useState(() => startOfMonth(today));
   const firstWeekday = (month.getDay() + 6) % 7;
   const daysInMonth = new Date(
@@ -51,7 +49,6 @@ export const AttendanceCalendar = () => {
     { length: Math.ceil((firstWeekday + daysInMonth) / 7) * 7 },
     (_, index) => index - firstWeekday + 1,
   );
-
   return (
     <CenteredPage>
       <div>
@@ -124,7 +121,6 @@ export const AttendanceCalendar = () => {
               const entry = attendance.get(dateKey(date));
               let cellClassName =
                 'min-h-24 border-e border-b border-border bg-background p-1.5';
-
               if (isOutsideMonth) {
                 cellClassName =
                   'min-h-24 border-e border-b border-border bg-muted/70';
@@ -132,7 +128,6 @@ export const AttendanceCalendar = () => {
                 cellClassName =
                   'min-h-24 border-e border-b border-border bg-card p-1.5';
               }
-
               return (
                 <div className={cellClassName} key={index}>
                   {!isOutsideMonth && (
@@ -172,4 +167,4 @@ export const AttendanceCalendar = () => {
       </div>
     </CenteredPage>
   );
-};
+}

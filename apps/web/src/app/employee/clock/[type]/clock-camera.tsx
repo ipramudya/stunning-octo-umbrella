@@ -4,31 +4,27 @@ import { Camera01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import React from 'react';
 
-export const ClockCamera = () => {
+export function ClockCamera() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [cameraError, setCameraError] = React.useState<string>();
   const streamRef = React.useRef<MediaStream | null>(null);
   const [stream, setStream] = React.useState<MediaStream>();
   const hasCameraError =
     typeof cameraError === 'string' && cameraError.length > 0;
-
   React.useEffect(() => {
     let disposed = false;
-
     const requestCamera = async () => {
       try {
         const activeStream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: { facingMode: 'user' },
         });
-
         if (disposed) {
           for (const track of activeStream.getTracks()) {
             track.stop();
           }
           return;
         }
-
         streamRef.current = activeStream;
         setStream(activeStream);
       } catch {
@@ -37,9 +33,7 @@ export const ClockCamera = () => {
         }
       }
     };
-
     void requestCamera();
-
     return () => {
       disposed = true;
       for (const track of streamRef.current?.getTracks() ?? []) {
@@ -47,13 +41,11 @@ export const ClockCamera = () => {
       }
     };
   }, []);
-
   React.useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
-
   return (
     <div className="relative grid aspect-video overflow-hidden border border-border bg-muted">
       <video
@@ -79,4 +71,4 @@ export const ClockCamera = () => {
       )}
     </div>
   );
-};
+}

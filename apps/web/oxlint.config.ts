@@ -16,7 +16,9 @@ export default defineConfig({
   ],
   rules: {
     'dexa/explicit-default-component': 'error',
+    'dexa/exported-function-declaration': 'error',
     'dexa/react-default-import-only': 'error',
+    'eslint/func-style': 'off',
     'react/function-component-definition': 'off',
   },
   settings: {

@@ -22,9 +22,8 @@ const dateFormatter = new Intl.DateTimeFormat('id-ID', {
   year: 'numeric',
 });
 
-export const ClockSubmission = ({ type }: { type: ClockType }) => {
+export function ClockSubmission({ type }: { type: ClockType }) {
   const action = type === 'clock-in' ? 'Clock in' : 'Clock out';
-
   return (
     <CenteredPage>
       <div>
@@ -66,4 +65,4 @@ export const ClockSubmission = ({ type }: { type: ClockType }) => {
       </div>
     </CenteredPage>
   );
-};
+}

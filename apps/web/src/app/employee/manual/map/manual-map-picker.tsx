@@ -40,13 +40,11 @@ const locationName = (responseBody: string) => {
   }
 };
 
-export const ManualMapPicker = ({ type }: { type: ClockType }) => {
+export function ManualMapPicker({ type }: { type: ClockType }) {
   const [coordinate, setCoordinate] = React.useState(initialCoordinate);
   const [address, setAddress] = React.useState('Mencari alamat...');
-
   React.useEffect(() => {
     const controller = new AbortController();
-
     const timeout = window.setTimeout(() => {
       const findAddress = async () => {
         try {
@@ -54,10 +52,8 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
             `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coordinate.latitude}&lon=${coordinate.longitude}`,
             { signal: controller.signal },
           );
-
           if (response.ok) {
             const name = locationName(await response.text());
-
             if (name === null || name.length === 0) {
               setAddress('Alamat tidak tersedia.');
             } else {
@@ -72,22 +68,18 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
           }
         }
       };
-
       void findAddress();
     }, 400);
-
     return () => {
       controller.abort();
       window.clearTimeout(timeout);
     };
   }, [coordinate]);
-
   const search = new URLSearchParams({
     address,
     latitude: String(coordinate.latitude),
     longitude: String(coordinate.longitude),
   });
-
   return (
     <CenteredPage>
       <div>
@@ -153,4 +145,4 @@ export const ManualMapPicker = ({ type }: { type: ClockType }) => {
       </div>
     </CenteredPage>
   );
-};
+}

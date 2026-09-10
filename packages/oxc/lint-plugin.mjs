@@ -284,6 +284,33 @@ const explicitDefaultComponent = {
   },
 };
 
+const exportedFunctionDeclaration = {
+  meta: {
+    messages: {
+      functionDeclaration:
+        'Declare exported functions with `export function Name()` instead of an exported arrow function.',
+    },
+  },
+  create(context) {
+    return {
+      ExportNamedDeclaration(node) {
+        if (node.declaration?.type !== 'VariableDeclaration') {
+          return;
+        }
+
+        for (const declaration of node.declaration.declarations) {
+          if (declaration.init?.type === 'ArrowFunctionExpression') {
+            context.report({
+              node: declaration,
+              messageId: 'functionDeclaration',
+            });
+          }
+        }
+      },
+    };
+  },
+};
+
 const reactDefaultImportOnly = {
   meta: {
     messages: {
@@ -340,6 +367,7 @@ export default {
   meta: { name: 'dexa' },
   rules: {
     'explicit-default-component': explicitDefaultComponent,
+    'exported-function-declaration': exportedFunctionDeclaration,
     'max-if-condition-terms': maxIfConditionTerms,
     'no-conditional-object-spread': noConditionalObjectSpread,
     'ordered-class-members': orderedClassMembers,

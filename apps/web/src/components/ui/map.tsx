@@ -33,7 +33,6 @@ const blankMapStyle: MapLibreGL.StyleSpecification = {
 
 type Theme = 'dark' | 'light';
 type MapStyleOption = MapLibreGL.StyleSpecification | string;
-type MapRef = MapLibreGL.Map;
 
 interface MapViewport {
   bearing: number;
@@ -107,12 +106,15 @@ const useResolvedTheme = (theme?: Theme) => {
 
   React.useEffect(() => {
     if (theme !== undefined) {
-      return;
+      return () => {
+        // Controlled themes do not register external listeners.
+      };
     }
 
     const root = document.documentElement;
-    const updateTheme = () =>
+    const updateTheme = () => {
       setDetectedTheme(documentTheme() ?? systemTheme());
+    };
     const observer = new MutationObserver(updateTheme);
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -141,96 +143,96 @@ const viewportFrom = (map: MapLibreGL.Map): MapViewport => {
   };
 };
 
-const Map = React.forwardRef<MapRef, MapProps>(
-  (
-    {
-      blank = false,
-      children,
-      className,
-      loading = false,
-      onViewportChange,
-      styles,
-      theme,
-      viewport,
-      ...options
-    },
-    ref,
-  ) => {
-    const containerRef = React.useRef<HTMLDivElement>(null);
-    const [map, setMap] = React.useState<MapLibreGL.Map | null>(null);
-    const [isLoaded, setIsLoaded] = React.useState(false);
-    const resolvedTheme = useResolvedTheme(theme);
-    const darkStyle =
-      styles?.dark ?? (blank ? blankMapStyle : defaultStyles.dark);
-    const lightStyle =
-      styles?.light ?? (blank ? blankMapStyle : defaultStyles.light);
-    const style = resolvedTheme === 'dark' ? darkStyle : lightStyle;
-    const initialOptions = React.useRef(options);
-    const initialStyle = React.useRef(style);
-    const onViewportChangeEvent = React.useEffectEvent(
-      (nextViewport: MapViewport) => onViewportChange?.(nextViewport),
-    );
+const Map = ({
+  blank = false,
+  children,
+  className,
+  loading = false,
+  onViewportChange,
+  styles,
+  theme,
+  viewport,
+  ...options
+}: MapProps) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [map, setMap] = React.useState<MapLibreGL.Map | null>(null);
+  const [isLoaded, setIsLoaded] = React.useState(false);
+  const resolvedTheme = useResolvedTheme(theme);
+  const darkStyle =
+    styles?.dark ?? (blank ? blankMapStyle : defaultStyles.dark);
+  const lightStyle =
+    styles?.light ?? (blank ? blankMapStyle : defaultStyles.light);
+  const style = resolvedTheme === 'dark' ? darkStyle : lightStyle;
+  const initialOptions = React.useRef(options);
+  const initialStyle = React.useRef(style);
+  const onViewportChangeEvent = React.useEffectEvent(
+    (nextViewport: MapViewport) => onViewportChange?.(nextViewport),
+  );
 
-    React.useImperativeHandle(ref, () => map as MapLibreGL.Map, [map]);
-
-    React.useEffect(() => {
-      const container = containerRef.current;
-      if (container === null) {
-        return;
-      }
-
-      const instance = new MapLibreGL.Map({
-        ...initialOptions.current,
-        container,
-        style: initialStyle.current,
-      });
-      const handleLoad = () => setIsLoaded(true);
-      const handleMove = () => onViewportChangeEvent(viewportFrom(instance));
-
-      instance.on('load', handleLoad);
-      instance.on('move', handleMove);
-      setMap(instance);
-
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (container === null) {
       return () => {
-        instance.off('load', handleLoad);
-        instance.off('move', handleMove);
-        instance.remove();
+        // Nothing was initialized, so cleanup has no work to do.
       };
-    }, []);
+    }
 
-    React.useEffect(() => {
-      if (map !== null && map.getStyle() !== style) {
-        map.setStyle(style);
-        map.once('style.load', () => setIsLoaded(true));
-      }
-    }, [map, style]);
+    const instance = new MapLibreGL.Map({
+      ...initialOptions.current,
+      container,
+      style: initialStyle.current,
+    });
+    const handleLoad = () => {
+      setIsLoaded(true);
+    };
+    const handleMove = () => {
+      onViewportChangeEvent(viewportFrom(instance));
+    };
 
-    React.useEffect(() => {
-      if (map === null || viewport === undefined || map.isMoving()) {
-        return;
-      }
+    instance.on('load', handleLoad);
+    instance.on('move', handleMove);
+    setMap(instance);
 
-      map.jumpTo(viewport);
-    }, [map, viewport]);
+    return () => {
+      instance.off('load', handleLoad);
+      instance.off('move', handleMove);
+      instance.remove();
+    };
+  }, []);
 
-    return (
-      <MapContext.Provider value={map}>
-        <div
-          ref={containerRef}
-          className={cn('relative h-full w-full', className)}
-        >
-          {(!isLoaded || loading) && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-background/50">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          {map === null ? null : children}
-        </div>
-      </MapContext.Provider>
-    );
-  },
-);
-Map.displayName = 'Map';
+  React.useEffect(() => {
+    if (map !== null && map.getStyle() !== style) {
+      map.setStyle(style);
+      map.once('style.load', () => {
+        setIsLoaded(true);
+      });
+    }
+  }, [map, style]);
+
+  React.useEffect(() => {
+    if (map === null || viewport === undefined || map.isMoving()) {
+      return;
+    }
+
+    map.jumpTo(viewport);
+  }, [map, viewport]);
+
+  return (
+    <MapContext.Provider value={map}>
+      <div
+        ref={containerRef}
+        className={cn('relative h-full w-full', className)}
+      >
+        {(!isLoaded || loading) && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-background/50">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {map === null ? null : children}
+      </div>
+    </MapContext.Provider>
+  );
+};
 
 const positionClasses = {
   'bottom-left': 'bottom-2 left-2',
@@ -298,7 +300,9 @@ const MapControls = ({
         onLocate?.(coordinates);
         setLocating(false);
       },
-      () => setLocating(false),
+      () => {
+        setLocating(false);
+      },
       { timeout: 10_000 },
     );
   };
@@ -315,13 +319,17 @@ const MapControls = ({
         <ControlGroup>
           <ControlButton
             label="Perbesar peta"
-            onClick={() => map?.zoomTo(map.getZoom() + 1, { duration: 300 })}
+            onClick={() => {
+              map?.zoomTo(map.getZoom() + 1, { duration: 300 });
+            }}
           >
             <Plus className="size-4" />
           </ControlButton>
           <ControlButton
             label="Perkecil peta"
-            onClick={() => map?.zoomTo(map.getZoom() - 1, { duration: 300 })}
+            onClick={() => {
+              map?.zoomTo(map.getZoom() - 1, { duration: 300 });
+            }}
           >
             <Minus className="size-4" />
           </ControlButton>
@@ -367,4 +375,4 @@ const MapControls = ({
 };
 
 export { Map, MapControls, useMap };
-export type { MapControlsProps, MapProps, MapRef, MapStyleOption, MapViewport };
+export type { MapControlsProps, MapProps, MapStyleOption, MapViewport };

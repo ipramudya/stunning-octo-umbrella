@@ -17,6 +17,7 @@
     "eslint/no-ternary": "error",
     "dexa/max-if-condition-terms": "error",
     "dexa/no-conditional-object-spread": "error",
+    "dexa/exported-function-declaration": "error",
     "dexa/ordered-class-members": "error",
     "dexa/padding-between-logical-blocks": "error",
     "dexa/react-default-import-only": "error",
