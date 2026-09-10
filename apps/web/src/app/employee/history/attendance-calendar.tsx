@@ -40,7 +40,7 @@ const startOfMonth = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), 1);
 
 export const AttendanceCalendar = () => {
-  const [month, setMonth] = React.useState(startOfMonth(today));
+  const [month, setMonth] = React.useState(() => startOfMonth(today));
   const firstWeekday = (month.getDay() + 6) % 7;
   const daysInMonth = new Date(
     month.getFullYear(),

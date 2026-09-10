@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import React from 'react';
 
 import { ManualAttendanceForm } from './manual-attendance-form';
 
@@ -11,5 +12,9 @@ export default async function ManualAttendancePage({
     notFound();
   }
 
-  return <ManualAttendanceForm type={type} />;
+  return (
+    <React.Suspense>
+      <ManualAttendanceForm type={type} />
+    </React.Suspense>
+  );
 }

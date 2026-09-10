@@ -90,7 +90,7 @@ export const HrdAttendanceCalendar = () => (
                 {!outside && (
                   <span className="flex flex-col gap-1">
                     <span className="text-xs">{day}</span>
-                    {itemCount && (
+                    {(itemCount ?? 0) > 0 && (
                       <span className="text-[10px]">
                         {itemCount} attendance
                       </span>

@@ -40,7 +40,7 @@ export const ClockSubmission = ({ type }: { type: ClockType }) => {
         </Link>
 
         <header className="mt-6">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" suppressHydrationWarning>
             {dateFormatter.format(new Date())}
           </p>
           <h1 className="mt-1 font-heading text-2xl font-semibold tracking-tight">

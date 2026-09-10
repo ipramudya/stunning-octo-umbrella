@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import useSWR from 'swr';
 
 const locationName = (value: unknown) => {
   if (typeof value !== 'object' || value === null) {
@@ -11,45 +12,41 @@ const locationName = (value: unknown) => {
   return typeof displayName === 'string' ? displayName : undefined;
 };
 
+const findAddress = async (url: string) => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Address lookup failed');
+  }
+
+  return locationName(await response.json());
+};
+
 export const ClockLocation = () => {
-  const [location, setLocation] = React.useState('Mencari alamat...');
+  const [coordinates, setCoordinates] = React.useState<string>();
+  const [locationError, setLocationError] = React.useState(false);
+  const { data: address, error } = useSWR(coordinates, findAddress);
 
   React.useEffect(() => {
-    let disposed = false;
-
-    const findAddress = async (latitude: number, longitude: number) => {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-        );
-        const address = locationName(await response.json());
-
-        if (!disposed) {
-          setLocation(address ?? 'Alamat tidak tersedia.');
-        }
-      } catch {
-        if (!disposed) {
-          setLocation('Alamat tidak tersedia.');
-        }
-      }
-    };
-
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        void findAddress(coords.latitude, coords.longitude);
+        setCoordinates(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}`,
+        );
       },
-      () => {
-        if (!disposed) {
-          setLocation('Lokasi tidak tersedia. Periksa izin lokasi Anda.');
-        }
-      },
+      () => setLocationError(true),
       { enableHighAccuracy: true },
     );
-
-    return () => {
-      disposed = true;
-    };
   }, []);
+
+  let location = 'Mencari alamat...';
+  if (locationError) {
+    location = 'Lokasi tidak tersedia. Periksa izin lokasi Anda.';
+  } else if (error || address === null) {
+    location = 'Alamat tidak tersedia.';
+  } else if (address) {
+    location = address;
+  }
 
   return <p className="mt-3 text-sm text-muted-foreground">{location}</p>;
 };

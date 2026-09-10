@@ -1,0 +1,12 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "adoptExistingLintConfig": false,
+  "noScore": true,
+  "rules": {
+    "react-compiler-no-manual-memoization": "off"
+  },
+  "share": false,
+  "supplyChain": {
+    "enabled": false
+  }
+}

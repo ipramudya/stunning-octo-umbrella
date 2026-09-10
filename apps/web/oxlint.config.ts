@@ -1,27 +1,26 @@
 import { defineConfig } from 'oxlint';
 import core from 'ultracite/oxlint/core';
+import { jsPluginSettings, selectJsPlugins } from 'ultracite/oxlint/js-plugins';
 import next from 'ultracite/oxlint/next';
+import nextJsPlugins from 'ultracite/oxlint/next/js-plugins';
 import react from 'ultracite/oxlint/react';
 
+const reactDoctor = selectJsPlugins(['react-doctor']);
+
 export default defineConfig({
-  extends: [core, react, next],
-  ignorePatterns: [
-    ...(core.ignorePatterns ?? []),
-    'src/components/ui/calendar.tsx',
-    'src/components/ui/drawer.tsx',
-    'src/components/ui/dropdown-menu.tsx',
-    'src/components/ui/map.tsx',
-    'src/components/ui/popover.tsx',
-    'src/components/ui/select.tsx',
-    'src/components/ui/switch.tsx',
+  extends: [core, react, next, reactDoctor, nextJsPlugins],
+  ignorePatterns: [...(core.ignorePatterns ?? [])],
+  jsPlugins: [
+    '../../packages/oxc/lint-plugin.mjs',
+    ...(reactDoctor.jsPlugins ?? []),
   ],
-  jsPlugins: ['../../packages/oxc/lint-plugin.mjs'],
   rules: {
     'dexa/explicit-default-component': 'error',
     'dexa/react-default-import-only': 'error',
     'react/function-component-definition': 'off',
   },
   settings: {
+    ...jsPluginSettings,
     next: {
       rootDir: '.',
     },
