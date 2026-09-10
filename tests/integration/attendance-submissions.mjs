@@ -189,7 +189,9 @@ async function hrdRequest(path, options = {}) {
   return fetch(`${baseUrl}/api/v1/hrd/attendance${path}`, request);
 }
 
-const pending = await hrdRequest('/manual?limit=1');
+const pending = await hrdRequest(
+  `?dateFrom=${workDate}&dateTo=${workDate}&source=MANUAL&status=PENDING_REVIEW&limit=1`,
+);
 
 assert.equal(pending.status, 200);
 
@@ -199,7 +201,7 @@ assert.equal(pendingBody.items.length, 1);
 assert.equal(pendingBody.items[0].id, createdBody.id);
 assert.equal(pendingBody.items[0].employee.id, employeeId);
 
-const detail = await hrdRequest(`/manual/${createdBody.id}`);
+const detail = await hrdRequest(`/${createdBody.id}`);
 
 assert.equal(detail.status, 200);
 assert.equal((await detail.json()).evidenceId, manualUploadId);

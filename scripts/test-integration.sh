@@ -27,7 +27,7 @@ trap cleanup EXIT INT TERM
 docker compose down --volumes --remove-orphans --timeout 10
 prune_integration_images
 docker compose build identity attendance gateway
-docker compose up --detach --wait --wait-timeout 180
+docker compose up --detach --wait --wait-timeout 180 gateway
 node tests/integration/walking-skeleton.mjs
 node tests/integration/authentication.mjs
 node tests/integration/employee-administration.mjs

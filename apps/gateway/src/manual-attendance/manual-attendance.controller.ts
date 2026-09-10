@@ -14,6 +14,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, takeUntil } from 'rxjs';
 
 import {
+  attendanceLocation,
   attendanceSourceName,
   attendanceStatusName,
   clockTypeName,
@@ -93,13 +94,7 @@ export class ManualAttendanceController {
       occurredAt: optionalTimestampIso(entry.occurredAt),
       claimedAt: optionalTimestampIso(entry.claimedAt),
       submittedAt: timestampIso(entry.submittedAt),
-      location: {
-        address: entry.location?.address ?? null,
-        latitude: entry.location?.latitude ?? null,
-        longitude: entry.location?.longitude ?? null,
-        accuracyMeters: entry.location?.accuracyMeters ?? null,
-        distanceMeters: entry.location?.distanceMeters ?? null,
-      },
+      location: attendanceLocation(entry.location),
       reason: entry.reason ?? null,
       evidenceId: entry.evidenceId ?? null,
       decision: entry.decision ?? null,

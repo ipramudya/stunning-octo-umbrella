@@ -2,6 +2,7 @@ import { AttendanceStatus } from '@project/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
+  attendanceLocation,
   attendanceStatusName,
   hasTimestamp,
   timestampIso,
@@ -24,6 +25,22 @@ describe('attendance helpers', () => {
     expect(() => timestampIso({ seconds: 1, nanos: 'invalid' })).toThrow(
       'invalid timestamp',
     );
+  });
+
+  it('normalizes omitted protobuf location values', () => {
+    expect(
+      attendanceLocation({
+        address: 'E2E Office',
+        latitude: -6.28,
+        longitude: 106.72,
+      }),
+    ).toEqual({
+      accuracyMeters: null,
+      address: 'E2E Office',
+      distanceMeters: null,
+      latitude: -6.28,
+      longitude: 106.72,
+    });
   });
 
   it.each([

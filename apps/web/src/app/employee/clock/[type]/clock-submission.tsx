@@ -45,7 +45,7 @@ async function cameraFile(stream: MediaStream) {
 
 export function ClockSubmission({ type }: { type: ClockType }) {
   const router = useRouter();
-  const requestKey = React.useId();
+  const requestKey = crypto.randomUUID();
   const [stream, setStream] = React.useState<MediaStream | null>(null);
   const [location, setLocation] = React.useState<GeolocationCoordinates | null>(
     null,

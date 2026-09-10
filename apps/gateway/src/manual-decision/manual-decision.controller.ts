@@ -43,8 +43,6 @@ import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
   attendanceListSchema,
   type AttendanceListDto,
-  pendingManualListSchema,
-  type PendingManualListDto,
   rejectManualAttendanceSchema,
   type RejectManualAttendanceDto,
 } from './manual-decision.dto.js';
@@ -125,67 +123,6 @@ export class ManualDecisionController {
           hasNextPage: result.hasNextPage,
         },
       };
-    });
-  }
-
-  @Get('manual')
-  async listPending(
-    @Query(new ZodValidationPipe(pendingManualListSchema))
-    query: PendingManualListDto,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    return this.call(request, reply, false, async (context) => {
-      const result = await firstValueFrom(
-        this.attendance
-          .listPendingManualAttendance(
-            { cursor: query.cursor, limit: query.limit },
-            context.attendance,
-            context.options,
-          )
-          .pipe(takeUntil(context.cancelled)),
-      );
-
-      const profiles = await this.profiles(
-        result.items.map((entry) => entry.employeeId),
-        context,
-      );
-
-      return {
-        items: result.items.map((entry) =>
-          attendanceEntryResponse(
-            entry,
-            requireProfile(profiles, entry.employeeId),
-          ),
-        ),
-        pageInfo: {
-          nextCursor: result.nextCursor || undefined,
-          hasNextPage: result.hasNextPage,
-        },
-      };
-    });
-  }
-
-  @Get('manual/:entryId')
-  async getManual(
-    @Param('entryId', new ZodValidationPipe(attendanceEntryIdSchema))
-    entryId: string,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    return this.call(request, reply, false, async (context) => {
-      const entry = await firstValueFrom(
-        this.attendance
-          .getManualAttendance({ entryId }, context.attendance, context.options)
-          .pipe(takeUntil(context.cancelled)),
-      );
-
-      const profiles = await this.profiles([entry.employeeId], context);
-
-      return attendanceEntryResponse(
-        entry,
-        requireProfile(profiles, entry.employeeId),
-      );
     });
   }
 

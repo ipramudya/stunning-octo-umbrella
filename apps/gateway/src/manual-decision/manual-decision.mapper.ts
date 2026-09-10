@@ -7,6 +7,7 @@ import {
 } from '@project/contracts';
 
 import {
+  attendanceLocation,
   attendanceStatusName,
   timestampIso,
 } from '../attendance/attendance.helper.js';
@@ -122,13 +123,7 @@ export function attendanceEntryResponse(
     occurredAt: timestampOrNull(entry.occurredAt),
     claimedAt: timestampOrNull(entry.claimedAt),
     submittedAt: timestampIso(entry.submittedAt),
-    location: {
-      address: entry.location?.address ?? null,
-      latitude: entry.location?.latitude ?? null,
-      longitude: entry.location?.longitude ?? null,
-      accuracyMeters: entry.location?.accuracyMeters ?? null,
-      distanceMeters: entry.location?.distanceMeters ?? null,
-    },
+    location: attendanceLocation(entry.location),
     reason: entry.reason ?? null,
     evidenceId: entry.evidenceId ?? null,
     decision: decisionResponse(entry, reviewer),

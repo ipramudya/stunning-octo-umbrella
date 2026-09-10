@@ -31,7 +31,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function ManualAttendanceForm({ type }: { type: ClockType }) {
   const router = useRouter();
-  const requestKey = React.useId();
+  const requestKey = crypto.randomUUID();
   const [file, setFile] = React.useState<File | null>(null);
   const [showMap, setShowMap] = React.useState(false);
   const [location, setLocation] = React.useState<{

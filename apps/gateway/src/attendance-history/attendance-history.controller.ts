@@ -14,6 +14,7 @@ import { firstValueFrom, type Observable, takeUntil } from 'rxjs';
 
 import { attendanceEntryIdSchema } from '../attendance/attendance.dto.js';
 import {
+  attendanceLocation,
   attendanceSourceName,
   attendanceStatusName,
   clockTypeName,
@@ -82,7 +83,7 @@ export class AttendanceHistoryController {
       occurredAt: optionalTimestampIso(entry.occurredAt),
       claimedAt: optionalTimestampIso(entry.claimedAt),
       submittedAt: timestampIso(entry.submittedAt),
-      location: entry.location,
+      location: attendanceLocation(entry.location),
       reason: entry.reason ?? null,
       evidenceId: entry.evidenceId ?? null,
       decision: this.decision(entry),

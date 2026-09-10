@@ -2,6 +2,7 @@ import {
   AttendanceSource,
   AttendanceStatus,
   ClockType,
+  type AttendanceEntry,
 } from '@project/contracts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,6 +77,16 @@ export function optionalTimestampIso(value: unknown) {
   }
 
   return null;
+}
+
+export function attendanceLocation(location: AttendanceEntry['location']) {
+  return {
+    accuracyMeters: location?.accuracyMeters ?? null,
+    address: location?.address ?? null,
+    distanceMeters: location?.distanceMeters ?? null,
+    latitude: location?.latitude ?? null,
+    longitude: location?.longitude ?? null,
+  };
 }
 
 export function attendanceStatusName(status: AttendanceStatus) {

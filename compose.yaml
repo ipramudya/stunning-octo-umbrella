@@ -296,7 +296,32 @@ services:
       timeout: 3s
       retries: 20
     ports:
-      - '${GATEWAY_PORT:-3000}:3000'
+      - '${GATEWAY_PORT:-3001}:3000'
+
+  web:
+    <<: *app
+    image: dexa-web:local
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      NEXT_TELEMETRY_DISABLED: 1
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - '${WEB_PORT:-3000}:3000'
 
 volumes:
   attendance-pki:

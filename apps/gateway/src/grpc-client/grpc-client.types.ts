@@ -18,14 +18,11 @@ import type {
   EvidenceUploadAuthorization,
   GetAttendanceRequest,
   GetEmployeeRequest,
-  GetManualAttendanceRequest,
   ListAttendanceRequest,
   ListAttendanceResponse,
   ListEmployeeAttendanceRequest,
   ListEmployeesRequest,
   ListEmployeesResponse,
-  ListPendingManualAttendanceRequest,
-  ListPendingManualAttendanceResponse,
   LoginRequest,
   LogoutSessionRequest,
   RefreshSessionRequest,
@@ -90,14 +87,6 @@ export type AttendanceGrpcClient = {
     Omit<CreateManualAttendanceRequest, 'claimedAt'> & {
       claimedAt: GrpcTimestamp;
     },
-    AttendanceEntry
-  >;
-  listPendingManualAttendance: UnaryGrpcMethod<
-    ListPendingManualAttendanceRequest,
-    ListPendingManualAttendanceResponse
-  >;
-  getManualAttendance: UnaryGrpcMethod<
-    GetManualAttendanceRequest,
     AttendanceEntry
   >;
   decideManualAttendance: UnaryGrpcMethod<

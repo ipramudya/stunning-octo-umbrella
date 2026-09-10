@@ -23,7 +23,7 @@ export default function AttendanceDetailPage() {
   const rejectSchema = z.object({
     reason: z.string().trim().min(1, 'Alasan penolakan wajib diisi.').max(500),
   });
-  const requestId = React.useId();
+  const requestId = crypto.randomUUID();
   const requestKeys = {
     approve: `${requestId}-approve`,
     reject: `${requestId}-reject`,

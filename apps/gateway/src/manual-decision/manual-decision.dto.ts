@@ -1,12 +1,5 @@
 import { z } from 'zod';
 
-export const pendingManualListSchema = z.object({
-  cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
-
-export type PendingManualListDto = z.infer<typeof pendingManualListSchema>;
-
 function currentJakartaMonth() {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta',

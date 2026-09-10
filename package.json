@@ -23,9 +23,11 @@
     "test:integration": "./scripts/test-integration.sh",
     "typecheck": "turbo run typecheck",
     "compose:up": "docker compose up --build --wait",
-    "compose:down": "docker compose down --volumes --remove-orphans"
+    "compose:down": "docker compose down --volumes --remove-orphans",
+    "test:e2e": "./scripts/test-e2e.sh"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@swc/cli": "0.8.1",
     "@swc/core": "1.16.2",
     "@types/node": "24.13.3",
