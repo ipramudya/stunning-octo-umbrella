@@ -18,7 +18,6 @@ const request = {
 
 function subject() {
   const repository = {
-    recoverIdempotencyRecords: vi.fn(),
     claim: vi.fn().mockResolvedValue({ kind: 'new' }),
     create: vi
       .fn()
@@ -34,7 +33,7 @@ function subject() {
   const evidence = {
     prepareStandalone: vi.fn().mockResolvedValue(upload),
     promote: vi.fn().mockResolvedValue('permanent-version'),
-    complete: vi.fn(),
+    cleanup: vi.fn(),
     abort: vi.fn(),
   };
 
@@ -69,7 +68,7 @@ describe('manual attendance', () => {
       },
     });
     expect(repository.create).toHaveBeenCalledOnce();
-    expect(evidence.complete).toHaveBeenCalledOnce();
+    expect(evidence.cleanup).toHaveBeenCalledOnce();
   });
 
   it('returns completed replays without touching evidence', async () => {

@@ -5,23 +5,11 @@ import oracledb, { type Connection } from 'oracledb';
 import { AttendanceZoneRepository } from '../attendance-zone/attendance-zone.repository.js';
 import type { EvidenceUpload } from '../evidence/evidence.entity.js';
 import { EvidenceRepository } from '../evidence/evidence.repository.js';
-import { OracleDatabase } from '../oracle.js';
-import type {
-  IdempotencyClaim,
-  IdempotencyRow,
-} from './manual-attendance.entity.js';
+import { IdempotencyService } from '../idempotency/idempotency.service.js';
 
 const operation = 'CREATE_MANUAL_ATTENDANCE';
 
-function isUniqueViolation(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    Reflect.get(error, 'errorNum') === 1
-  );
-}
-
-function restoreResponse(body: string): AttendanceEntry {
+function restoreResponse(body: string) {
   const value: unknown = JSON.parse(body);
 
   return AttendanceEntry.fromJSON(value);
@@ -30,88 +18,28 @@ function restoreResponse(body: string): AttendanceEntry {
 @Injectable()
 export class ManualAttendanceRepository {
   constructor(
-    private readonly database: OracleDatabase,
     private readonly zones: AttendanceZoneRepository,
     private readonly evidence: EvidenceRepository,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
-  async recoverIdempotencyRecords() {
-    await this.database.withTransaction(async (connection) => {
-      await connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE operation = :operation
-           AND (status = 'IN_PROGRESS' OR expires_at <= SYSTIMESTAMP)`,
-        { operation },
-      );
+  claim(employeeId: string, key: string, hash: string) {
+    return this.idempotency.claim({
+      actorId: employeeId,
+      operation,
+      key,
+      hash,
+      restore: restoreResponse,
     });
   }
 
-  async claim(
-    employeeId: string,
-    key: string,
-    hash: string,
-  ): Promise<IdempotencyClaim> {
-    try {
-      await this.database.withTransaction(async (connection) => {
-        await connection.execute(
-          `DELETE FROM idempotency_records
-           WHERE actor_employee_id = :employeeId AND operation = :operation
-             AND idempotency_key = :key AND expires_at <= SYSTIMESTAMP`,
-          { employeeId, operation, key },
-        );
-        await connection.execute(
-          `INSERT INTO idempotency_records (
-             actor_employee_id, operation, idempotency_key, request_hash,
-             status, created_at, expires_at
-           ) VALUES (
-             :employeeId, :operation, :key, :hash, 'IN_PROGRESS',
-             SYSTIMESTAMP, SYSTIMESTAMP + INTERVAL '24' HOUR
-           )`,
-          { employeeId, operation, key, hash },
-        );
-      });
-
-      return { kind: 'new' };
-    } catch (error) {
-      if (!isUniqueViolation(error)) {
-        throw error;
-      }
-
-      const record = await this.getClaim(employeeId, key);
-
-      if (!record) {
-        throw error;
-      }
-
-      if (record.REQUEST_HASH !== hash) {
-        return { kind: 'mismatch' };
-      }
-
-      if (record.STATUS === 'IN_PROGRESS') {
-        return { kind: 'in-progress' };
-      }
-
-      if (!record.RESPONSE_BODY) {
-        throw new Error('idempotency response missing');
-      }
-
-      return {
-        kind: 'completed',
-        response: restoreResponse(record.RESPONSE_BODY),
-      };
-    }
-  }
-
-  async release(employeeId: string, key: string, hash: string) {
-    await this.database.withTransaction((connection) =>
-      connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE actor_employee_id = :employeeId AND operation = :operation
-           AND idempotency_key = :key AND request_hash = :hash
-           AND status = 'IN_PROGRESS'`,
-        { employeeId, operation, key, hash },
-      ),
-    );
+  release(employeeId: string, key: string, hash: string) {
+    return this.idempotency.release({
+      actorId: employeeId,
+      operation,
+      key,
+      hash,
+    });
   }
 
   create(input: {
@@ -161,49 +89,18 @@ export class ManualAttendanceRepository {
           evidenceUpload.id,
           permanentVersion,
         );
-
-        const completed = await connection.execute(
-          `UPDATE idempotency_records
-           SET status = 'COMPLETED', response_status = 201,
-             response_body = :responseBody, completed_at = SYSTIMESTAMP
-           WHERE actor_employee_id = :employeeId AND operation = :operation
-             AND idempotency_key = :key AND request_hash = :hash
-             AND status = 'IN_PROGRESS'`,
-          {
-            responseBody: {
-              val: JSON.stringify(entry),
-              type: oracledb.CLOB,
-            },
-            employeeId,
-            operation,
-            key,
-            hash,
-          },
-        );
-
-        if (completed.rowsAffected !== 1) {
-          throw new Error('idempotency claim disappeared');
-        }
+        await this.idempotency.complete(connection, {
+          actorId: employeeId,
+          operation,
+          key,
+          hash,
+          responseStatus: 201,
+          response: entry,
+        });
 
         return entry;
       },
     );
-  }
-
-  private getClaim(employeeId: string, key: string) {
-    return this.database.withConnection(async (connection) => {
-      const result = await connection.execute<IdempotencyRow>(
-        `SELECT request_hash, status,
-           DBMS_LOB.SUBSTR(response_body, 32767, 1) AS response_body
-         FROM idempotency_records
-         WHERE actor_employee_id = :employeeId AND operation = :operation
-           AND idempotency_key = :key`,
-        { employeeId, operation, key },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-
-      return result.rows?.[0];
-    });
   }
 
   private clockType(value: ClockType) {

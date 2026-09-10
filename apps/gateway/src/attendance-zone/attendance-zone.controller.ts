@@ -7,7 +7,6 @@ import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
-import { attendanceFailure } from './attendance-failure.js';
 import {
   attendanceZoneSchema,
   type AttendanceZoneDto,
@@ -67,8 +66,6 @@ export class AttendanceZoneController {
 
         return firstValueFrom(response.pipe(takeUntil(context.cancelled)));
       },
-      failure: (error, traceId) =>
-        attendanceFailure({ error, request, traceId }),
     });
   }
 }

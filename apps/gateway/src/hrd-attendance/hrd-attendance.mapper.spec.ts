@@ -5,9 +5,9 @@ import {
 } from '@project/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { attendanceEntryResponse } from './manual-decision.mapper.js';
+import { attendanceEntryResponse } from './hrd-attendance.mapper.js';
 
-describe('manual decision response mapping', () => {
+describe('HRD attendance response mapping', () => {
   it('maps an attendance entry without leaking transport enums', () => {
     const submittedAt = new Date('2026-09-09T08:00:00.000Z');
 

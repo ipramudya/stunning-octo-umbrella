@@ -9,29 +9,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function timestampSeconds(value: unknown) {
-  if (
-    typeof value === 'number' ||
-    typeof value === 'string' ||
-    typeof value === 'bigint'
-  ) {
-    return Number(value);
-  }
-
-  if (
-    isRecord(value) &&
-    typeof value.low === 'number' &&
-    typeof value.high === 'number'
-  ) {
-    return value.high * 0x1_0000_0000 + (value.low >>> 0);
-  }
-
-  throw new Error('invalid timestamp');
-}
-
 export function hasTimestamp(value: unknown) {
   return (
-    value instanceof Date || (isRecord(value) && value.seconds !== undefined)
+    value instanceof Date ||
+    (isRecord(value) && typeof value.seconds === 'number')
   );
 }
 
@@ -44,15 +25,14 @@ export function timestampIso(value: unknown) {
     throw new Error('invalid timestamp');
   }
 
-  const nanos = value.nanos;
+  const seconds = value.seconds;
+  const nanos = value.nanos ?? 0;
 
-  if (nanos !== undefined && typeof nanos !== 'number') {
+  if (typeof seconds !== 'number' || typeof nanos !== 'number') {
     throw new Error('invalid timestamp');
   }
 
-  return new Date(
-    timestampSeconds(value.seconds) * 1_000 + (nanos ?? 0) / 1_000_000,
-  ).toISOString();
+  return new Date(seconds * 1_000 + nanos / 1_000_000).toISOString();
 }
 
 export function clockTypeName(clockType: ClockType) {

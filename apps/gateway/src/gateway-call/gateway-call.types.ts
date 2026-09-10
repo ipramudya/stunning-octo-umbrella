@@ -15,7 +15,6 @@ export type GatewayCall<T> = {
   reply: FastifyReply;
   audiences: readonly TokenAudience[];
   operation(context: GatewayCallContext): Promise<T>;
-  failure?(error: unknown, traceId: string): never;
   rateLimited?: boolean;
   unsafe?: boolean;
   idempotent?: boolean;

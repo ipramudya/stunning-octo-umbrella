@@ -1,5 +1,3 @@
-import type { AttendanceEntry } from '@project/contracts';
-
 export type AttendanceEntryRow = {
   ID: string;
   EMPLOYEE_ID: string;
@@ -21,15 +19,3 @@ export type AttendanceEntryRow = {
   DECIDED_BY_EMPLOYEE_ID: string | null;
   DECISION_REASON: string | null;
 };
-
-export type IdempotencyRow = {
-  REQUEST_HASH: string;
-  STATUS: 'IN_PROGRESS' | 'COMPLETED';
-  RESPONSE_BODY: string | null;
-};
-
-export type DecisionClaim =
-  | { kind: 'new' }
-  | { kind: 'mismatch' }
-  | { kind: 'in-progress' }
-  | { kind: 'completed'; response: AttendanceEntry };

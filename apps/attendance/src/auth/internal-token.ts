@@ -2,11 +2,6 @@ import { importSPKI, jwtVerify, type JWTPayload } from 'jose';
 
 export type InternalRole = 'EMPLOYEE' | 'HRD';
 
-export class AccessForbiddenError extends Error {
-  constructor() {
-    super('forbidden');
-  }
-}
 export type InternalClaims = JWTPayload & {
   sub: string;
   sid: string;
@@ -81,7 +76,7 @@ export async function verifyInternalAccess({
   }
 
   if (!requiredRoles.every((role) => roles.includes(role))) {
-    throw new AccessForbiddenError();
+    throw new Error('forbidden');
   }
 
   return {

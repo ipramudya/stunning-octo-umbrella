@@ -28,14 +28,6 @@ export type RegularAttendanceRequest = {
   evidenceUploadId: string;
 };
 
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
-}
-
 @Injectable()
 export class RegularAttendanceService {
   private readonly logger = new Logger(RegularAttendanceService.name);
@@ -65,12 +57,12 @@ export class RegularAttendanceService {
     let attempt;
 
     try {
-      attempt = await this.attendance.beginAttempt(
+      attempt = await this.attendance.beginAttempt({
         employeeId,
-        idempotencyKey,
-        hash,
-        now,
-      );
+        key: idempotencyKey,
+        requestHash: hash,
+        createdAt: now,
+      });
     } catch (error) {
       if (error instanceof RegularAttendancePersistenceError) {
         throw error;
@@ -160,7 +152,11 @@ export class RegularAttendanceService {
             request.evidenceUploadId,
             permanentVersion,
           );
-          await this.attendance.record(connection, entry, idempotencyKey);
+          await this.attendance.record(connection, {
+            entry,
+            key: idempotencyKey,
+            hash,
+          });
 
           return entry;
         },
@@ -170,7 +166,7 @@ export class RegularAttendanceService {
         .cleanup(upload)
         .catch((error: unknown) =>
           this.logger.warn(
-            `staging cleanup deferred for ${upload?.id}: ${errorMessage(error)}`,
+            `staging cleanup deferred for ${upload?.id}: ${String(error)}`,
           ),
         );
 
@@ -181,12 +177,12 @@ export class RegularAttendanceService {
           await this.evidence.abort(upload);
         } catch (cleanupError) {
           this.logger.warn(
-            `evidence rollback deferred for ${upload.id}: ${errorMessage(cleanupError)}`,
+            `evidence rollback deferred for ${upload.id}: ${String(cleanupError)}`,
           );
         }
       }
 
-      await this.attendance.failAttempt(employeeId, idempotencyKey);
+      await this.attendance.failAttempt(employeeId, idempotencyKey, hash);
 
       if (error instanceof AttendanceConflict) {
         throw new RegularAttendanceError('ATTENDANCE_ALREADY_EXISTS');

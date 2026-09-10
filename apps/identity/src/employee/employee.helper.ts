@@ -1,66 +1,90 @@
 import { status } from '@grpc/grpc-js';
+import { Role, type EmployeeProfile } from '@project/contracts';
+import { z } from 'zod';
 
-import { AuthError, type AuthErrorCode } from '../auth/auth-error.js';
+import {
+  IdentityError,
+  type IdentityErrorCode,
+} from '../identity/identity.error.js';
 import type { Employee } from './employee.entity.js';
 
-const phonePattern = /^\+62[0-9]+$/;
+const phoneSchema = z
+  .string()
+  .trim()
+  .max(16)
+  .regex(/^\+62[0-9]+$/);
+const passwordSchema = z.string().refine((value) => {
+  const length = Array.from(value).length;
+
+  return length >= 12 && length <= 128;
+});
+const emailSchema = z.email().max(254);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 export function fail(
-  code: AuthErrorCode,
+  code: IdentityErrorCode,
   grpcStatus = status.INVALID_ARGUMENT,
 ): never {
-  throw new AuthError(code, grpcStatus);
+  throw new IdentityError(code, grpcStatus);
+}
+
+function parse<T>(schema: z.ZodType<T>, value: unknown) {
+  const result = schema.safeParse(value);
+
+  if (!result.success) {
+    fail('VALIDATION_ERROR');
+  }
+
+  return result.data;
 }
 
 export function required(value: string, maximum: number) {
-  const normalized = value.trim();
-
-  if (!normalized || Array.from(normalized).length > maximum) {
-    fail('VALIDATION_ERROR');
-  }
-
-  return normalized;
+  return parse(
+    z
+      .string()
+      .trim()
+      .min(1)
+      .refine((normalized) => Array.from(normalized).length <= maximum),
+    value,
+  );
 }
 
 export function password(value: string) {
-  const length = Array.from(value).length;
-
-  if (length < 12 || length > 128) {
-    fail('VALIDATION_ERROR');
-  }
-
-  return value;
+  return parse(passwordSchema, value);
 }
 
 export function phone(value: string) {
-  const normalized = value.trim();
-
-  if (normalized.length > 16 || !phonePattern.test(normalized)) {
-    fail('VALIDATION_ERROR');
-  }
-
-  return normalized;
+  return parse(phoneSchema, value);
 }
 
 export function email(value: string | undefined) {
   const normalized = value?.trim().toLowerCase();
 
-  if (!normalized) {
-    return undefined;
+  if (normalized) {
+    return parse(emailSchema, normalized);
   }
 
-  if (
-    normalized.length > 254 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-  ) {
-    fail('VALIDATION_ERROR');
-  }
+  return undefined;
+}
 
-  return normalized;
+export function profile(employee: Employee): EmployeeProfile {
+  return {
+    id: employee.id,
+    employeeNumber: employee.employeeNumber,
+    fullName: employee.fullName,
+    phoneNumber: employee.phoneNumber,
+    email: employee.email || undefined,
+    roles: employee.roles.map((role) => {
+      if (role === 'HRD') {
+        return Role.ROLE_HRD;
+      }
+
+      return Role.ROLE_EMPLOYEE;
+    }),
+  };
 }
 
 export function decodeCursor(value: string | undefined) {
@@ -90,7 +114,7 @@ export function decodeCursor(value: string | undefined) {
 
     return { employeeNumber, id };
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof IdentityError) {
       throw error;
     }
 

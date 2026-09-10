@@ -1,3 +1,4 @@
+import { type EmployeeProfile, Role } from '@project/contracts';
 import { z } from 'zod';
 
 const text = (maximum: number) => z.string().trim().min(1).max(maximum);
@@ -44,6 +45,27 @@ export const updateEmployeeSchema = z
   .refine((value) => value.fullName !== undefined || value.email !== undefined);
 export const updatePhoneSchema = z.object({ phoneNumber }).strict();
 export const resetPasswordSchema = z.object({ password }).strict();
+
+export function publicProfile(value: EmployeeProfile | undefined) {
+  if (!value) {
+    throw new Error('missing profile');
+  }
+
+  return {
+    id: value.id,
+    employeeNumber: value.employeeNumber,
+    fullName: value.fullName,
+    phoneNumber: value.phoneNumber,
+    email: value.email || undefined,
+    roles: value.roles.map((role) => {
+      if (role === Role.ROLE_HRD) {
+        return 'HRD';
+      }
+
+      return 'EMPLOYEE';
+    }),
+  };
+}
 
 export type EmployeeListDto = z.infer<typeof employeeListSchema>;
 export type CreateEmployeeDto = z.infer<typeof createEmployeeSchema>;

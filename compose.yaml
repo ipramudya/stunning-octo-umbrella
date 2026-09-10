@@ -200,7 +200,9 @@ services:
     image: dexa-identity:local
     build:
       context: .
-      dockerfile: apps/identity/Dockerfile
+      dockerfile: be.Dockerfile
+      args:
+        SERVICE: identity
     depends_on:
       identity-seed:
         condition: service_completed_successfully
@@ -232,7 +234,9 @@ services:
     image: dexa-attendance:local
     build:
       context: .
-      dockerfile: apps/attendance/Dockerfile
+      dockerfile: be.Dockerfile
+      args:
+        SERVICE: attendance
     depends_on:
       attendance-seed:
         condition: service_completed_successfully
@@ -266,7 +270,9 @@ services:
     image: dexa-gateway:local
     build:
       context: .
-      dockerfile: apps/gateway/Dockerfile
+      dockerfile: be.Dockerfile
+      args:
+        SERVICE: gateway
     depends_on:
       attendance:
         condition: service_healthy

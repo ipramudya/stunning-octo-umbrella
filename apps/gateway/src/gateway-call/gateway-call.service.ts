@@ -118,10 +118,6 @@ export class GatewayCallService {
         fail(429, 'RATE_LIMIT_EXCEEDED', 'Too many requests', request, traceId);
       }
 
-      if (call.failure) {
-        call.failure(error, traceId);
-      }
-
       throw error;
     }
   }

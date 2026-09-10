@@ -2,7 +2,7 @@ import { HealthCheckResponse_ServingStatus } from '@project/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { GrpcHealthController } from './grpc-health.controller.js';
-import type { ReadinessService } from './readiness.js';
+import type { ReadinessService } from './readiness.service.js';
 
 describe('attendance gRPC health', () => {
   it('maps dependency readiness to the standard serving status', async () => {

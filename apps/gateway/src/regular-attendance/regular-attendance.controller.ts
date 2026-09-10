@@ -1,22 +1,17 @@
-import {
-  Body,
-  Controller,
-  HttpException,
-  Inject,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Inject, Post, Req, Res } from '@nestjs/common';
 import { ClockType, TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, takeUntil } from 'rxjs';
 
-import { attendanceFailure } from '../attendance-zone/attendance-failure.js';
 import { timestampIso } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
-import { regularAttendanceSchema } from './regular-attendance.dto.js';
+import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
+import {
+  regularAttendanceSchema,
+  type RegularAttendanceDto,
+} from './regular-attendance.dto.js';
 
 @Controller({ version: '1' })
 export class RegularAttendanceController {
@@ -28,7 +23,8 @@ export class RegularAttendanceController {
 
   @Post('me/attendance/regular')
   create(
-    @Body() untrustedBody: unknown,
+    @Body(new ZodValidationPipe(regularAttendanceSchema))
+    body: RegularAttendanceDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
@@ -40,28 +36,6 @@ export class RegularAttendanceController {
       rateLimited: true,
       audiences: [TokenAudience.TOKEN_AUDIENCE_ATTENDANCE],
       operation: async (context) => {
-        const parsed = regularAttendanceSchema.safeParse(untrustedBody);
-
-        if (!parsed.success) {
-          throw new HttpException(
-            {
-              type: 'about:blank',
-              title: 'Bad Request',
-              status: 400,
-              detail: 'Request validation failed',
-              instance: request.url,
-              code: 'VALIDATION_ERROR',
-              traceId: context.traceId,
-              errors: parsed.error.issues.map((issue) => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-              })),
-            },
-            400,
-          );
-        }
-
-        const body = parsed.data;
         let clockType = ClockType.CLOCK_TYPE_CLOCK_OUT;
         if (body.clockType === 'CLOCK_IN') {
           clockType = ClockType.CLOCK_TYPE_CLOCK_IN;
@@ -109,14 +83,6 @@ export class RegularAttendanceController {
           decision: null,
         };
       },
-      failure: (error, traceId) =>
-        attendanceFailure({
-          error,
-          request,
-          traceId,
-          regularAttendance: true,
-          reply,
-        }),
     });
   }
 }

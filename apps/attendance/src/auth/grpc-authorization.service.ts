@@ -5,16 +5,22 @@ import { status, type Metadata } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import {
-  type InternalClaims,
-  verifyInternalAccess,
-} from '../auth/internal-token.js';
+import { failure } from '../attendance/attendance.error.js';
 import type { Environment } from '../config/config-typedef.js';
-import { failure } from './attendance.error.js';
-import { bearer } from './attendance.helper.js';
+import { type InternalClaims, verifyInternalAccess } from './internal-token.js';
+
+export function bearer(metadata: Metadata) {
+  const value = metadata.get('authorization')[0];
+
+  if (typeof value === 'string' && value.startsWith('Bearer ')) {
+    return value.slice(7);
+  }
+
+  return '';
+}
 
 @Injectable()
-export class AttendanceAuthorizationService {
+export class GrpcAuthorizationService {
   private readonly authenticated = new WeakMap<Metadata, InternalClaims>();
 
   private readonly issuer: string;

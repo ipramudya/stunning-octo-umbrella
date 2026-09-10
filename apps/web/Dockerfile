@@ -1,3 +1,4 @@
+# Prune backend workspaces so their changes do not invalidate this image.
 FROM node:24-alpine AS pruner
 
 WORKDIR /app
@@ -8,6 +9,7 @@ COPY . .
 
 RUN turbo prune web --docker
 
+# Build the standalone Next.js server from the reduced workspace.
 FROM node:24-alpine AS build
 
 ENV GATEWAY_URL=http://gateway:3000
@@ -24,6 +26,7 @@ COPY --from=pruner /app/out/full/ ./
 RUN --mount=type=cache,target=/app/.turbo \
   npx turbo run build --filter=web
 
+# Plain Alpine avoids shipping npm and Yarn; Node comes from the matching build image.
 FROM alpine:3.23
 
 ENV HOSTNAME=0.0.0.0

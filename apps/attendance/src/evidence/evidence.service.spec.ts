@@ -51,20 +51,11 @@ function subject() {
     copy: vi.fn(),
     remove: vi.fn(),
   };
-  const attendance = {
-    cleanupAttempts: vi.fn(),
-    cleanupExpiredAttempts: vi.fn(),
-  };
 
   return {
     repository,
     store,
-    attendance,
-    service: new EvidenceService(
-      repository as never,
-      store as never,
-      attendance as never,
-    ),
+    service: new EvidenceService(repository as never, store as never),
   };
 }
 

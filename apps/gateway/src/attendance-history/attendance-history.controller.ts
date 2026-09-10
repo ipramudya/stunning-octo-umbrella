@@ -1,4 +1,4 @@
-import { status, Metadata, type CallOptions } from '@grpc/grpc-js';
+import { Metadata, type CallOptions } from '@grpc/grpc-js';
 import {
   Controller,
   Get,
@@ -24,8 +24,6 @@ import {
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
-import { grpcCode, grpcErrorCode } from '../grpc-client/grpc-error.js';
-import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
   employeeAttendanceListSchema,
@@ -122,68 +120,6 @@ export class AttendanceHistoryController {
             context.options,
           ).pipe(takeUntil(context.cancelled)),
         ),
-      failure: (error, traceId) => {
-        const grpcStatus = grpcCode(error);
-        const code = grpcErrorCode(error);
-
-        if (grpcStatus === status.UNAUTHENTICATED) {
-          fail(
-            401,
-            'AUTHENTICATION_REQUIRED',
-            'Authentication is required',
-            request,
-            traceId,
-          );
-        }
-
-        if (grpcStatus === status.PERMISSION_DENIED) {
-          fail(
-            403,
-            'FORBIDDEN',
-            'Employee access is required',
-            request,
-            traceId,
-          );
-        }
-
-        if (grpcStatus === status.INVALID_ARGUMENT) {
-          fail(
-            400,
-            code ?? 'VALIDATION_ERROR',
-            'Request validation failed',
-            request,
-            traceId,
-          );
-        }
-
-        if (grpcStatus === status.NOT_FOUND) {
-          fail(
-            404,
-            'ATTENDANCE_ENTRY_NOT_FOUND',
-            'Attendance entry was not found',
-            request,
-            traceId,
-          );
-        }
-
-        if (grpcStatus === status.DEADLINE_EXCEEDED) {
-          fail(
-            504,
-            'DOWNSTREAM_TIMEOUT',
-            'The request timed out',
-            request,
-            traceId,
-          );
-        }
-
-        fail(
-          503,
-          'DEPENDENCY_UNAVAILABLE',
-          'The service is temporarily unavailable',
-          request,
-          traceId,
-        );
-      },
     });
   }
 }

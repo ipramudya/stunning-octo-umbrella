@@ -1,6 +1,6 @@
 import { status } from '@grpc/grpc-js';
 
-export type AuthErrorCode =
+export type IdentityErrorCode =
   | 'AUTHENTICATION_REQUIRED'
   | 'DEPENDENCY_UNAVAILABLE'
   | 'EMAIL_ALREADY_EXISTS'
@@ -13,9 +13,9 @@ export type AuthErrorCode =
   | 'PHONE_NUMBER_ALREADY_EXISTS'
   | 'VALIDATION_ERROR';
 
-export class AuthError extends Error {
+export class IdentityError extends Error {
   constructor(
-    readonly code: AuthErrorCode,
+    readonly code: IdentityErrorCode,
     readonly grpcStatus: status,
   ) {
     super(code);

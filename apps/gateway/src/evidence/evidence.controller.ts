@@ -17,7 +17,6 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, type Observable, takeUntil } from 'rxjs';
 
-import { attendanceFailure } from '../attendance-zone/attendance-failure.js';
 import { timestampIso } from '../attendance/attendance.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
@@ -107,8 +106,6 @@ export class EvidenceController {
 
         return { ...result, expiresAt: timestampIso(result.expiresAt) };
       },
-      failure: (error, traceId) =>
-        attendanceFailure({ error, request, traceId }),
     });
   }
 }

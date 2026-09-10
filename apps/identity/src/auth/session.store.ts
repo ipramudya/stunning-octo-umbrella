@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, type RedisClientType } from 'redis';
 
 import type { Environment } from '../config/config-typedef.js';
-import { AuthError } from './auth-error.js';
+import { IdentityError } from '../identity/identity.error.js';
 import type { Session } from './auth.entity.js';
 
 const CREATE_SESSION = `
@@ -96,8 +96,6 @@ export class SessionStore implements OnModuleDestroy {
   private readonly client: RedisClientType;
 
   private connection?: Promise<RedisClientType>;
-
-  private readonly scriptShas = new Map<string, string>();
 
   constructor(private readonly config: ConfigService<Environment, true>) {
     this.client = createClient({
@@ -189,7 +187,10 @@ export class SessionStore implements OnModuleDestroy {
     );
 
     if (result[0] !== 'OK' || !result[1] || !result[2]) {
-      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+      throw new IdentityError(
+        'AUTHENTICATION_REQUIRED',
+        status.UNAUTHENTICATED,
+      );
     }
 
     return {
@@ -288,25 +289,6 @@ export class SessionStore implements OnModuleDestroy {
     script: string,
     options: { keys?: string[]; arguments: string[] },
   ) {
-    const client = await this.redis();
-
-    let sha = this.scriptShas.get(script);
-    if (!sha) {
-      sha = await client.scriptLoad(script);
-      this.scriptShas.set(script, sha);
-    }
-
-    try {
-      return await client.evalSha(sha, options);
-    } catch (error) {
-      if (!String(error).includes('NOSCRIPT')) {
-        throw error;
-      }
-
-      sha = await client.scriptLoad(script);
-      this.scriptShas.set(script, sha);
-
-      return client.evalSha(sha, options);
-    }
+    return (await this.redis()).eval(script, options);
   }
 }

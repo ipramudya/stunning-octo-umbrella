@@ -6,17 +6,42 @@ import {
   type CreateManualAttendanceRequest,
   type CreateRegularAttendanceRequest,
 } from '@project/contracts';
+import { z } from 'zod';
 
 import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { GrpcAuthorizationService } from '../auth/grpc-authorization.service.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { ManualAttendanceService } from '../manual-attendance/manual-attendance.service.js';
 import { RegularAttendanceService } from '../regular-attendance/regular-attendance.service.js';
-import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
 import { failure } from './attendance.error.js';
-import { grpcTimestamp } from './attendance.helper.js';
-import { manualSchema, regularSchema } from './attendance.schema.js';
+import { grpcTimestamp, protoDate } from './attendance.helper.js';
+
+const regularSchema = z.object({
+  clockType: z.union([
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_IN),
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_OUT),
+  ]),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracyMeters: z.number(),
+  evidenceUploadId: z.uuid(),
+});
+
+const manualSchema = z.object({
+  clockType: z.union([
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_IN),
+    z.literal(ClockType.CLOCK_TYPE_CLOCK_OUT),
+  ]),
+  workDate: z.iso.date(),
+  claimedAt: z.unknown().transform(protoDate).pipe(z.date()),
+  address: z.string().trim().min(1).max(500),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  reason: z.string().trim().min(1).max(1000),
+  evidenceUploadId: z.uuid(),
+});
 
 @Controller()
 @UseFilters(AttendanceExceptionFilter)
@@ -24,7 +49,7 @@ import { manualSchema, regularSchema } from './attendance.schema.js';
 @Roles('EMPLOYEE')
 export class AttendanceSubmissionController {
   constructor(
-    private readonly authorization: AttendanceAuthorizationService,
+    private readonly authorization: GrpcAuthorizationService,
     private readonly regularAttendance: RegularAttendanceService,
     private readonly manualAttendance: ManualAttendanceService,
   ) {}

@@ -37,6 +37,7 @@ async function bootstrap() {
         ],
         true,
       ),
+      loader: { longs: Number },
       package: ['grpc.health.v1', 'dexa.attendance.v1'],
       protoPath: [HEALTH_PROTO_PATH, ATTENDANCE_PROTO_PATH],
       url: `${config.get('HOST', { infer: true })}:${config.get('GRPC_PORT', { infer: true })}`,

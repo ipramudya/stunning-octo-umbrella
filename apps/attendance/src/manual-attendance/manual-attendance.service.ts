@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { OnApplicationBootstrap } from '@nestjs/common';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   AttendanceSource,
@@ -16,26 +15,14 @@ import { ManualAttendanceError } from './manual-attendance.helper.js';
 import { validateManualAttendancePolicy } from './manual-attendance.helper.js';
 import { ManualAttendanceRepository } from './manual-attendance.repository.js';
 
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
-}
-
 @Injectable()
-export class ManualAttendanceService implements OnApplicationBootstrap {
+export class ManualAttendanceService {
   private readonly logger = new Logger(ManualAttendanceService.name);
 
   constructor(
     private readonly repository: ManualAttendanceRepository,
     private readonly evidence: EvidenceService,
   ) {}
-
-  async onApplicationBootstrap() {
-    await this.repository.recoverIdempotencyRecords();
-  }
 
   async create(
     employeeId: string,
@@ -102,10 +89,10 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
       });
 
       try {
-        await this.evidence.complete(upload);
+        await this.evidence.cleanup(upload);
       } catch (error) {
         this.logger.warn(
-          `staging evidence cleanup deferred for ${upload.id}: ${errorMessage(error)}`,
+          `staging evidence cleanup deferred for ${upload.id}: ${String(error)}`,
         );
       }
 
@@ -116,16 +103,14 @@ export class ManualAttendanceService implements OnApplicationBootstrap {
           await this.evidence.abort(upload);
         }
       } catch (cleanupError) {
-        this.logger.warn(
-          `evidence cleanup deferred: ${errorMessage(cleanupError)}`,
-        );
+        this.logger.warn(`evidence cleanup deferred: ${String(cleanupError)}`);
       }
 
       try {
         await this.repository.release(employeeId, idempotencyKey, hash);
       } catch (cleanupError) {
         this.logger.warn(
-          `idempotency cleanup deferred: ${errorMessage(cleanupError)}`,
+          `idempotency cleanup deferred: ${String(cleanupError)}`,
         );
       }
 

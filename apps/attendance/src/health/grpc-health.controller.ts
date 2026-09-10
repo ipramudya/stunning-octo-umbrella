@@ -5,7 +5,7 @@ import {
   HealthCheckResponse_ServingStatus,
 } from '@project/contracts';
 
-import { ReadinessService } from './readiness.js';
+import { ReadinessService } from './readiness.service.js';
 
 @Controller()
 export class GrpcHealthController {

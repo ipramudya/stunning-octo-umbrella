@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { status, Metadata } from '@grpc/grpc-js';
+import { Metadata } from '@grpc/grpc-js';
 import {
   Body,
   Controller,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   Inject,
   Logger,
@@ -20,9 +19,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, fromEvent, takeUntil } from 'rxjs';
 
 import type { Environment } from '../config/config-typedef.js';
+import { publicProfile } from '../employee/employee.dto.js';
 import { IDENTITY_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
-import { grpcCode } from '../grpc-client/grpc-error.js';
 import { fail } from '../problem/problem.js';
 import {
   RateLimiter,
@@ -31,7 +30,7 @@ import {
 } from '../rate-limit/rate-limiter.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import { loginSchema, type LoginDto } from './auth.dto.js';
-import { cookies, publicProfile } from './auth.helper.js';
+import { cookies } from './auth.helper.js';
 
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
@@ -71,24 +70,15 @@ export class AuthController {
       traceId: context.traceId,
     });
 
-    try {
-      const result = await firstValueFrom(
-        this.identity
-          .login(body, context.metadata, context.options)
-          .pipe(takeUntil(context.cancelled)),
-      );
+    const result = await firstValueFrom(
+      this.identity
+        .login(body, context.metadata, context.options)
+        .pipe(takeUntil(context.cancelled)),
+    );
 
-      this.setCredentials(reply, result);
+    this.setCredentials(reply, result);
 
-      return publicProfile(result.profile);
-    } catch (error) {
-      this.grpcFailure({
-        error,
-        operation: 'login',
-        request,
-        traceId: context.traceId,
-      });
-    }
+    return publicProfile(result.profile);
   }
 
   @Post('refresh')
@@ -118,23 +108,14 @@ export class AuthController {
       traceId: context.traceId,
     });
 
-    try {
-      const result = await firstValueFrom(
-        this.identity
-          .refreshSession({ refreshToken }, context.metadata, context.options)
-          .pipe(takeUntil(context.cancelled)),
-      );
+    const result = await firstValueFrom(
+      this.identity
+        .refreshSession({ refreshToken }, context.metadata, context.options)
+        .pipe(takeUntil(context.cancelled)),
+    );
 
-      this.setCredentials(reply, result);
-      reply.status(204);
-    } catch (error) {
-      this.grpcFailure({
-        error,
-        operation: 'refresh',
-        request,
-        traceId: context.traceId,
-      });
-    }
+    this.setCredentials(reply, result);
+    reply.status(204);
   }
 
   @Post('logout')
@@ -184,32 +165,23 @@ export class AuthController {
       `Bearer ${cookies(request).dexa_access ?? ''}`,
     );
 
-    try {
-      const result = await firstValueFrom(
-        this.identity
-          .authorizeAccess({ audiences: [] }, context.metadata, context.options)
-          .pipe(takeUntil(context.cancelled)),
-      );
+    const result = await firstValueFrom(
+      this.identity
+        .authorizeAccess({ audiences: [] }, context.metadata, context.options)
+        .pipe(takeUntil(context.cancelled)),
+    );
 
-      await this.limit({
-        scope: 'authenticated',
-        subject: result.sessionId,
-        maximum: 120,
-        windowSeconds: 60,
-        request,
-        reply,
-        traceId: context.traceId,
-      });
+    await this.limit({
+      scope: 'authenticated',
+      subject: result.sessionId,
+      maximum: 120,
+      windowSeconds: 60,
+      request,
+      reply,
+      traceId: context.traceId,
+    });
 
-      return publicProfile(result.profile);
-    } catch (error) {
-      this.grpcFailure({
-        error,
-        operation: 'authorize',
-        request,
-        traceId: context.traceId,
-      });
-    }
+    return publicProfile(result.profile);
   }
 
   private context(
@@ -225,13 +197,7 @@ export class AuthController {
       unsafe &&
       request.headers.origin !== this.config.get('APP_ORIGIN', { infer: true })
     ) {
-      this.fail({
-        statusCode: 403,
-        code: 'FORBIDDEN',
-        detail: 'Request origin is not allowed',
-        request,
-        traceId,
-      });
+      fail(403, 'FORBIDDEN', 'Request origin is not allowed', request, traceId);
     }
 
     const metadata = new Metadata();
@@ -273,22 +239,16 @@ export class AuthController {
     } catch (error) {
       if (error instanceof RateLimitError) {
         reply.header('retry-after', error.retryAfter);
-        this.fail({
-          statusCode: 429,
-          code: 'RATE_LIMIT_EXCEEDED',
-          detail: 'Too many requests',
-          request,
-          traceId,
-        });
+        fail(429, 'RATE_LIMIT_EXCEEDED', 'Too many requests', request, traceId);
       }
 
-      this.fail({
-        statusCode: 503,
-        code: 'DEPENDENCY_UNAVAILABLE',
-        detail: 'The service is temporarily unavailable',
+      fail(
+        503,
+        'DEPENDENCY_UNAVAILABLE',
+        'The service is temporarily unavailable',
         request,
         traceId,
-      });
+      );
     }
   }
 
@@ -329,97 +289,5 @@ export class AuthController {
     }
 
     return `${name}=${value}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secure}`;
-  }
-
-  private grpcFailure({
-    error,
-    operation,
-    request,
-    traceId,
-  }: {
-    error: unknown;
-    operation: 'login' | 'refresh' | 'authorize';
-    request: FastifyRequest;
-    traceId: string;
-  }): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-
-    const codeFromGrpc = grpcCode(error);
-
-    if (codeFromGrpc === status.UNAUTHENTICATED) {
-      if (operation === 'login') {
-        this.fail({
-          statusCode: 401,
-          code: 'INVALID_CREDENTIALS',
-          detail: 'Phone number or password is incorrect',
-          request,
-          traceId,
-        });
-      }
-
-      this.fail({
-        statusCode: 401,
-        code: 'AUTHENTICATION_REQUIRED',
-        detail: 'Authentication is required',
-        request,
-        traceId,
-      });
-    }
-
-    if (codeFromGrpc === status.INVALID_ARGUMENT) {
-      this.fail({
-        statusCode: 400,
-        code: 'VALIDATION_ERROR',
-        detail: 'Request validation failed',
-        request,
-        traceId,
-      });
-    }
-
-    if (codeFromGrpc === status.UNAVAILABLE) {
-      this.fail({
-        statusCode: 503,
-        code: 'DEPENDENCY_UNAVAILABLE',
-        detail: 'The service is temporarily unavailable',
-        request,
-        traceId,
-      });
-    }
-
-    if (codeFromGrpc === status.DEADLINE_EXCEEDED) {
-      this.fail({
-        statusCode: 504,
-        code: 'DOWNSTREAM_TIMEOUT',
-        detail: 'The request timed out',
-        request,
-        traceId,
-      });
-    }
-
-    this.fail({
-      statusCode: 500,
-      code: 'INTERNAL_ERROR',
-      detail: 'An unexpected error occurred',
-      request,
-      traceId,
-    });
-  }
-
-  private fail({
-    statusCode,
-    code,
-    detail,
-    request,
-    traceId,
-  }: {
-    statusCode: number;
-    code: string;
-    detail: string;
-    request: FastifyRequest;
-    traceId: string;
-  }): never {
-    fail(statusCode, code, detail, request, traceId);
   }
 }

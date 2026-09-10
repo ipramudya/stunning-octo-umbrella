@@ -1,7 +1,8 @@
 import { status } from '@grpc/grpc-js';
+import { Role } from '@project/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { AuthError } from '../auth/auth-error.js';
+import { IdentityError } from '../identity/identity.error.js';
 import {
   decodeCursor,
   email,
@@ -9,13 +10,14 @@ import {
   fail,
   password,
   phone,
+  profile,
   required,
 } from './employee.helper.js';
 
 describe('employee helpers', () => {
   it('throws typed auth errors', () => {
     expect(() => fail('EMPLOYEE_NOT_FOUND', status.NOT_FOUND)).toThrow(
-      new AuthError('EMPLOYEE_NOT_FOUND', status.NOT_FOUND),
+      new IdentityError('EMPLOYEE_NOT_FOUND', status.NOT_FOUND),
     );
   });
 
@@ -30,6 +32,28 @@ describe('employee helpers', () => {
     expect(() => phone('+1')).toThrow('VALIDATION_ERROR');
     expect(() => email('invalid')).toThrow('VALIDATION_ERROR');
     expect(() => password('short')).toThrow('VALIDATION_ERROR');
+  });
+
+  it('maps employees to protobuf profiles', () => {
+    expect(
+      profile({
+        id: 'employee-1',
+        employeeNumber: 'EMP-001',
+        fullName: 'Employee One',
+        phoneNumber: '+6280000000001',
+        email: '',
+        passwordHash: 'hash',
+        credentialVersion: 1,
+        roles: ['EMPLOYEE', 'HRD'],
+      }),
+    ).toEqual({
+      id: 'employee-1',
+      employeeNumber: 'EMP-001',
+      fullName: 'Employee One',
+      phoneNumber: '+6280000000001',
+      email: undefined,
+      roles: [Role.ROLE_EMPLOYEE, Role.ROLE_HRD],
+    });
   });
 
   it('round-trips employee cursors and rejects malformed values', () => {

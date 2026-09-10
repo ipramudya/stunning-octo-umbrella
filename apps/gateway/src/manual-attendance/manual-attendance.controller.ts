@@ -1,14 +1,4 @@
-// oxlint-disable max-params -- Nest supplies route handler dependencies separately.
-import { status } from '@grpc/grpc-js';
-import {
-  Body,
-  Controller,
-  HttpException,
-  Inject,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Inject, Post, Req, Res } from '@nestjs/common';
 import { type AttendanceEntry, TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, takeUntil } from 'rxjs';
@@ -24,12 +14,6 @@ import {
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import { ATTENDANCE_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { AttendanceGrpcClient } from '../grpc-client/grpc-client.types.js';
-import {
-  grpcCode,
-  grpcErrorCode,
-  grpcMetadata,
-} from '../grpc-client/grpc-error.js';
-import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
   manualAttendanceRequest,
@@ -78,8 +62,6 @@ export class ManualAttendanceController {
 
         return this.attendanceResponse(entry);
       },
-      failure: (error, traceId) =>
-        this.grpcFailure(error, request, reply, traceId),
     });
   }
 
@@ -99,109 +81,5 @@ export class ManualAttendanceController {
       evidenceId: entry.evidenceId ?? null,
       decision: entry.decision ?? null,
     };
-  }
-
-  private grpcFailure(
-    error: unknown,
-    request: FastifyRequest,
-    reply: FastifyReply,
-    traceId: string,
-  ): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-
-    const code = grpcCode(error);
-    const errorCode = grpcErrorCode(error);
-
-    if (code === status.UNAUTHENTICATED) {
-      fail(
-        401,
-        'AUTHENTICATION_REQUIRED',
-        'Authentication is required',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.PERMISSION_DENIED) {
-      fail(403, 'FORBIDDEN', 'Employee access is required', request, traceId);
-    }
-
-    if (code === status.INVALID_ARGUMENT) {
-      fail(
-        400,
-        errorCode ?? 'VALIDATION_ERROR',
-        'Request validation failed',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.NOT_FOUND) {
-      fail(
-        404,
-        errorCode ?? 'EVIDENCE_NOT_FOUND',
-        'Evidence was not found',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.ALREADY_EXISTS) {
-      fail(
-        409,
-        errorCode ?? 'ATTENDANCE_ALREADY_EXISTS',
-        'The request conflicts with existing data',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.ABORTED) {
-      reply.header('retry-after', grpcMetadata(error, 'retry-after') ?? '1');
-      fail(
-        409,
-        errorCode ?? 'REQUEST_IN_PROGRESS',
-        'The request is already in progress',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.FAILED_PRECONDITION) {
-      fail(
-        422,
-        errorCode ?? 'EVIDENCE_INVALID',
-        'The request cannot be processed',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.DEADLINE_EXCEEDED) {
-      fail(
-        504,
-        'DOWNSTREAM_TIMEOUT',
-        'The request timed out',
-        request,
-        traceId,
-      );
-    }
-
-    if (
-      code === status.UNAVAILABLE &&
-      errorCode === 'EVIDENCE_FINALIZATION_FAILED'
-    ) {
-      fail(503, errorCode, 'Evidence finalization failed', request, traceId);
-    }
-
-    fail(
-      503,
-      'DEPENDENCY_UNAVAILABLE',
-      'The service is temporarily unavailable',
-      request,
-      traceId,
-    );
   }
 }

@@ -1,10 +1,9 @@
-import { status, type Metadata } from '@grpc/grpc-js';
+import type { Metadata } from '@grpc/grpc-js';
 import {
   Body,
   Controller,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   Inject,
   Param,
@@ -20,18 +19,16 @@ import { TokenAudience } from '@project/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { firstValueFrom, type Observable, takeUntil } from 'rxjs';
 
-import { publicProfile } from '../auth/auth.helper.js';
 import { GatewayCallService } from '../gateway-call/gateway-call.service.js';
 import type { GatewayCallContext } from '../gateway-call/gateway-call.types.js';
 import { IDENTITY_CLIENT } from '../grpc-client/grpc-client.providers.js';
 import type { IdentityGrpcClient } from '../grpc-client/grpc-client.types.js';
-import { grpcCode, grpcErrorCode } from '../grpc-client/grpc-error.js';
-import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
   createEmployeeSchema,
   type CreateEmployeeDto,
   employeeIdSchema,
+  publicProfile,
   employeeListSchema,
   type EmployeeListDto,
   resetPasswordSchema,
@@ -185,69 +182,6 @@ export class EmployeeController {
             context,
           ).pipe(takeUntil(context.cancelled)),
         ),
-      failure: (error, traceId) => this.failure(error, request, reply, traceId),
     });
-  }
-
-  private failure(
-    error: unknown,
-    request: FastifyRequest,
-    reply: FastifyReply,
-    traceId: string,
-  ): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-
-    const code = grpcErrorCode(error);
-    let invalidCode = 'VALIDATION_ERROR';
-    let invalidDetail = 'Request validation failed';
-    if (code === 'INVALID_CURSOR') {
-      invalidCode = code;
-      invalidDetail = 'The cursor is invalid';
-    }
-
-    const mappings: Partial<Record<status, [number, string, string]>> = {
-      [status.INVALID_ARGUMENT]: [400, invalidCode, invalidDetail],
-      [status.UNAUTHENTICATED]: [
-        401,
-        'AUTHENTICATION_REQUIRED',
-        'Authentication is required',
-      ],
-      [status.PERMISSION_DENIED]: [403, 'FORBIDDEN', 'HRD access is required'],
-      [status.NOT_FOUND]: [404, 'EMPLOYEE_NOT_FOUND', 'Employee was not found'],
-      [status.ALREADY_EXISTS]: [
-        409,
-        code ?? 'VALIDATION_ERROR',
-        'Employee data already exists',
-      ],
-      [status.UNAVAILABLE]: [
-        503,
-        'DEPENDENCY_UNAVAILABLE',
-        'The service is temporarily unavailable',
-      ],
-      [status.DEADLINE_EXCEEDED]: [
-        504,
-        'DOWNSTREAM_TIMEOUT',
-        'The request timed out',
-      ],
-    };
-    const codeFromGrpc = grpcCode(error);
-    let mapped;
-    if (codeFromGrpc !== undefined) {
-      mapped = mappings[codeFromGrpc];
-    }
-
-    if (mapped) {
-      fail(...mapped, request, traceId);
-    }
-
-    fail(
-      500,
-      'INTERNAL_ERROR',
-      'An unexpected error occurred',
-      request,
-      traceId,
-    );
   }
 }

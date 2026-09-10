@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common';
 import oracledb, { type Connection } from 'oracledb';
 
 import { AttendanceError } from '../attendance/attendance.error.js';
+import { IdempotencyService } from '../idempotency/idempotency.service.js';
 import { OracleDatabase } from '../oracle.js';
 import type {
-  AttemptRow,
   ExistingEntryRow,
   RegularAttendanceEntry,
   ZoneRow,
@@ -23,105 +23,52 @@ export class RegularAttendancePersistenceError extends AttendanceError {
 
 const operation = 'CREATE_REGULAR_ATTENDANCE';
 
+function restoreResponse(body: string): RegularAttendanceEntry {
+  // The service is the only writer of this canonical response JSON.
+  // oxlint-disable-next-line typescript/no-unsafe-return
+  return JSON.parse(body);
+}
+
 @Injectable()
 export class RegularAttendanceRepository {
-  constructor(private readonly database: OracleDatabase) {}
+  constructor(
+    private readonly database: OracleDatabase,
+    private readonly idempotency: IdempotencyService,
+  ) {}
 
-  async cleanupAttempts() {
-    await this.database.withTransaction((connection) =>
-      connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE status = 'IN_PROGRESS' OR expires_at <= SYSTIMESTAMP`,
-      ),
-    );
-  }
+  async beginAttempt({
+    employeeId,
+    key,
+    requestHash,
+    createdAt,
+  }: {
+    employeeId: string;
+    key: string;
+    requestHash: string;
+    createdAt: Date;
+  }): Promise<{ createdAt: Date; replay?: RegularAttendanceEntry }> {
+    const claim = await this.idempotency.claim({
+      actorId: employeeId,
+      operation,
+      key,
+      hash: requestHash,
+      restore: restoreResponse,
+      createdAt,
+    });
 
-  async cleanupExpiredAttempts() {
-    await this.database.withTransaction((connection) =>
-      connection.execute(
-        `DELETE FROM idempotency_records WHERE expires_at <= SYSTIMESTAMP`,
-      ),
-    );
-  }
-
-  // The compound idempotency identity stays explicit at the SQL boundary.
-  // oxlint-disable-next-line max-params
-  async beginAttempt(
-    employeeId: string,
-    key: string,
-    requestHash: string,
-    createdAt: Date,
-  ): Promise<{ createdAt: Date; replay?: RegularAttendanceEntry }> {
-    try {
-      return await this.database.withTransaction(async (connection) => {
-        const current = await this.attempt(connection, employeeId, key);
-
-        if (current && current.EXPIRES_AT.getTime() > Date.now()) {
-          if (current.REQUEST_HASH !== requestHash) {
-            throw new RegularAttendancePersistenceError(
-              'IDEMPOTENCY_KEY_REUSED',
-            );
-          }
-
-          if (current.STATUS === 'IN_PROGRESS') {
-            throw new RegularAttendancePersistenceError('REQUEST_IN_PROGRESS');
-          }
-
-          if (!current.RESPONSE_BODY) {
-            throw new Error('missing replay response');
-          }
-          // The service is the only writer of this canonical response JSON.
-          // oxlint-disable-next-line typescript/no-unsafe-assignment
-          const replay: RegularAttendanceEntry = JSON.parse(
-            current.RESPONSE_BODY,
-          );
-
-          return { createdAt: current.CREATED_AT, replay };
-        }
-
-        if (current) {
-          await connection.execute(
-            `DELETE FROM idempotency_records
-             WHERE actor_employee_id = :employeeId AND operation = :operation
-               AND idempotency_key = :key`,
-            { employeeId, operation, key },
-          );
-        }
-
-        await connection.execute(
-          `INSERT INTO idempotency_records (
-             actor_employee_id, operation, idempotency_key, request_hash,
-             status, created_at, expires_at
-           ) VALUES (
-             :employeeId, :operation, :key, :requestHash, 'IN_PROGRESS',
-             :createdAt, :expiresAt
-           )`,
-          {
-            employeeId: { val: employeeId, type: oracledb.STRING, maxSize: 36 },
-            operation,
-            key: { val: key, type: oracledb.STRING, maxSize: 128 },
-            requestHash,
-            createdAt: { val: createdAt, type: oracledb.DB_TYPE_TIMESTAMP_TZ },
-            expiresAt: {
-              val: new Date(createdAt.getTime() + 24 * 60 * 60 * 1000),
-              type: oracledb.DB_TYPE_TIMESTAMP_TZ,
-            },
-          },
-        );
-
-        return { createdAt };
-      });
-    } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        Reflect.get(error, 'errorNum') === 1
-      ) {
-        return this.beginAttempt(employeeId, key, requestHash, createdAt);
-      }
-
-      throw error;
+    if (claim.kind === 'mismatch') {
+      throw new RegularAttendancePersistenceError('IDEMPOTENCY_KEY_REUSED');
     }
+
+    if (claim.kind === 'in-progress') {
+      throw new RegularAttendancePersistenceError('REQUEST_IN_PROGRESS');
+    }
+
+    if (claim.kind === 'completed') {
+      return { createdAt: claim.createdAt, replay: claim.response };
+    }
+
+    return { createdAt: claim.createdAt };
   }
 
   existingEntries(connection: Connection, employeeId: string, workDate: Date) {
@@ -170,8 +117,11 @@ export class RegularAttendanceRepository {
 
   async record(
     connection: Connection,
-    entry: RegularAttendanceEntry,
-    key: string,
+    {
+      entry,
+      key,
+      hash,
+    }: { entry: RegularAttendanceEntry; key: string; hash: string },
   ) {
     await connection.execute(
       `INSERT INTO attendance_entries (
@@ -197,50 +147,22 @@ export class RegularAttendanceRepository {
         evidenceId: entry.evidenceId,
       },
     );
-    await connection.execute(
-      `UPDATE idempotency_records
-       SET status = 'COMPLETED', response_status = 201, response_body = :body,
-           completed_at = SYSTIMESTAMP
-       WHERE actor_employee_id = :employeeId AND operation = :operation
-         AND idempotency_key = :key AND status = 'IN_PROGRESS'`,
-      {
-        employeeId: entry.employeeId,
-        operation,
-        key,
-        body: JSON.stringify(entry),
-      },
-    );
+    await this.idempotency.complete(connection, {
+      actorId: entry.employeeId,
+      operation,
+      key,
+      hash,
+      responseStatus: 201,
+      response: entry,
+    });
   }
 
-  async failAttempt(employeeId: string, key: string) {
-    await this.database.withTransaction((connection) =>
-      connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE actor_employee_id = :employeeId AND operation = :operation
-           AND idempotency_key = :key AND status = 'IN_PROGRESS'`,
-        { employeeId, operation, key },
-      ),
-    );
-  }
-
-  private async attempt(
-    connection: Connection,
-    employeeId: string,
-    key: string,
-  ) {
-    const result = await connection.execute<AttemptRow>(
-      `SELECT request_hash, status, response_body, created_at, expires_at
-       FROM idempotency_records
-       WHERE actor_employee_id = :employeeId AND operation = :operation
-         AND idempotency_key = :key
-       FOR UPDATE`,
-      { employeeId, operation, key },
-      {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-        fetchInfo: { RESPONSE_BODY: { type: oracledb.STRING } },
-      },
-    );
-
-    return result.rows?.[0];
+  failAttempt(employeeId: string, key: string, hash: string) {
+    return this.idempotency.release({
+      actorId: employeeId,
+      operation,
+      key,
+      hash,
+    });
   }
 }

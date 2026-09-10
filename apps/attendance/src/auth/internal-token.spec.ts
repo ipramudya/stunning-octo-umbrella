@@ -1,6 +1,8 @@
+import { Metadata } from '@grpc/grpc-js';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
 import { describe, expect, it } from 'vitest';
 
+import { bearer } from './grpc-authorization.service.js';
 import { verifyInternalAccess } from './internal-token.js';
 
 async function token(
@@ -23,6 +25,15 @@ async function token(
 }
 
 describe('Attendance internal access tokens', () => {
+  it('extracts bearer tokens', () => {
+    const metadata = new Metadata();
+
+    metadata.set('authorization', 'Bearer access-token');
+
+    expect(bearer(metadata)).toBe('access-token');
+    expect(bearer(new Metadata())).toBe('');
+  });
+
   it('rejects the wrong audience', async () => {
     const value = await token('dexa-identity', ['EMPLOYEE']);
 

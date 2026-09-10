@@ -1,3 +1,4 @@
+import { Metadata, status } from '@grpc/grpc-js';
 import { HttpException, type ArgumentsHost } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,6 +27,36 @@ describe('ProblemFilter', () => {
         code: 'VALIDATION_ERROR',
         title: 'Not Found',
         status: 404,
+      }),
+    );
+  });
+
+  it('maps gRPC failures at the HTTP boundary', () => {
+    const send = vi.fn();
+    const reply = {
+      header: vi.fn().mockReturnThis(),
+      type: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      send,
+    };
+    const host = {
+      switchToHttp: () => ({
+        getRequest: () => ({ id: 'trace-1', url: '/api/v1/me/attendance' }),
+        getResponse: () => reply,
+      }),
+    } as unknown as ArgumentsHost;
+    const metadata = new Metadata();
+
+    metadata.set('x-error-code', 'REQUEST_IN_PROGRESS');
+    metadata.set('retry-after', '2');
+    new ProblemFilter().catch({ code: status.ABORTED, metadata }, host);
+
+    expect(reply.header).toHaveBeenCalledWith('retry-after', '2');
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'REQUEST_IN_PROGRESS',
+        status: 409,
+        traceId: 'trace-1',
       }),
     );
   });

@@ -3,8 +3,8 @@ import { status } from '@grpc/grpc-js';
 import { CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { AttendanceAuthorizationService } from '../attendance/attendance-authorization.service.js';
 import { failure } from '../attendance/attendance.error.js';
+import { GrpcAuthorizationService } from './grpc-authorization.service.js';
 import type { InternalRole } from './internal-token.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
@@ -12,7 +12,7 @@ import { ROLES_KEY } from './roles.decorator.js';
 export class RolesGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly authorization: AttendanceAuthorizationService,
+    private readonly authorization: GrpcAuthorizationService,
   ) {}
 
   canActivate(context: ExecutionContext) {

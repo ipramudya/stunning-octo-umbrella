@@ -1,11 +1,10 @@
 // oxlint-disable max-params -- Nest supplies route handler dependencies separately.
-import { status, type Metadata } from '@grpc/grpc-js';
+import type { Metadata } from '@grpc/grpc-js';
 import {
   Body,
   Controller,
   Get,
   HttpCode,
-  HttpException,
   Inject,
   Param,
   Post,
@@ -33,11 +32,6 @@ import type {
   AttendanceGrpcClient,
   IdentityGrpcClient,
 } from '../grpc-client/grpc-client.types.js';
-import {
-  grpcCode,
-  grpcErrorCode,
-  grpcMetadata,
-} from '../grpc-client/grpc-error.js';
 import { fail } from '../problem/problem.js';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe.js';
 import {
@@ -45,14 +39,14 @@ import {
   type AttendanceListDto,
   rejectManualAttendanceSchema,
   type RejectManualAttendanceDto,
-} from './manual-decision.dto.js';
+} from './hrd-attendance.dto.js';
 import {
   attendanceEntryResponse,
   attendanceSource,
   attendanceStatus,
   clockType,
   requireProfile,
-} from './manual-decision.mapper.js';
+} from './hrd-attendance.mapper.js';
 
 type CallContext = GatewayCallContext & {
   attendance: Metadata;
@@ -60,7 +54,7 @@ type CallContext = GatewayCallContext & {
 };
 
 @Controller({ path: 'hrd/attendance', version: '1' })
-export class ManualDecisionController {
+export class HrdAttendanceController {
   constructor(
     @Inject(IDENTITY_CLIENT) private readonly identity: IdentityGrpcClient,
     @Inject(ATTENDANCE_CLIENT)
@@ -324,111 +318,6 @@ export class ManualDecisionController {
           attendance: context.metadata(TokenAudience.TOKEN_AUDIENCE_ATTENDANCE),
           identity: context.metadata(TokenAudience.TOKEN_AUDIENCE_IDENTITY),
         }),
-      failure: (error, traceId) =>
-        this.grpcFailure(error, request, reply, traceId),
     });
-  }
-
-  private grpcFailure(
-    error: unknown,
-    request: FastifyRequest,
-    reply: FastifyReply,
-    traceId: string,
-  ): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-
-    const code = grpcCode(error);
-    const errorCode = grpcErrorCode(error);
-
-    if (code === status.UNAUTHENTICATED) {
-      fail(
-        401,
-        'AUTHENTICATION_REQUIRED',
-        'Authentication is required',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.PERMISSION_DENIED) {
-      fail(
-        403,
-        errorCode ?? 'FORBIDDEN',
-        'HRD access is required',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.INVALID_ARGUMENT) {
-      fail(
-        400,
-        errorCode ?? 'VALIDATION_ERROR',
-        'Request validation failed',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.NOT_FOUND) {
-      fail(
-        404,
-        errorCode ?? 'ATTENDANCE_ENTRY_NOT_FOUND',
-        'Attendance entry was not found',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.ALREADY_EXISTS) {
-      fail(
-        409,
-        errorCode ?? 'ENTRY_NOT_PENDING_REVIEW',
-        'The decision conflicts with current state',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.ABORTED) {
-      reply.header('retry-after', grpcMetadata(error, 'retry-after') ?? '1');
-      fail(
-        409,
-        errorCode ?? 'REQUEST_IN_PROGRESS',
-        'The request is already in progress',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.FAILED_PRECONDITION) {
-      fail(
-        422,
-        errorCode ?? 'CLOCK_IN_REQUIRED',
-        'The decision is not eligible',
-        request,
-        traceId,
-      );
-    }
-
-    if (code === status.DEADLINE_EXCEEDED) {
-      fail(
-        504,
-        'DOWNSTREAM_TIMEOUT',
-        'The request timed out',
-        request,
-        traceId,
-      );
-    }
-
-    fail(
-      503,
-      'DEPENDENCY_UNAVAILABLE',
-      'The service is temporarily unavailable',
-      request,
-      traceId,
-    );
   }
 }

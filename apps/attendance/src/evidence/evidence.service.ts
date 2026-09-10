@@ -9,7 +9,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Connection } from 'oracledb';
 
 import { AttendanceError } from '../attendance/attendance.error.js';
-import { RegularAttendanceRepository } from '../regular-attendance/regular-attendance.repository.js';
 import { EvidenceStore } from './evidence-store.js';
 import {
   accessLifetimeSeconds,
@@ -59,12 +58,10 @@ export class EvidenceService
   constructor(
     private readonly repository: EvidenceRepository,
     private readonly store: EvidenceStore,
-    private readonly attendance: RegularAttendanceRepository,
   ) {}
 
   async onApplicationBootstrap() {
     await this.repository.removeExpiredUploads();
-    await this.attendance.cleanupAttempts();
     this.recoveryComplete = await this.recoverFinalizingUploads();
     this.cleanupTimer ??= setInterval(
       () => void this.scheduledCleanup(),
@@ -242,10 +239,6 @@ export class EvidenceService
     }
   }
 
-  complete(upload: EvidenceUpload) {
-    return this.cleanup(upload);
-  }
-
   async finalize(employeeId: string, uploadId: string) {
     let current: EvidenceUpload | undefined;
 
@@ -302,12 +295,9 @@ export class EvidenceService
 
     try {
       await this.repository.removeExpiredUploads();
-      await this.attendance.cleanupExpiredAttempts();
       this.recoveryComplete = await this.recoverFinalizingUploads();
     } catch (error) {
-      this.logger.warn(
-        `scheduled cleanup deferred: ${this.errorMessage(error)}`,
-      );
+      this.logger.warn(`scheduled cleanup deferred: ${String(error)}`);
     } finally {
       this.cleanupRunning = false;
     }
@@ -323,20 +313,12 @@ export class EvidenceService
       } catch (error) {
         complete = false;
         this.logger.warn(
-          `evidence recovery deferred for ${upload.id}: ${this.errorMessage(error)}`,
+          `evidence recovery deferred for ${upload.id}: ${String(error)}`,
         );
       }
     }
 
     return complete;
-  }
-
-  private errorMessage(error: unknown) {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return String(error);
   }
 
   private async prepareUpload(connection: Connection, upload: EvidenceUpload) {

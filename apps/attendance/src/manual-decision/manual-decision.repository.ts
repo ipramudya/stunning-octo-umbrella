@@ -8,12 +8,9 @@ import {
 } from '@project/contracts';
 import oracledb, { type Connection } from 'oracledb';
 
+import { IdempotencyService } from '../idempotency/idempotency.service.js';
 import { OracleDatabase } from '../oracle.js';
-import type {
-  AttendanceEntryRow,
-  DecisionClaim,
-  IdempotencyRow,
-} from './manual-decision.entity.js';
+import type { AttendanceEntryRow } from './manual-decision.entity.js';
 
 const operation = 'DECIDE_MANUAL_ATTENDANCE';
 
@@ -33,14 +30,6 @@ export const attendanceColumns = `id, employee_id, work_date, clock_type, source
   occurred_at, claimed_at, submitted_at, address, latitude, longitude,
   accuracy_meters, distance_meters, reason, evidence_id, decided_at,
   decided_by_employee_id, decision_reason`;
-
-function isUniqueViolation(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    Reflect.get(error, 'errorNum') === 1
-  );
-}
 
 function attendanceStatus(status: AttendanceEntryRow['STATUS']) {
   switch (status) {
@@ -105,116 +94,28 @@ function restoreResponse(body: string) {
 
 @Injectable()
 export class ManualDecisionRepository {
-  constructor(private readonly database: OracleDatabase) {}
+  constructor(
+    private readonly database: OracleDatabase,
+    private readonly idempotency: IdempotencyService,
+  ) {}
 
-  async list(
-    cursor: { submittedAt: Date; id: string } | undefined,
-    limit: number,
-  ) {
-    return this.database.withConnection(async (connection) => {
-      const result = await connection.execute<AttendanceEntryRow>(
-        `SELECT ${attendanceColumns} FROM attendance_entries
-         WHERE source = 'MANUAL' AND status = 'PENDING_REVIEW'
-           AND (:cursorAt IS NULL OR submitted_at > :cursorAt
-             OR (submitted_at = :cursorAt AND id > :cursorId))
-         ORDER BY submitted_at, id
-         FETCH FIRST ${limit + 1} ROWS ONLY`,
-        {
-          cursorAt: {
-            val: cursor?.submittedAt ?? null,
-            type: oracledb.DB_TYPE_TIMESTAMP_TZ,
-          },
-          cursorId: {
-            val: cursor?.id ?? null,
-            type: oracledb.STRING,
-            maxSize: 36,
-          },
-        },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT },
-      );
-
-      return (result.rows ?? []).map(attendanceEntry);
+  claim(reviewerId: string, key: string, hash: string) {
+    return this.idempotency.claim({
+      actorId: reviewerId,
+      operation,
+      key,
+      hash,
+      restore: restoreResponse,
     });
   }
 
-  get(entryId: string) {
-    return this.database.withConnection((connection) =>
-      this.selectEntry(connection, entryId),
-    );
-  }
-
-  async claim(
-    reviewerId: string,
-    key: string,
-    hash: string,
-  ): Promise<DecisionClaim> {
-    try {
-      await this.database.withTransaction((connection) =>
-        connection.execute(
-          `INSERT INTO idempotency_records (
-             actor_employee_id, operation, idempotency_key, request_hash,
-             status, created_at, expires_at
-           ) VALUES (
-             :reviewerId, :operation, :key, :hash, 'IN_PROGRESS',
-             SYSTIMESTAMP, SYSTIMESTAMP + INTERVAL '24' HOUR
-           )`,
-          { reviewerId, operation, key, hash },
-        ),
-      );
-
-      return { kind: 'new' };
-    } catch (error) {
-      if (!isUniqueViolation(error)) {
-        throw error;
-      }
-
-      const record = await this.database.withConnection(async (connection) => {
-        const result = await connection.execute<IdempotencyRow>(
-          `SELECT request_hash, status,
-             DBMS_LOB.SUBSTR(response_body, 32767, 1) AS response_body
-           FROM idempotency_records
-           WHERE actor_employee_id = :reviewerId AND operation = :operation
-             AND idempotency_key = :key`,
-          { reviewerId, operation, key },
-          { outFormat: oracledb.OUT_FORMAT_OBJECT },
-        );
-
-        return result.rows?.[0];
-      });
-
-      if (!record) {
-        throw error;
-      }
-
-      if (record.REQUEST_HASH !== hash) {
-        return { kind: 'mismatch' };
-      }
-
-      if (record.STATUS === 'IN_PROGRESS') {
-        return { kind: 'in-progress' };
-      }
-
-      if (!record.RESPONSE_BODY) {
-        throw new Error('idempotency response missing');
-      }
-
-      return {
-        kind: 'completed',
-        response: restoreResponse(record.RESPONSE_BODY),
-      };
-    }
-  }
-
   release(reviewerId: string, key: string, hash: string) {
-    return this.database.withTransaction((connection) =>
-      connection.execute(
-        `DELETE FROM idempotency_records
-         WHERE actor_employee_id = :reviewerId AND operation = :operation
-           AND idempotency_key = :key AND request_hash = :hash
-           AND status = 'IN_PROGRESS'`,
-        { reviewerId, operation, key, hash },
-      ),
-    );
+    return this.idempotency.release({
+      actorId: reviewerId,
+      operation,
+      key,
+      hash,
+    });
   }
 
   decide(input: {
@@ -309,28 +210,14 @@ export class ManualDecisionRepository {
         throw new ManualDecisionPersistenceError('ATTENDANCE_ENTRY_NOT_FOUND');
       }
 
-      const completed = await connection.execute(
-        `UPDATE idempotency_records
-         SET status = 'COMPLETED', response_status = 200,
-           response_body = :responseBody, completed_at = SYSTIMESTAMP
-         WHERE actor_employee_id = :reviewerId AND operation = :operation
-           AND idempotency_key = :key AND request_hash = :hash
-           AND status = 'IN_PROGRESS'`,
-        {
-          responseBody: {
-            val: JSON.stringify(updated),
-            type: oracledb.CLOB,
-          },
-          reviewerId: input.reviewerId,
-          operation,
-          key: input.key,
-          hash: input.hash,
-        },
-      );
-
-      if (completed.rowsAffected !== 1) {
-        throw new Error('idempotency claim disappeared');
-      }
+      await this.idempotency.complete(connection, {
+        actorId: input.reviewerId,
+        operation,
+        key: input.key,
+        hash: input.hash,
+        responseStatus: 200,
+        response: updated,
+      });
 
       return updated;
     });

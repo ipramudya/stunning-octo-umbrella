@@ -8,10 +8,13 @@ import {
 
 import {
   attendanceLocation,
+  attendanceSourceName,
   attendanceStatusName,
+  clockTypeName,
+  optionalTimestampIso,
   timestampIso,
 } from '../attendance/attendance.helper.js';
-import type { AttendanceListDto } from './manual-decision.dto.js';
+import type { AttendanceListDto } from './hrd-attendance.dto.js';
 
 export function requireProfile(
   profiles: Map<string, EmployeeProfile>,
@@ -68,30 +71,6 @@ function person(value: EmployeeProfile) {
   };
 }
 
-function clockTypeName(value: ClockType) {
-  if (value === ClockType.CLOCK_TYPE_CLOCK_IN) {
-    return 'CLOCK_IN';
-  }
-
-  return 'CLOCK_OUT';
-}
-
-function sourceName(value: AttendanceSource) {
-  if (value === AttendanceSource.ATTENDANCE_SOURCE_MANUAL) {
-    return 'MANUAL';
-  }
-
-  return 'REGULAR';
-}
-
-function timestampOrNull(value: Date | undefined) {
-  if (value) {
-    return timestampIso(value);
-  }
-
-  return null;
-}
-
 function decisionResponse(
   entry: AttendanceEntry,
   reviewer: EmployeeProfile | undefined,
@@ -118,10 +97,10 @@ export function attendanceEntryResponse(
     employee: person(employee),
     workDate: entry.workDate,
     clockType: clockTypeName(entry.clockType),
-    source: sourceName(entry.source),
+    source: attendanceSourceName(entry.source),
     status: attendanceStatusName(entry.status),
-    occurredAt: timestampOrNull(entry.occurredAt),
-    claimedAt: timestampOrNull(entry.claimedAt),
+    occurredAt: optionalTimestampIso(entry.occurredAt),
+    claimedAt: optionalTimestampIso(entry.claimedAt),
     submittedAt: timestampIso(entry.submittedAt),
     location: attendanceLocation(entry.location),
     reason: entry.reason ?? null,

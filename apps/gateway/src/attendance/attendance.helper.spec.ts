@@ -19,9 +19,6 @@ describe('attendance helpers', () => {
     expect(timestampIso({ seconds: 1, nanos: 500_000_000 })).toBe(
       '1970-01-01T00:00:01.500Z',
     );
-    expect(timestampIso({ seconds: { low: 1, high: 0 }, nanos: 0 })).toBe(
-      '1970-01-01T00:00:01.000Z',
-    );
     expect(() => timestampIso({ seconds: 1, nanos: 'invalid' })).toThrow(
       'invalid timestamp',
     );

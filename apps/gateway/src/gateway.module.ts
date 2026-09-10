@@ -7,8 +7,8 @@ import { EmployeeController } from './employee/employee.controller.js';
 import { EvidenceController } from './evidence/evidence.controller.js';
 import { GatewayCallService } from './gateway-call/gateway-call.service.js';
 import { GrpcClientModule } from './grpc-client/grpc-client.module.js';
+import { HrdAttendanceController } from './hrd-attendance/hrd-attendance.controller.js';
 import { ManualAttendanceController } from './manual-attendance/manual-attendance.controller.js';
-import { ManualDecisionController } from './manual-decision/manual-decision.controller.js';
 import { RateLimiter } from './rate-limit/rate-limiter.js';
 import { RegularAttendanceController } from './regular-attendance/regular-attendance.controller.js';
 
@@ -20,8 +20,8 @@ import { RegularAttendanceController } from './regular-attendance/regular-attend
     AuthController,
     EmployeeController,
     EvidenceController,
+    HrdAttendanceController,
     ManualAttendanceController,
-    ManualDecisionController,
     RegularAttendanceController,
   ],
   providers: [GatewayCallService, RateLimiter],

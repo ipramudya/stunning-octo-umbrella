@@ -22,14 +22,6 @@ export type RegularAttendanceEntry = {
   decision: null;
 };
 
-export type AttemptRow = {
-  REQUEST_HASH: string;
-  STATUS: 'IN_PROGRESS' | 'COMPLETED';
-  RESPONSE_BODY: string | null;
-  CREATED_AT: Date;
-  EXPIRES_AT: Date;
-};
-
 export type ExistingEntryRow = {
   CLOCK_TYPE: ClockType;
   STATUS: 'PENDING_REVIEW' | 'RECORDED' | 'REJECTED';

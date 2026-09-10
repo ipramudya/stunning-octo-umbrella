@@ -8,14 +8,15 @@ import type {
 } from '@project/contracts';
 import { argon2id, hash, verify } from 'argon2';
 
-import { AuthError } from '../auth/auth-error.js';
-import { profile, validateLogin } from '../auth/auth.helper.js';
+import { validateLogin } from '../auth/auth.helper.js';
 import { SessionStore } from '../auth/session.store.js';
 import { TokenService } from '../auth/tokens.js';
 import type { Environment } from '../config/config-typedef.js';
 import type { Employee } from '../employee/employee.entity.js';
+import { profile } from '../employee/employee.helper.js';
 import { EmployeeRepository } from '../employee/employee.repository.js';
 import { audienceNames } from './identity.constant.js';
+import { IdentityError } from './identity.error.js';
 
 @Injectable()
 export class IdentityAuthService {
@@ -52,7 +53,7 @@ export class IdentityAuthService {
     );
 
     if (!employee || !validPassword) {
-      throw new AuthError('INVALID_CREDENTIALS', status.UNAUTHENTICATED);
+      throw new IdentityError('INVALID_CREDENTIALS', status.UNAUTHENTICATED);
     }
 
     const session = await this.sessions.create(
@@ -65,7 +66,10 @@ export class IdentityAuthService {
 
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+      throw new IdentityError(
+        'AUTHENTICATION_REQUIRED',
+        status.UNAUTHENTICATED,
+      );
     }
 
     const current = await this.sessions.getByRefreshToken(refreshToken);
@@ -81,7 +85,10 @@ export class IdentityAuthService {
       ) {
         await this.sessions.revoke(refreshToken);
 
-        throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+        throw new IdentityError(
+          'AUTHENTICATION_REQUIRED',
+          status.UNAUTHENTICATED,
+        );
       }
 
       const rotated = await this.sessions.rotate(refreshToken);
@@ -91,7 +98,7 @@ export class IdentityAuthService {
 
     await this.sessions.rotate(refreshToken);
 
-    throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+    throw new IdentityError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
   }
 
   revoke(refreshToken: string) {
@@ -111,7 +118,10 @@ export class IdentityAuthService {
     try {
       claims = await this.tokens.verify(accessToken, 'dexa-gateway');
     } catch {
-      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+      throw new IdentityError(
+        'AUTHENTICATION_REQUIRED',
+        status.UNAUTHENTICATED,
+      );
     }
 
     const requested = [...new Set(requestedAudiences)];
@@ -121,19 +131,25 @@ export class IdentityAuthService {
       requested.length > 2 ||
       requested.some((value) => !audienceNames.has(value))
     ) {
-      throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
+      throw new IdentityError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
     }
 
     const session = await this.sessions.get(claims.sid);
 
     if (!session || session.employeeId !== claims.sub) {
-      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+      throw new IdentityError(
+        'AUTHENTICATION_REQUIRED',
+        status.UNAUTHENTICATED,
+      );
     }
 
     const employee = await this.employees.findById(session.employeeId);
 
     if (!employee || employee.credentialVersion !== session.credentialVersion) {
-      throw new AuthError('AUTHENTICATION_REQUIRED', status.UNAUTHENTICATED);
+      throw new IdentityError(
+        'AUTHENTICATION_REQUIRED',
+        status.UNAUTHENTICATED,
+      );
     }
 
     const tokens: AudienceToken[] = await Promise.all(
@@ -141,7 +157,7 @@ export class IdentityAuthService {
         const audienceName = audienceNames.get(audience);
 
         if (!audienceName) {
-          throw new AuthError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
+          throw new IdentityError('VALIDATION_ERROR', status.INVALID_ARGUMENT);
         }
 
         return {

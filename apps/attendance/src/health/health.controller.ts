@@ -1,6 +1,6 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 
-import { ReadinessService } from './readiness.js';
+import { ReadinessService } from './readiness.service.js';
 
 @Controller('health')
 export class HealthController {

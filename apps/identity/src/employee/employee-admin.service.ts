@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { status } from '@grpc/grpc-js';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { argon2id, hash } from 'argon2';
 
-import { profile } from '../auth/auth.helper.js';
 import { SessionStore } from '../auth/session.store.js';
 import type { Environment } from '../config/config-typedef.js';
 import type { EmployeeInput } from './employee.entity.js';
@@ -16,6 +15,7 @@ import {
   fail,
   password,
   phone,
+  profile,
   required,
 } from './employee.helper.js';
 import { EmployeeRepository } from './employee.repository.js';
@@ -23,10 +23,9 @@ import { EmployeeRepository } from './employee.repository.js';
 @Injectable()
 export class EmployeeAdminService {
   constructor(
-    @Inject(ConfigService)
     private readonly config: ConfigService<Environment, true>,
-    @Inject(EmployeeRepository) private readonly employees: EmployeeRepository,
-    @Inject(SessionStore) private readonly sessions: SessionStore,
+    private readonly employees: EmployeeRepository,
+    private readonly sessions: SessionStore,
   ) {}
 
   async list({

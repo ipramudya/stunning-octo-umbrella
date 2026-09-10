@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { UpdateAttendanceZoneRequest } from '@project/contracts';
 import oracledb, { type Connection } from 'oracledb';
 
@@ -9,9 +9,7 @@ export class AttendanceConflict extends Error {}
 
 @Injectable()
 export class AttendanceZoneRepository {
-  constructor(
-    @Inject(OracleDatabase) private readonly database: OracleDatabase,
-  ) {}
+  constructor(private readonly database: OracleDatabase) {}
 
   get() {
     return this.database.withConnection((connection) =>

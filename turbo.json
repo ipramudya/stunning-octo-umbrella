@@ -1,24 +1,37 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
+    "//#format:root": {
+      "outputs": []
+    },
+    "//#lint:root": {
+      "outputs": []
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["@project/contracts#generate", "^build"],
       "env": ["GATEWAY_URL", "NEXT_DIST_DIR", "NODE_ENV"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "contracts:check": {
+      "cache": false,
+      "dependsOn": ["generate"]
     },
     "dev": {
       "cache": false,
       "dependsOn": ["^build"],
       "persistent": true
     },
+    "generate": {
+      "outputs": ["src/generated/**"]
+    },
     "lint": {
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["@project/contracts#generate", "^build"]
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["@project/contracts#generate", "^build"],
       "outputs": []
     }
   }

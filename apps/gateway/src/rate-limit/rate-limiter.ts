@@ -32,8 +32,6 @@ export class RateLimiter implements OnModuleDestroy {
 
   private connection?: Promise<RedisClientType>;
 
-  private scriptSha?: string;
-
   constructor(config: ConfigService<Environment, true>) {
     this.client = createClient({
       url: config.get('RATE_LIMIT_REDIS_URL', { infer: true }),
@@ -58,21 +56,9 @@ export class RateLimiter implements OnModuleDestroy {
   }) {
     const client = await this.redis();
 
-    const arguments_ = [`rate:${scope}:${subject}:`, String(windowSeconds)];
-    let result;
-
-    try {
-      result = await client.evalSha(await this.sha(client), {
-        arguments: arguments_,
-      });
-    } catch (error) {
-      if (!String(error).includes('NOSCRIPT')) {
-        throw error;
-      }
-
-      this.scriptSha = await client.scriptLoad(FIXED_WINDOW);
-      result = await client.evalSha(this.scriptSha, { arguments: arguments_ });
-    }
+    const result = await client.eval(FIXED_WINDOW, {
+      arguments: [`rate:${scope}:${subject}:`, String(windowSeconds)],
+    });
 
     if (
       !Array.isArray(result) ||
@@ -91,10 +77,6 @@ export class RateLimiter implements OnModuleDestroy {
     if (this.connection) {
       await this.client.close();
     }
-  }
-
-  private async sha(client: RedisClientType) {
-    return (this.scriptSha ??= await client.scriptLoad(FIXED_WINDOW));
   }
 
   private redis() {

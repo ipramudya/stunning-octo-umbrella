@@ -12,8 +12,6 @@ const approve = {
 
 function subject() {
   const repository = {
-    list: vi.fn().mockResolvedValue([]),
-    get: vi.fn(),
     claim: vi.fn().mockResolvedValue({ kind: 'new' }),
     decide: vi.fn().mockResolvedValue({ id: approve.entryId }),
     release: vi.fn(),

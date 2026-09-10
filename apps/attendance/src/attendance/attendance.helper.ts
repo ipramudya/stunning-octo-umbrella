@@ -1,15 +1,3 @@
-import { Metadata } from '@grpc/grpc-js';
-
-export function bearer(metadata: Metadata) {
-  const value = metadata.get('authorization')[0];
-
-  if (typeof value === 'string' && value.startsWith('Bearer ')) {
-    return value.slice(7);
-  }
-
-  return '';
-}
-
 export function grpcTimestamp(date: Date) {
   const milliseconds = date.getTime();
 
@@ -63,20 +51,11 @@ export function protoDate(value: unknown) {
   }
 
   const seconds: unknown = Reflect.get(value, 'seconds');
-  const nanos: unknown = Reflect.get(value, 'nanos');
-  let numericSeconds = Number(seconds);
-  if (typeof seconds === 'object' && seconds !== null) {
-    numericSeconds =
-      Number(Reflect.get(seconds, 'low')) +
-      Number(Reflect.get(seconds, 'high')) * 0x1_0000_0000;
-  }
+  const nanos: unknown = Reflect.get(value, 'nanos') ?? 0;
 
-  if (
-    !Number.isFinite(numericSeconds) ||
-    !Number.isFinite(Number(nanos ?? 0))
-  ) {
+  if (typeof seconds !== 'number' || typeof nanos !== 'number') {
     return undefined;
   }
 
-  return new Date(numericSeconds * 1_000 + Number(nanos ?? 0) / 1_000_000);
+  return new Date(seconds * 1_000 + nanos / 1_000_000);
 }

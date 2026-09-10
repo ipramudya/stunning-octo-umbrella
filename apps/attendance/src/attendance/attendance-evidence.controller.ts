@@ -7,9 +7,9 @@ import type {
 } from '@project/contracts';
 
 import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { GrpcAuthorizationService } from '../auth/grpc-authorization.service.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { EvidenceService } from '../evidence/evidence.service.js';
-import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
 import { grpcTimestamp } from './attendance.helper.js';
 
@@ -18,7 +18,7 @@ import { grpcTimestamp } from './attendance.helper.js';
 @UseGuards(GrpcAuthGuard, RolesGuard)
 export class AttendanceEvidenceController {
   constructor(
-    private readonly authorization: AttendanceAuthorizationService,
+    private readonly authorization: GrpcAuthorizationService,
     private readonly evidence: EvidenceService,
   ) {}
 

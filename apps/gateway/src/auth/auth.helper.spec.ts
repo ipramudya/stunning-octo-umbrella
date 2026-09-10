@@ -2,7 +2,8 @@ import { Role } from '@project/contracts';
 import type { FastifyRequest } from 'fastify';
 import { describe, expect, it } from 'vitest';
 
-import { cookies, publicProfile } from './auth.helper.js';
+import { publicProfile } from '../employee/employee.dto.js';
+import { cookies } from './auth.helper.js';
 
 describe('auth helpers', () => {
   it('parses cookies without truncating values containing equals signs', () => {

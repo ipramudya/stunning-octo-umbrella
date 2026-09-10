@@ -12,8 +12,6 @@ service AttendanceService {
   rpc AuthorizeEvidenceAccess(AuthorizeEvidenceAccessRequest) returns (EvidenceAccessAuthorization);
   rpc CreateRegularAttendance(CreateRegularAttendanceRequest) returns (AttendanceEntry);
   rpc CreateManualAttendance(CreateManualAttendanceRequest) returns (AttendanceEntry);
-  rpc ListPendingManualAttendance(ListPendingManualAttendanceRequest) returns (ListPendingManualAttendanceResponse);
-  rpc GetManualAttendance(GetManualAttendanceRequest) returns (AttendanceEntry);
   rpc DecideManualAttendance(DecideManualAttendanceRequest) returns (AttendanceEntry);
   rpc ListEmployeeAttendance(ListEmployeeAttendanceRequest) returns (ListAttendanceResponse);
   rpc GetEmployeeAttendance(GetAttendanceRequest) returns (AttendanceEntry);
@@ -110,21 +108,6 @@ message AttendanceEntry {
   optional string evidence_id = 12;
   optional AttendanceDecision decision = 13;
   bool idempotent_replay = 14;
-}
-
-message ListPendingManualAttendanceRequest {
-  optional string cursor = 1;
-  int32 limit = 2;
-}
-
-message ListPendingManualAttendanceResponse {
-  repeated AttendanceEntry items = 1;
-  optional string next_cursor = 2;
-  bool has_next_page = 3;
-}
-
-message GetManualAttendanceRequest {
-  string entry_id = 1;
 }
 
 message ListEmployeeAttendanceRequest {

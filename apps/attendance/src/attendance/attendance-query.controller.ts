@@ -10,9 +10,9 @@ import type {
 
 import { AttendanceQueryService } from '../attendance-query/attendance-query.service.js';
 import { GrpcAuthGuard } from '../auth/grpc-auth.guard.js';
+import { GrpcAuthorizationService } from '../auth/grpc-authorization.service.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { AttendanceAuthorizationService } from './attendance-authorization.service.js';
 import { AttendanceExceptionFilter } from './attendance-exception.filter.js';
 import { grpcEntry } from './attendance.helper.js';
 
@@ -21,7 +21,7 @@ import { grpcEntry } from './attendance.helper.js';
 @UseGuards(GrpcAuthGuard, RolesGuard)
 export class AttendanceQueryController {
   constructor(
-    private readonly authorization: AttendanceAuthorizationService,
+    private readonly authorization: GrpcAuthorizationService,
     private readonly queries: AttendanceQueryService,
   ) {}
 
