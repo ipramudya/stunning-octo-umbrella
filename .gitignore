@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+!apps/web/src/app/hrd/coverage/
 .turbo/
 *.tsbuildinfo
 .local/
