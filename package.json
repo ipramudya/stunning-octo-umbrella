@@ -24,8 +24,8 @@
     "test": "turbo run test",
     "test:integration": "./scripts/test-integration.sh",
     "typecheck": "turbo run typecheck",
-    "compose:up": "docker compose --env-file ${COMPOSE_ENV_FILE:-.env.demo} up --build --wait && npm run images:prune",
-    "compose:down": "docker compose --env-file ${COMPOSE_ENV_FILE:-.env.demo} down --volumes --remove-orphans",
+    "compose:up": "./scripts/demo.sh",
+    "compose:down": "./scripts/demo.sh down",
     "images:prune": "docker image prune --force --filter label=com.docker.compose.project=dexa",
     "test:e2e": "./scripts/test-e2e.sh"
   },
