@@ -1,4 +1,4 @@
-# Dexa Group Technical Assignments
+# Technical Assignments
 
 Result perancangan sistem absensi kerja dari rumah untuk karyawan, serta monitoring untuk HRD.
 
